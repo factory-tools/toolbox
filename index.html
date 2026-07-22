@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#17365d">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <title>織帶 PCS 換算工具</title>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>織帶 PCS 換算工具</h1>
+      <p class="subtitle">Công cụ quy đổi PCS</p>
+
+      <div class="help">
+        ① 輸入樣本數量與樣本重量<br>
+        ② 輸入整包重量<br>
+        ③ 若已按 Tare，空袋重量填 0
+      </div>
+
+      <div class="grid">
+        <label class="field">
+          <span>樣本數量 / Số lượng mẫu</span>
+          <input id="sampleQty" type="number" inputmode="numeric" min="1" value="10">
+        </label>
+
+        <label class="field">
+          <span>樣本重量(g) / Trọng lượng mẫu</span>
+          <input id="sampleWeight" type="number" inputmode="decimal" placeholder="例如 20">
+        </label>
+
+        <label class="field">
+          <span>整包重量(g) / Tổng trọng lượng</span>
+          <input id="totalWeight" type="number" inputmode="decimal" placeholder="例如 2000">
+        </label>
+
+        <label class="field">
+          <span>空袋重量(g) / Trọng lượng túi</span>
+          <input id="bagWeight" class="bag" type="number" inputmode="decimal" value="0">
+        </label>
+      </div>
+
+      <div class="result">
+        <div>約有多少 PCS / Số PCS ước tính</div>
+        <strong id="pcsResult">—</strong>
+      </div>
+
+      <div class="details">
+        <div>每 1 PC 重量：<b id="oneWeight">—</b></div>
+        <div>整包淨重量：<b id="netWeight">—</b></div>
+      </div>
+
+      <p id="status" class="status"></p>
+    </section>
+  </main>
+
+  <div class="actions">
+    <button id="calcBtn" class="calc">計算 / Tính</button>
+    <button id="clearBtn" class="clear">清空 / Xóa</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

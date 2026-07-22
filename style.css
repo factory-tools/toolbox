@@ -1,0 +1,104 @@
+*{box-sizing:border-box}
+:root{
+  --navy:#17365d;
+  --blue:#2f75b5;
+  --yellow:#fff2cc;
+  --red:#f4cccc;
+  --green:#c6e0b4;
+}
+body{
+  margin:0;
+  background:#eef2f6;
+  color:#1f2937;
+  font-family:-apple-system,BlinkMacSystemFont,"Microsoft JhengHei","Noto Sans",Arial,sans-serif;
+}
+.wrap{max-width:760px;margin:auto;padding:14px 14px 110px}
+.card{
+  background:#fff;
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 6px 18px rgba(0,0,0,.10);
+}
+h1{margin:0;text-align:center;color:var(--navy);font-size:26px}
+.subtitle{text-align:center;color:#64748b;margin:6px 0 18px}
+.help{
+  background:#eef5fb;
+  border-left:6px solid var(--blue);
+  padding:12px 14px;
+  border-radius:10px;
+  line-height:1.7;
+  margin-bottom:16px;
+}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{
+  display:block;
+  border:1px solid #b7c9d6;
+  border-radius:12px;
+  padding:13px;
+}
+.field span{display:block;font-weight:800;margin-bottom:8px;line-height:1.4}
+input{
+  width:100%;
+  min-height:56px;
+  border:2px solid #9fb5ca;
+  border-radius:10px;
+  background:var(--yellow);
+  font-size:23px;
+  text-align:center;
+  padding:10px;
+}
+input:focus{outline:3px solid rgba(47,117,181,.2);border-color:var(--blue)}
+.bag{background:var(--red);border-color:#d9534f}
+.result{
+  margin-top:16px;
+  padding:18px;
+  text-align:center;
+  border:2px solid #70ad47;
+  border-radius:14px;
+  background:var(--green);
+  font-weight:800;
+}
+.result strong{
+  display:block;
+  font-size:50px;
+  color:#215e21;
+  margin-top:6px;
+}
+.details{
+  margin-top:12px;
+  background:#f3f4f6;
+  border-radius:10px;
+  padding:12px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.status{text-align:center;font-weight:800;min-height:24px}
+.status.ok{color:#216e39}
+.status.warn{color:#b42318}
+.actions{
+  position:fixed;
+  left:0;right:0;bottom:0;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  background:rgba(255,255,255,.96);
+  border-top:1px solid #d7dee7;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+}
+button{
+  min-height:56px;
+  border:0;
+  border-radius:12px;
+  font-size:19px;
+  font-weight:900;
+}
+.calc{background:var(--blue);color:#fff}
+.clear{background:#d9534f;color:#fff}
+@media(max-width:640px){
+  .grid,.details{grid-template-columns:1fr}
+  .wrap{padding:8px 8px 110px}
+  .card{padding:14px;border-radius:14px}
+  h1{font-size:22px}
+  .result strong{font-size:42px}
+}
