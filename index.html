@@ -6,60 +6,122 @@
   <meta name="theme-color" content="#17365d">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
-  <title>織帶 PCS 換算工具</title>
+  <title>工廠工具箱 / Hộp công cụ nhà máy</title>
 </head>
 <body>
   <main class="wrap">
-    <section class="card">
-      <h1>織帶 PCS 換算工具</h1>
-      <p class="subtitle">Công cụ quy đổi PCS</p>
+    <section id="homePage" class="page active">
+      <div class="card">
+        <h1>工廠工具箱</h1>
+        <p class="subtitle">Hộp công cụ nhà máy</p>
 
-      <div class="help">
-        ① 輸入樣本數量與樣本重量<br>
-        ② 輸入整包重量<br>
-        ③ 若已按 Tare，空袋重量填 0
+        <div class="tool-grid">
+          <button class="tool-card" data-page="pcsPage">
+            <span class="tool-icon">📦</span>
+            <span class="zh">PCS 重量換算</span>
+            <span class="vi">Quy đổi PCS theo trọng lượng</span>
+          </button>
+
+          <button class="tool-card disabled" type="button">
+            <span class="tool-icon">📏</span>
+            <span class="zh">碼克重換算</span>
+            <span class="vi">Quy đổi trọng lượng theo yard</span>
+            <small>即將推出 / Sắp ra mắt</small>
+          </button>
+
+          <button class="tool-card disabled" type="button">
+            <span class="tool-icon">📉</span>
+            <span class="zh">生產損耗計算</span>
+            <span class="vi">Tính hao hụt sản xuất</span>
+            <small>即將推出 / Sắp ra mắt</small>
+          </button>
+
+          <button class="tool-card disabled" type="button">
+            <span class="tool-icon">⚖️</span>
+            <span class="zh">長度／重量換算</span>
+            <span class="vi">Quy đổi chiều dài / trọng lượng</span>
+            <small>即將推出 / Sắp ra mắt</small>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="pcsPage" class="page">
+      <div class="card">
+        <button id="backHome" class="back-btn" type="button">← 返回工具箱 / Trở về hộp công cụ</button>
+
+        <h1>織帶 PCS 換算工具</h1>
+        <p class="subtitle">Công cụ quy đổi PCS dây đai</p>
+
+        <div class="help">
+          <div>
+            <strong>① 輸入樣本數量與樣本重量</strong>
+            <span>Nhập số lượng mẫu và trọng lượng mẫu</span>
+          </div>
+          <div>
+            <strong>② 輸入整包重量</strong>
+            <span>Nhập tổng trọng lượng cả túi</span>
+          </div>
+          <div>
+            <strong>③ 若已按 Tare，空袋重量填 0</strong>
+            <span>Nếu đã nhấn Tare, nhập 0 cho trọng lượng túi</span>
+          </div>
+        </div>
+
+        <div class="grid">
+          <label class="field">
+            <span class="zh">樣本數量</span>
+            <span class="vi">Số lượng mẫu</span>
+            <input id="sampleQty" type="number" inputmode="numeric" min="1" value="10">
+          </label>
+
+          <label class="field">
+            <span class="zh">樣本重量（g）</span>
+            <span class="vi">Trọng lượng mẫu (g)</span>
+            <input id="sampleWeight" type="number" inputmode="decimal" placeholder="例如 20 / Ví dụ: 20">
+          </label>
+
+          <label class="field">
+            <span class="zh">整包總重量（g）</span>
+            <span class="vi">Tổng trọng lượng cả túi (g)</span>
+            <input id="totalWeight" type="number" inputmode="decimal" placeholder="例如 2000 / Ví dụ: 2000">
+          </label>
+
+          <label class="field">
+            <span class="zh">空袋重量（g）</span>
+            <span class="vi">Trọng lượng túi rỗng (g)</span>
+            <input id="bagWeight" class="bag" type="number" inputmode="decimal" value="0">
+          </label>
+        </div>
+
+        <div class="result">
+          <div class="zh">約有多少 PCS</div>
+          <div class="vi">Số PCS ước tính</div>
+          <strong id="pcsResult">等待輸入 / Chờ nhập dữ liệu</strong>
+        </div>
+
+        <div class="details">
+          <div>
+            <span class="zh">每 1 PC 重量</span>
+            <span class="vi">Trọng lượng 1 PCS</span>
+            <b id="oneWeight">—</b>
+          </div>
+          <div>
+            <span class="zh">整包淨重量</span>
+            <span class="vi">Trọng lượng tịnh cả túi</span>
+            <b id="netWeight">—</b>
+          </div>
+        </div>
+
+        <p id="status" class="status"></p>
       </div>
 
-      <div class="grid">
-        <label class="field">
-          <span>樣本數量 / Số lượng mẫu</span>
-          <input id="sampleQty" type="number" inputmode="numeric" min="1" value="10">
-        </label>
-
-        <label class="field">
-          <span>樣本重量(g) / Trọng lượng mẫu</span>
-          <input id="sampleWeight" type="number" inputmode="decimal" placeholder="例如 20">
-        </label>
-
-        <label class="field">
-          <span>整包重量(g) / Tổng trọng lượng</span>
-          <input id="totalWeight" type="number" inputmode="decimal" placeholder="例如 2000">
-        </label>
-
-        <label class="field">
-          <span>空袋重量(g) / Trọng lượng túi</span>
-          <input id="bagWeight" class="bag" type="number" inputmode="decimal" value="0">
-        </label>
+      <div class="actions">
+        <button id="calcBtn" class="calc" type="button">計算 / Tính</button>
+        <button id="clearBtn" class="clear" type="button">清空 / Xóa</button>
       </div>
-
-      <div class="result">
-        <div>約有多少 PCS / Số PCS ước tính</div>
-        <strong id="pcsResult">—</strong>
-      </div>
-
-      <div class="details">
-        <div>每 1 PC 重量：<b id="oneWeight">—</b></div>
-        <div>整包淨重量：<b id="netWeight">—</b></div>
-      </div>
-
-      <p id="status" class="status"></p>
     </section>
   </main>
-
-  <div class="actions">
-    <button id="calcBtn" class="calc">計算 / Tính</button>
-    <button id="clearBtn" class="clear">清空 / Xóa</button>
-  </div>
 
   <script src="app.js"></script>
 </body>

@@ -1,6 +1,6 @@
 {
-  "name": "織帶 PCS 換算工具",
-  "short_name": "PCS換算",
+  "name": "工廠工具箱",
+  "short_name": "工廠工具箱",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#eef2f6",
