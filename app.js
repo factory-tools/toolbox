@@ -10,7 +10,7 @@ $('sampleUnit').addEventListener('change',()=>{$('customUnitBox').classList.togg
 
 const unitAliases={Y:'Y',碼:'Y',YARD:'Y',M:'M',米:'M',MET:'M',MÉT:'M',PC:'PC',PCS:'PC',個:'PC','雙':'PAIR','对':'PAIR','對':'PAIR','ĐÔI':'PAIR','DOI':'PAIR','PAIR':'PAIR'};
 const methodAliases={'手印':'HAND','IN TAY':'HAND','HAND':'HAND','K3':'K3'};
-const sideAliases={'單面':'SINGLE','单面':'SINGLE','MỘT MẶT':'SINGLE','MOT MAT':'SINGLE','1':'SINGLE','SINGLE':'SINGLE','雙面':'DOUBLE','双面':'DOUBLE','HAI MẶT':'DOUBLE','HAI MAT':'DOUBLE','2':'DOUBLE','DOUBLE':'DOUBLE'};
+const sideAliases={'單面':'SINGLE','单面':'SINGLE','MỘT MẶT':'SINGLE','MOT MAT':'SINGLE','MOT':'SINGLE','MỘT':'SINGLE','1':'SINGLE','SINGLE':'SINGLE','雙面':'DOUBLE','双面':'DOUBLE','HAI MẶT':'DOUBLE','HAI MAT':'DOUBLE','HAI':'DOUBLE','2':'DOUBLE','DOUBLE':'DOUBLE'};
 function normUnit(v){return unitAliases[String(v||'').trim().toUpperCase()]||String(v||'').trim().toUpperCase();}
 function normMethod(v){return methodAliases[String(v||'').trim().toUpperCase()]||String(v||'').trim().toUpperCase();}
 function normSide(v){const t=String(v||'').trim().toUpperCase();return sideAliases[t]||'SINGLE';}
@@ -41,7 +41,24 @@ function splitExcelLine(line){
     out.push(cur.trim());
     return out;
   }
-  return raw.split(/\s+/).filter(Boolean);
+  const parts=raw.split(/\s+/).filter(Boolean);
+  // Allow manually typed rows where method "IN TAY" contains a space.
+  // First four fields are fixed: quantity, unit, width, length.
+  if(parts.length>=5){
+    const first=parts.slice(0,4);
+    const tail=parts.slice(4);
+    const upper=tail.map(v=>v.toUpperCase());
+    let side='';
+    if(upper.length && ['MOT','MỘT','HAI','SINGLE','DOUBLE','單面','雙面','单面','双面','1','2'].includes(upper[upper.length-1])) side=tail.pop();
+    else if(upper.length>=2){
+      const last2=upper.slice(-2).join(' ');
+      if(['MOT MAT','MỘT MẶT','HAI MAT','HAI MẶT'].includes(last2)) side=tail.splice(-2).join(' ');
+    }
+    let method=tail.join(' ');
+    if(!method) method='HAND';
+    return [...first,method,side||'SINGLE'];
+  }
+  return parts;
 }
 function cleanNumber(v){
   let t=String(v??'').trim().replace(/\s/g,'').replace(/，/g,',');
