@@ -8,3 +8,8 @@
 .order-table td.metric-pc-cell{background:#e2f0d9;color:#215e21}
 .order-table td.metric-pair-cell{background:#eadcf8;color:#56317b}
 .order-table td.metric-yard-cell,.order-table td.metric-pc-cell,.order-table td.metric-pair-cell{font-weight:900}
+.excel-btn{min-height:46px;border:0;border-radius:12px;padding:8px 18px;background:#217346;color:#fff;font-size:17px;font-weight:900}
+.summary-grid{grid-template-columns:repeat(5,1fr)}
+.actual-summary{background:#fff2cc;border-color:#d6b656}
+.actual-summary b{color:#8a5a00}
+@media(max-width:760px){.summary-grid{grid-template-columns:1fr}}
