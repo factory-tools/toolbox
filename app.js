@@ -129,43 +129,40 @@ function saveBlob(blob,filename){
   if(window.navigator && window.navigator.msSaveOrOpenBlob){window.navigator.msSaveOrOpenBlob(blob,filename);return;}
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url);},1500);
 }
+function csvCell(value){
+  const text=String(value??'');
+  return '"'+text.replace(/"/g,'""')+'"';
+}
 function exportExcel(){
   try{
     const rows=[...$('orderBody').rows];
     const valid=rows.filter(r=>r.dataset.yards&&!r.classList.contains('row-error'));
-    if(!valid.length){$('printingStatus').className='status warn';$('printingStatus').textContent='目前沒有可下載的完整資料 / Hiện không có dữ liệu đầy đủ để tải';return;}
+    if(!valid.length){
+      $('printingStatus').className='status warn';
+      $('printingStatus').textContent='目前沒有可下載的完整資料 / Hiện không có dữ liệu đầy đủ để tải';
+      return;
+    }
     const headers=['項次 STT','訂單量 SL đơn hàng','單位 Đơn vị','寬度 mm Khổ mm','長度 mm Dài mm','印刷方式 Phương pháp','單／雙面 Một／hai mặt','換算碼數 Y Số yard','每桌碼數 Y Y mỗi bàn','每桌約可印 PC PC mỗi bàn','每桌約可印雙 Đôi mỗi bàn','實際桌數 Số bàn thực tế','排程桌數 Số bàn kế hoạch','所需工時 Giờ cần'];
-    const dataRows=valid.map((tr,i)=>{
+    const num=t=>Number(String(t).replace(/,/g,'').replace(/[^0-9.\-]/g,''))||0;
+    const data=valid.map((tr,i)=>{
       const unitLabel={Y:'Y / yard',M:'M / mét',PC:'PC',PAIR:'雙 / đôi'}[tr.querySelector('.o-unit').value]||tr.querySelector('.o-unit').value;
       const methodLabel=tr.querySelector('.o-method').value==='K3'?'K3':'手印 / In tay';
       const sideLabel=tr.querySelector('.o-side').value==='DOUBLE'?'雙面 / Hai mặt':'單面 / Một mặt';
-      const num=t=>Number(String(t).replace(/,/g,'').replace(/[^0-9.\-]/g,''))||0;
       return [i+1,Number(tr.querySelector('.o-qty').value)||0,unitLabel,Number(tr.querySelector('.o-width').value)||0,Number(tr.querySelector('.o-length').value)||0,methodLabel,sideLabel,Number(tr.dataset.yards)||0,num(tr.querySelector('.capacity').textContent),num(tr.querySelector('.pcs-table').textContent),num(tr.querySelector('.pairs-table').textContent),Number(tr.dataset.exact)||0,Number(tr.dataset.tables)||0,Number(tr.dataset.hours)||0];
     });
-    const sumY=dataRows.reduce((a,r)=>a+r[7],0),sumExact=dataRows.reduce((a,r)=>a+r[11],0),sumPlan=dataRows.reduce((a,r)=>a+r[12],0),sumHours=dataRows.reduce((a,r)=>a+r[13],0);
-    const numericCols=new Set([0,1,3,4,7,8,9,10,11,12,13]);
-    let sheetRows=xlsxRow(headers,headers.map(()=> 's'),headers.map(()=>1));
-    dataRows.forEach(r=>{sheetRows+=xlsxRow(r,r.map((_,j)=>numericCols.has(j)?'n':'s'),r.map((_,j)=>j===8?2:j===9?3:j===10?4:0));});
-    const total=['合計 / Tổng',dataRows.length,'','','','','',sumY,'','','',sumExact,sumPlan,sumHours];
-    sheetRows+=xlsxRow(total,total.map((_,j)=>numericCols.has(j)?'n':'s'),total.map(()=>5));
-    const colXml=headers.map(()=>'<col width="15" customWidth="1"/>').join('');
-    const sheet1=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols>${colXml}</cols><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>${sheetRows}</sheetData></worksheet>`;
-    const settings=[['每桌總工時 / Tổng giờ mỗi bàn',Number($('hoursPerTable').value)||0],['前置／收料工時 / Giờ chuẩn bị / thu liệu',Number($('setupHours').value)||0],['實際印刷工時 / Giờ in thực tế',Number($('printHours').value)||0],['基準寬度 mm / Khổ chuẩn mm',Number($('baseWidth').value)||25],['手印基準產能 Y/桌 / Năng suất in tay',Number($('baseHandCapacity').value)||0],['K3基準產能 Y/桌 / Năng suất K3',Number($('baseK3Capacity').value)||0]];
-    let settingRows=xlsxRow(['設定項目 / Hạng mục','數值 / Giá trị'],['s','s'],[1,1]);settings.forEach(r=>settingRows+=xlsxRow(r,['s','n'],[0,0]));
-    const sheet2=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col width="42" customWidth="1"/><col width="18" customWidth="1"/></cols><sheetData>${settingRows}</sheetData></worksheet>`;
-    const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF17365D"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE2F0D9"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEADCF8"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"/><right style="thin"/><top style="thin"/><bottom style="thin"/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="0" fontId="0" fillId="3" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="0" fontId="0" fillId="4" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="0" fontId="0" fillId="5" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf><xf numFmtId="0" fontId="0" fillId="2" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
-    const files={
-      '[Content_Types].xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
-      '_rels/.rels':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
-      'xl/workbook.xml':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="手印桌數試算" sheetId="1" r:id="rId1"/><sheet name="設定" sheetId="2" r:id="rId2"/></sheets></workbook>`,
-      'xl/_rels/workbook.xml.rels':`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
-      'xl/worksheets/sheet1.xml':sheet1,'xl/worksheets/sheet2.xml':sheet2,'xl/styles.xml':styles
-    };
-    const bytes=zipStore(files),blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const sumY=data.reduce((a,r)=>a+r[7],0),sumExact=data.reduce((a,r)=>a+r[11],0),sumPlan=data.reduce((a,r)=>a+r[12],0),sumHours=data.reduce((a,r)=>a+r[13],0);
+    data.push(['合計 / Tổng',data.length,'','','','','',sumY,'','','',sumExact,sumPlan,sumHours]);
+    const csv=[headers,...data].map(row=>row.map(csvCell).join(',')).join('\r\n');
+    const blob=new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8;'});
     const now=new Date(),pad=n=>String(n).padStart(2,'0');
-    saveBlob(blob,`批量印刷桌數試算_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.xlsx`);
-    $('printingStatus').className='status ok';$('printingStatus').textContent='真正的 XLSX 已下載 / Đã tải tệp XLSX';
-  }catch(err){console.error(err);$('printingStatus').className='status warn';$('printingStatus').textContent='下載失敗，請重新整理後再試 / Tải xuống thất bại, vui lòng tải lại trang';}
+    saveBlob(blob,`批量印刷桌數試算_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`);
+    $('printingStatus').className='status ok';
+    $('printingStatus').textContent='資料已下載，可直接用 Excel 開啟 / Đã tải dữ liệu, có thể mở trực tiếp bằng Excel';
+  }catch(err){
+    console.error(err);
+    $('printingStatus').className='status warn';
+    $('printingStatus').textContent='下載失敗，請重新整理後再試 / Tải xuống thất bại, vui lòng tải lại trang';
+  }
 }
 
 $('addOrderBtn').addEventListener('click',()=>addOrder());$('downloadExcelBtn').addEventListener('click',exportExcel);$('pasteToTableBtn').addEventListener('click',parseBatch);$('clearOrdersBtn').addEventListener('click',()=>{$('orderBody').innerHTML='';recalcSummary();});['hoursPerTable','setupHours','printHours','baseWidth','baseHandCapacity','baseK3Capacity'].forEach(id=>{const el=$(id);if(el)el.addEventListener('input',()=>{if(id==='setupHours'||id==='printHours')$('hoursPerTable').value=(Number($('setupHours').value)||0)+(Number($('printHours').value)||0);recalcAll();});});
