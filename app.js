@@ -182,15 +182,16 @@ function calcActualTable(){
   const qty=Number($('actualOrderQty').value), pcLen=Number($('actualPcLength').value), strips=Number($('actualStrips').value), tableY=Number($('actualTableLength').value);
   if(!(pcLen>0)&&!(strips>0)&&!(tableY>0)){return;}
   if(!(pcLen>0)||!(strips>0)||!(tableY>0)){
-    $('actualPcPerTable').textContent='—';$('actualYPerTable').textContent='—';$('actualTablesNeeded').textContent='—';return;
+    $('actualPcPerStrip').textContent='—';$('actualPcPerTable').textContent='—';$('actualYPerTable').textContent='—';$('actualTablesNeeded').textContent='—';return;
   }
   const pcsEachStrip=Math.floor(tableY*914.4/pcLen);
   const pcsPerTable=pcsEachStrip*strips;
   const totalTableY=tableY*strips;
+  $('actualPcPerStrip').textContent=fmt(pcsEachStrip,0)+' PC';
   $('actualPcPerTable').textContent=fmt(pcsPerTable,0)+' PC';
   $('actualYPerTable').textContent=fmt(totalTableY,2)+' Y';
   $('actualTablesNeeded').textContent=qty>0?fmt(Math.ceil(qty/pcsPerTable),0)+' 桌 / bàn':'—';
-  $('actualCalcNote').textContent=`每條可做 ${fmt(pcsEachStrip,0)} PC；帶寬 ${fmt(Number($('actualWidth').value)||0,2)} mm 供辨識。`;
+  $('actualCalcNote').textContent=`帶寬 ${fmt(Number($('actualWidth').value)||0,2)} mm 供辨識；每桌可做 = 每條可做 × 實際排帶條數。 / Khổ dây dùng để nhận biết; PC mỗi bàn = PC mỗi sợi × số sợi xếp thực tế.`;
 }
 if($('actualMethod')){
   $('actualMethod').addEventListener('change',updateActualLengthByMethod);
