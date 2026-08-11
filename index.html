@@ -1,7 +1,8 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><link rel="manifest" href="manifest.json?v=20260805-1145"><link rel="stylesheet" href="style.css?v=20260805-1145"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><link rel="manifest" href="manifest.json?v=20260811-actualtable"><link rel="stylesheet" href="style.css?v=20260811-actualtable"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
 <section id="homePage" class="page active"><div class="card"><h1>工廠工具箱</h1><p class="subtitle">Hộp công cụ nhà máy</p><div class="tool-grid">
 <button class="tool-card" data-page="quantityPage"><span class="tool-icon">📦</span><span class="zh">數量推算工具</span><span class="vi">Công cụ ước tính số lượng</span></button>
 <button class="tool-card" data-page="printingPage"><span class="tool-icon">🖨️</span><span class="zh">批量印刷桌數試算</span><span class="vi">Tính số bàn in hàng loạt</span></button>
+<button class="tool-card" data-page="actualTablePage"><span class="tool-icon">📐</span><span class="zh">實際每桌產量換算</span><span class="vi">Quy đổi sản lượng thực tế mỗi bàn</span></button>
 <button class="tool-card disabled"><span class="tool-icon">📏</span><span class="zh">碼克重換算</span><span class="vi">Quy đổi trọng lượng theo yard</span><small>即將推出 / Sắp ra mắt</small></button>
 <button class="tool-card disabled"><span class="tool-icon">📉</span><span class="zh">生產損耗計算</span><span class="vi">Tính hao hụt sản xuất</span><small>即將推出 / Sắp ra mắt</small></button>
 </div></div></section>
@@ -10,6 +11,26 @@
 <div class="help"><div><strong>① 選擇樣本單位並輸入樣本數量</strong><span>Chọn đơn vị mẫu và nhập số lượng mẫu</span></div><div><strong>② 輸入樣本重量與整包總重量</strong><span>Nhập trọng lượng mẫu và tổng trọng lượng cả túi</span></div><div><strong>③ 若秤已按 Tare，空袋重量填 0</strong><span>Nếu cân đã nhấn Tare, nhập 0 cho trọng lượng túi rỗng</span></div></div>
 <div class="grid"><label class="field"><span class="zh">樣本數量</span><span class="vi">Số lượng mẫu</span><input id="sampleQty" type="number" inputmode="decimal" min="0.0001" step="any" value="5"></label><label class="field"><span class="zh">樣本單位</span><span class="vi">Đơn vị mẫu</span><select id="sampleUnit"><option value="PCS">PCS（個） / PCS (cái)</option><option value="碼">碼 / Yard</option><option value="米">米 / Mét</option><option value="捲">捲 / Cuộn</option><option value="公斤">公斤 / Kilôgam</option><option value="custom">自訂 / Tự nhập</option></select></label><label id="customUnitBox" class="field hidden"><span class="zh">自訂單位名稱</span><span class="vi">Tên đơn vị tự nhập</span><input id="customUnit" type="text" placeholder="例如：條 / Ví dụ: sợi"></label><label class="field"><span class="zh">樣本重量（g）</span><span class="vi">Trọng lượng mẫu (g)</span><input id="sampleWeight" type="number" inputmode="decimal" step="any" placeholder="例如 20 / Ví dụ: 20"></label><label class="field"><span class="zh">整包總重量（g）</span><span class="vi">Tổng trọng lượng cả túi (g)</span><input id="totalWeight" type="number" inputmode="decimal" step="any" placeholder="例如 2000 / Ví dụ: 2000"></label><label class="field"><span class="zh">空袋重量（g）</span><span class="vi">Trọng lượng túi rỗng (g)</span><input id="bagWeight" class="bag" type="number" inputmode="decimal" step="any" value="0"></label></div>
 <div class="result"><div class="zh">推算數量</div><div class="vi">Số lượng ước tính</div><strong id="quantityResult">等待輸入 / Chờ nhập dữ liệu</strong></div><div class="details"><div><span class="zh">每 1 單位重量</span><span class="vi">Trọng lượng mỗi 1 đơn vị</span><b id="oneWeight">—</b></div><div><span class="zh">整包淨重量</span><span class="vi">Trọng lượng tịnh cả túi</span><b id="netWeight">—</b></div></div><p id="status" class="status"></p></div><div class="actions quantity-actions"><button id="calcBtn" class="calc">計算 / Tính</button><button id="clearBtn" class="clear">清空 / Xóa</button></div></section>
+
+
+<section id="actualTablePage" class="page"><div class="card actual-tool-card">
+<button class="back-btn compact-back" data-page="homePage">← 返回 / Trở về</button>
+<h1>實際每桌產量換算</h1><p class="subtitle actual-subtitle">Quy đổi sản lượng thực tế mỗi bàn</p>
+<div class="actual-input-grid">
+<label class="field compact-field"><span class="zh">印刷方式</span><span class="vi">Phương pháp in</span><select id="actualMethod"><option value="HAND">手印 / In tay</option><option value="K3">K3</option></select></label>
+<label class="field compact-field"><span class="zh">訂單量（PC）</span><span class="vi">SL đơn hàng (PC)</span><input id="actualOrderQty" type="number" inputmode="numeric" min="0" step="1" placeholder="例如 5000"></label>
+<label class="field compact-field"><span class="zh">帶寬（mm）</span><span class="vi">Khổ dây (mm)</span><input id="actualWidth" type="number" inputmode="decimal" min="0" step="any" value="25"></label>
+<label class="field compact-field"><span class="zh">每 PC 長度（mm）</span><span class="vi">Dài mỗi PC (mm)</span><input id="actualPcLength" type="number" inputmode="decimal" min="0" step="any" value="500"></label>
+<label class="field compact-field key-field"><span class="zh">實際排帶條數</span><span class="vi">Số sợi xếp thực tế</span><input id="actualStrips" type="number" inputmode="numeric" min="1" step="1" placeholder="例如 18"></label>
+<label class="field compact-field length-field"><span class="zh">可用桌長（Y）</span><span class="vi">Chiều dài bàn dùng được (Y)</span><input id="actualTableLength" type="number" inputmode="decimal" min="0" step="any" value="25"><small id="actualLengthHint">手印預設 25Y，可直接修改 / In tay mặc định 25Y, có thể sửa</small></label>
+</div>
+<div class="actual-results">
+<div class="actual-result primary"><span>每桌可做 / PC mỗi bàn</span><b id="actualPcPerTable">—</b></div>
+<div class="actual-result"><span>每桌可印 / Y mỗi bàn</span><b id="actualYPerTable">—</b></div>
+<div class="actual-result"><span>訂單需要 / Số bàn cần</span><b id="actualTablesNeeded">—</b></div>
+</div>
+<div class="actual-mini-note"><span id="actualCalcNote">帶寬供辨識；實際產量依「排帶條數 × 可用桌長」計算。</span><span>Khổ dây để nhận biết; sản lượng tính theo số sợi thực tế × chiều dài bàn.</span></div>
+</div></section>
 
 <section id="printingPage" class="page"><div class="card wide-card"><button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button><h1>批量印刷桌數試算</h1><p class="subtitle">Tính số bàn và thời gian in hàng loạt</p>
 <div class="help compact-help"><div><strong>可從 Excel 直接複製貼上多筆訂單</strong><span>Có thể sao chép trực tiếp nhiều đơn hàng từ Excel</span></div><div><strong>欄位順序：訂單量、單位、寬度mm、長度mm、印刷方式、單／雙面；未填時預設單面</strong><span>Thứ tự: SL đơn hàng, đơn vị, khổ mm, dài mm, phương pháp in, một/hai mặt; để trống sẽ mặc định một mặt</span></div></div>
@@ -31,4 +52,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="app.js?v=20260805-1145"></script></body></html>
+</script><script src="app.js?v=20260811-actualtable"></script></body></html>

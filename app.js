@@ -168,3 +168,32 @@ function exportExcel(){
 $('addOrderBtn').addEventListener('click',()=>addOrder());$('downloadExcelBtn').addEventListener('click',exportExcel);$('pasteToTableBtn').addEventListener('click',parseBatch);$('clearOrdersBtn').addEventListener('click',()=>{$('orderBody').innerHTML='';recalcSummary();});['hoursPerTable','setupHours','printHours','baseWidth','baseHandCapacity','baseK3Capacity'].forEach(id=>{const el=$(id);if(el)el.addEventListener('input',()=>{if(id==='setupHours'||id==='printHours')$('hoursPerTable').value=(Number($('setupHours').value)||0)+(Number($('printHours').value)||0);recalcAll();});});
 addOrder({qty:'',unit:'PC',width:25,length:'',method:'HAND',side:'SINGLE'});
 
+
+// 實際每桌產量換算 / Quy đổi sản lượng thực tế mỗi bàn
+function defaultActualTableLength(method){return method==='K3'?32:25;}
+function updateActualLengthByMethod(){
+  const m=$('actualMethod').value;
+  $('actualTableLength').value=defaultActualTableLength(m);
+  $('actualLengthHint').textContent=m==='K3'?'K3 預設 32Y，可直接修改 / K3 mặc định 32Y, có thể sửa':'手印預設 25Y，可直接修改 / In tay mặc định 25Y, có thể sửa';
+  calcActualTable();
+}
+function calcActualTable(){
+  if(!$('actualPcPerTable'))return;
+  const qty=Number($('actualOrderQty').value), pcLen=Number($('actualPcLength').value), strips=Number($('actualStrips').value), tableY=Number($('actualTableLength').value);
+  if(!(pcLen>0)&&!(strips>0)&&!(tableY>0)){return;}
+  if(!(pcLen>0)||!(strips>0)||!(tableY>0)){
+    $('actualPcPerTable').textContent='—';$('actualYPerTable').textContent='—';$('actualTablesNeeded').textContent='—';return;
+  }
+  const pcsEachStrip=Math.floor(tableY*914.4/pcLen);
+  const pcsPerTable=pcsEachStrip*strips;
+  const totalTableY=tableY*strips;
+  $('actualPcPerTable').textContent=fmt(pcsPerTable,0)+' PC';
+  $('actualYPerTable').textContent=fmt(totalTableY,2)+' Y';
+  $('actualTablesNeeded').textContent=qty>0?fmt(Math.ceil(qty/pcsPerTable),0)+' 桌 / bàn':'—';
+  $('actualCalcNote').textContent=`每條可做 ${fmt(pcsEachStrip,0)} PC；帶寬 ${fmt(Number($('actualWidth').value)||0,2)} mm 供辨識。`;
+}
+if($('actualMethod')){
+  $('actualMethod').addEventListener('change',updateActualLengthByMethod);
+  ['actualOrderQty','actualWidth','actualPcLength','actualStrips','actualTableLength'].forEach(id=>$(id).addEventListener('input',calcActualTable));
+  calcActualTable();
+}
