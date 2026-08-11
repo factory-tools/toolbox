@@ -191,7 +191,9 @@ function calcActualTable(){
   $('actualPcPerTable').textContent=fmt(pcsPerTable,0)+' PC';
   $('actualYPerTable').textContent=fmt(totalTableY,2)+' Y';
   $('actualTablesNeeded').textContent=qty>0?fmt(Math.ceil(qty/pcsPerTable),0)+' 桌 / bàn':'—';
-  $('actualCalcNote').textContent=`帶寬 ${fmt(Number($('actualWidth').value)||0,2)} mm 供辨識；每桌可做 = 每條可做 × 實際排帶條數。 / Khổ dây dùng để nhận biết; PC mỗi bàn = PC mỗi sợi × số sợi xếp thực tế.`;
+  const width=fmt(Number($('actualWidth').value)||0,2);
+  if($('actualCalcNoteZh')) $('actualCalcNoteZh').textContent=`驗算：每條 ${fmt(pcsEachStrip,0)} PC × ${fmt(strips,0)} 條 = 每桌 ${fmt(pcsPerTable,0)} PC；帶寬 ${width} mm 僅供辨識。`;
+  if($('actualCalcNoteVi')) $('actualCalcNoteVi').textContent=`Kiểm tra: ${fmt(pcsEachStrip,0)} PC mỗi sợi × ${fmt(strips,0)} sợi = ${fmt(pcsPerTable,0)} PC mỗi bàn; khổ dây ${width} mm chỉ dùng để nhận biết.`;
 }
 if($('actualMethod')){
   $('actualMethod').addEventListener('change',updateActualLengthByMethod);
