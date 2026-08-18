@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PH3 急單共用系統 / Hệ thống đơn gấp PH3</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="./config.js"></script>
+<style>
+:root{--navy:#17365d;--blue:#2f75b5;--green:#548235;--g2:#e2f0d9;--yellow:#bf9000;--y2:#fff2cc;--red:#c00000;--r2:#ffd9d9;--line:#d6dee7;--bg:#eef3f7;--white:#fff;--text:#263238}
+*{box-sizing:border-box}body{margin:0;font-family:"Microsoft JhengHei","Noto Sans",Arial,sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:1500px;margin:auto;padding:18px}.hero{background:linear-gradient(135deg,var(--navy),#2f75b5);color:white;border-radius:16px;padding:18px 22px}
+.hero h1{margin:0;font-size:24px}.hero p{margin:5px 0 0;opacity:.92;font-size:13px}.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.grow{flex:1;min-width:180px}
+label{font-weight:700;font-size:13px}input,select{width:100%;padding:9px;border:1px solid #b8c4cf;border-radius:8px;margin-top:5px;background:white}
+.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:#1565c0;color:white}.green{background:#2e7d32;color:white}.outline{background:white;border:1px solid #7ea6cc;color:#174f86}.gray{background:#e9eef3;color:#334155}.red{background:#b3261e;color:white}
+.btn:disabled{opacity:.45;cursor:not-allowed}.muted{font-size:12px;color:#64748b}.msg{margin-top:8px;font-weight:800}.ok{color:#2e7d32}.bad{color:#b3261e}.warn{color:#9a5d00}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8fafc}.stat b{font-size:24px}.stat small{display:block;color:#64748b}
+.tablewrap{overflow:auto;max-height:590px;border:1px solid var(--line);border-radius:10px;margin-top:10px}table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content;font-size:12px}
+th,td{border-right:1px solid #dfe5eb;border-bottom:1px solid #dfe5eb;padding:7px 8px;white-space:nowrap}th{position:sticky;top:0;color:#fff;z-index:2;text-align:center}
+th.fixed{background:var(--green)}th.key{background:#375623}th.progress{background:var(--yellow)}
+td.fixed{background:#f2f8ef}td.progress{background:#fff8e3}tr:nth-child(even) td.fixed{background:#e9f4e4}tr:nth-child(even) td.progress{background:#fff2cc}
+td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
+.b-red{background:#ffd3d3;color:#8b0000}.b-orange{background:#ffe6bd;color:#8b5100}.b-green{background:#ddf3df;color:#1f6b27}.b-blue{background:#e1efff;color:#174f86}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tab{border:1px solid var(--line);background:white;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
+@media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.app{padding:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+<section class="hero">
+  <h1>PH3 急單共用系統 / Hệ thống đơn gấp PH3 dùng chung</h1>
+  <p>三位生管共用同一資料庫｜C+D+E 唯一值｜歷史保留｜異動紅底｜PH3 最晚日自動限制｜99 自動 +3 天</p>
+</section>
+
+<section id="loginPanel" class="panel">
+  <div class="row">
+    <div class="grow"><label>Email<input id="email" type="email" placeholder="name@company.com"></label></div>
+    <div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password"></label></div>
+    <button id="loginBtn" class="btn primary">登入 / Đăng nhập</button>
+  </div>
+  <div id="loginMsg" class="msg"></div>
+</section>
+
+<div id="appPanel" style="display:none">
+<section class="panel">
+  <div class="row">
+    <div class="grow">
+      <b>登入者 / Người dùng：</b><span id="who"></span><br>
+      <span class="muted">所有電腦都讀取同一 Supabase 資料庫 / Mọi máy tính dùng chung một cơ sở dữ liệu Supabase</span>
+    </div>
+    <button id="refreshBtn" class="btn outline">↻ 重新整理 / Làm mới</button>
+    <button id="logoutBtn" class="btn gray">登出 / Đăng xuất</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h3 style="margin-top:0">① 生管匯入 / Nhập dữ liệu kế hoạch</h3>
+  <div class="row">
+    <div class="grow">
+      <label>選擇 Excel（固定 A～W 23欄） / Chọn Excel
+        <input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls">
+      </label>
+    </div>
+    <button id="importBtn" class="btn green">匯入到共用資料庫 / Nhập vào dữ liệu chung</button>
+  </div>
+  <div id="importMsg" class="msg"></div>
+</section>
+
+<section class="panel">
+  <div class="stats">
+    <div class="stat"><small>目前全部 / Tổng hiện tại</small><b id="sAll">0</b></div>
+    <div class="stat"><small>待 PH3 回覆 / Chờ PH3</small><b id="sNeed">0</b></div>
+    <div class="stat"><small>曾經回覆過 / Đã từng trả lời</small><b id="sHad">0</b></div>
+    <div class="stat"><small>本次異動 / Có thay đổi</small><b id="sChanged">0</b></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h3 style="margin-top:0">② PH3 評估 / Đánh giá PH3</h3>
+  <div class="row">
+    <div class="grow"><label>客戶 / KH<input id="fCustomer" placeholder="C欄"></label></div>
+    <div class="grow"><label>訂單號 / Mã đơn<input id="fOrder" placeholder="D欄"></label></div>
+    <div class="grow"><label>料號 / Mã SP<input id="fItem" placeholder="G欄"></label></div>
+    <div class="grow"><label>狀態 / Trạng thái
+      <select id="fStatus">
+        <option value="">全部 / Tất cả</option>
+        <option value="need">待回覆 / Chờ trả lời</option>
+        <option value="changed">有異動 / Có thay đổi</option>
+        <option value="had">以前回覆過 / Đã từng trả lời</option>
+      </select>
+    </label></div>
+  </div>
+  <div id="filterCount" class="msg" style="color:#174f86"></div>
+
+  <div class="row" style="margin-top:12px">
+    <div class="grow"><label>PH3 完工日 V欄 / Ngày hoàn thành PH3
+      <input id="replyDate" type="date">
+    </label></div>
+    <div class="grow"><label>99 入庫日 / Ngày nhập kho 99
+      <input id="warehouseDate" type="date" readonly>
+    </label></div>
+    <button id="bulkReplyBtn" class="btn primary">套用目前篩選全部 / Áp dụng tất cả dòng đang lọc</button>
+    <button id="downloadBtn" class="btn outline">⬇ 下載目前畫面 Excel / Tải Excel</button>
+  </div>
+  <div class="muted" style="margin-top:6px">規則：PH3 最晚日 = min（客戶要求日，最近前工段日期 + 5 天；週日不計）。超過直接不允許儲存。99 = PH3 + 3 天。</div>
+  <div id="replyMsg" class="msg"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button>
+    <button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button>
+  </div>
+  <div class="tablewrap"><table id="grid"></table></div>
+</section>
+</div>
+</div>
+<script src="./app.js"></script>
+</body>
+</html>
