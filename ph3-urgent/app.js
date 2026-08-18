@@ -9,7 +9,7 @@ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_URL.includ
   alert("請先設定 config.js 的 Supabase URL 與 Publishable key。");
 }
 const sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
-let rows=[], histories=[], batches=[], tab="current";
+let rows=[], histories=[], batches=[], tab="current", currentProfile=null;
 const dirtyKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
@@ -255,8 +255,13 @@ function applyFrozenColumns(){
 function render(){
   const grid=$("grid");
   if(tab==="history"){
-    grid.innerHTML=`<thead><tr><th class="fixed">時間 / Thời gian</th><th class="fixed">客戶+訂單號碼+筆數 / KH+Mã đơn+NET</th><th class="fixed">欄位 / Cột</th><th class="progress">原值 / Cũ</th><th class="progress">新值 / Mới</th><th class="fixed">來源 / Nguồn</th></tr></thead><tbody>`+
-      histories.map(h=>`<tr><td class="fixed">${esc(new Date(h.changed_at).toLocaleString())}</td><td class="fixed">${esc(h.unique_key)}</td><td class="fixed">${esc(h.field_name)}</td><td class="progress">${esc(fmt(h.old_value))}</td><td class="progress">${esc(fmt(h.new_value))}</td><td class="fixed">${esc(h.source_file||"")}</td></tr>`).join("")+"</tbody>";
+    const fieldLabel=f=>({ph3_date:"PH3",warehouse99_date:"99"}[f]||f||"");
+    grid.innerHTML=`<thead><tr><th class="fixed">修改人 / Người sửa</th><th class="fixed">修改時間 / Thời gian</th><th class="fixed">客戶+訂單號碼+筆數 / KH+Mã đơn+NET</th><th class="fixed">修改內容 / Nội dung sửa</th><th class="fixed">來源 / Nguồn</th></tr></thead><tbody>`+
+      histories.map(h=>{
+        const who=(h.employee_no||h.employee_name)?`${h.employee_no||""} ${h.employee_name||""}`.trim():"系統匯入 / Hệ thống";
+        const change=`${fieldLabel(h.field_name)}：${fmt(h.old_value)||"—"} → ${fmt(h.new_value)||"—"}`;
+        return `<tr><td class="fixed"><b>${esc(who)}</b></td><td class="fixed">${esc(new Date(h.changed_at).toLocaleString())}</td><td class="fixed">${esc(h.unique_key)}</td><td class="progress"><b>${esc(change)}</b></td><td class="fixed">${esc(h.source_file||"")}</td></tr>`;
+      }).join("")+"</tbody>";
     return;
   }
 
@@ -327,15 +332,53 @@ function render(){
   applyFrozenColumns();
   updateActionState();
 }
+async function loadMyProfile(user){
+  const {data,error}=await sb.from("employee_profiles").select("id,employee_no,employee_name,is_active,role").eq("id",user.id).maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error("找不到員工資料 / Không tìm thấy hồ sơ nhân viên");
+  if(data.is_active===false)throw new Error("此帳號已停用 / Tài khoản đã bị vô hiệu hóa");
+  currentProfile=data;
+  return data;
+}
 async function login(){
   $("loginMsg").textContent="";
-  const {data,error}=await sb.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
-  if(error){$("loginMsg").innerHTML=`<span class="bad">${esc(error.message)}</span>`;return}
-  showApp(data.user); await loadAll();
+  const employeeNo=$("employeeNo").value.trim().toUpperCase();
+  const password=$("password").value;
+  if(!employeeNo||!password){$("loginMsg").innerHTML='<span class="bad">請輸入工號與密碼 / Nhập mã nhân viên và mật khẩu</span>';return}
+  const email=`${employeeNo.toLowerCase()}@paiho.vn`;
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error){$("loginMsg").innerHTML='<span class="bad">工號或密碼錯誤 / Sai mã nhân viên hoặc mật khẩu</span>';return}
+  try{await showApp(data.user);await loadAll()}catch(e){await sb.auth.signOut();$("loginMsg").innerHTML=`<span class="bad">${esc(e.message||e)}</span>`}
 }
-function showApp(user){$("loginPanel").style.display="none";$("appPanel").style.display="block";$("who").textContent=user.email}
-async function logout(){await sb.auth.signOut();location.reload()}
-async function checkSession(){const {data}=await sb.auth.getSession();if(data.session){showApp(data.session.user);await loadAll()}}
+async function showApp(user){
+  const p=await loadMyProfile(user);
+  $("loginPanel").style.display="none";$("appPanel").style.display="block";
+  $("who").textContent=`${p.employee_no} ${p.employee_name}`;
+  if($("accountPanel"))$("accountPanel").style.display=p.role==="admin"?"block":"none";
+}
+async function logout(){currentProfile=null;await sb.auth.signOut();location.reload()}
+async function checkSession(){const {data}=await sb.auth.getSession();if(data.session){try{await showApp(data.session.user);await loadAll()}catch(e){console.error(e);await sb.auth.signOut();$("loginMsg").innerHTML=`<span class="bad">${esc(e.message||e)}</span>`}}}
+
+async function createAccountsBulk(){
+  if(currentProfile?.role!=="admin"){$("accountMsg").innerHTML='<span class="bad">只有管理者可以建立帳號 / Chỉ quản trị viên được tạo tài khoản</span>';return}
+  const lines=$("accountBulk").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length){$("accountMsg").innerHTML='<span class="warn">請先輸入帳號資料 / Hãy nhập dữ liệu tài khoản</span>';return}
+  const employees=[];
+  for(const [idx,line] of lines.entries()){
+    const parts=line.split(/[,，\t]/).map(x=>x.trim());
+    if(parts.length<3||!parts[0]||!parts[1]||!parts[2]){$("accountMsg").innerHTML=`<span class="bad">第 ${idx+1} 行格式錯誤：工號,姓名,密碼 / Sai định dạng dòng ${idx+1}</span>`;return}
+    employees.push({employee_no:parts[0].toUpperCase(),employee_name:parts[1],password:parts.slice(2).join(",")});
+  }
+  $("createAccountsBtn").disabled=true;$("accountMsg").textContent=`建立 ${employees.length} 個帳號中… / Đang tạo ${employees.length} tài khoản…`;
+  try{
+    const {data,error}=await sb.functions.invoke("create-employees",{body:{employees}});
+    if(error)throw error;
+    const ok=(data?.results||[]).filter(x=>x.ok).length, fail=(data?.results||[]).filter(x=>!x.ok);
+    $("accountMsg").innerHTML=`<span class="ok">✓ 已建立 ${ok} 個帳號 / Đã tạo ${ok} tài khoản</span>`+(fail.length?`<br><span class="bad">失敗 ${fail.length} 個：${esc(fail.map(x=>`${x.employee_no} ${x.error}`).join("；"))}</span>`:"");
+    if(!fail.length)$("accountBulk").value="";
+  }catch(e){console.error(e);$("accountMsg").innerHTML=`<span class="bad">建立失敗 / Tạo thất bại：${esc(e.message||e)}。請確認 Supabase Edge Function「create-employees」已部署。</span>`}
+  finally{$("createAccountsBtn").disabled=false}
+}
 
 async function importFiles(){
   const fs=[...$("files").files];
@@ -777,7 +820,7 @@ async function refillExcel(){
   }
 }
 
-$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{
+$("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});$("logoutBtn").onclick=logout;if($("createAccountsBtn"))$("createAccountsBtn").onclick=createAccountsBulk;$("refreshBtn").onclick=async()=>{
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
   dirtyKeys.clear();issueKeys.clear();await loadAll()
 };$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;

@@ -53,8 +53,8 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
 
 <section id="loginPanel" class="panel">
   <div class="row">
-    <div class="grow"><label>Email<input id="email" type="email" placeholder="name@company.com"></label></div>
-    <div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password"></label></div>
+    <div class="grow"><label>工號 / Mã nhân viên<input id="employeeNo" type="text" placeholder="例如 A001 / Ví dụ A001" autocomplete="username"></label></div>
+    <div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password" autocomplete="current-password"></label></div>
     <button id="loginBtn" class="btn primary">登入 / Đăng nhập</button>
   </div>
   <div id="loginMsg" class="msg"></div>
@@ -70,6 +70,18 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
     <button id="refreshBtn" class="btn outline">↻ 重新整理 / Làm mới</button>
     <button id="logoutBtn" class="btn gray">登出 / Đăng xuất</button>
   </div>
+</section>
+
+<section id="accountPanel" class="panel" style="display:none">
+  <h3 style="margin-top:0">帳號管理 / Quản lý tài khoản</h3>
+  <div class="compact-note">管理者可一次建立多位帳號。每行輸入：工號,姓名,初始密碼。系統會自動建立內部登入 Email，不需要員工輸入 Email。<br>Quản trị viên có thể tạo nhiều tài khoản cùng lúc. Mỗi dòng: Mã NV,Tên,Mật khẩu ban đầu.</div>
+  <div class="row" style="align-items:flex-start;margin-top:10px">
+    <div class="grow"><label>批量帳號 / Tạo nhiều tài khoản
+      <textarea id="accountBulk" rows="7" style="width:100%;margin-top:5px;padding:9px;border:1px solid #b8c4cf;border-radius:8px;font-family:inherit" placeholder="A002,王小美,Abc123456\nA003,Nguyễn Văn A,Abc123456"></textarea>
+    </label></div>
+    <button id="createAccountsBtn" class="btn primary">＋ 批量建立帳號 / Tạo nhiều tài khoản</button>
+  </div>
+  <div id="accountMsg" class="msg"></div>
 </section>
 
 <section class="panel">
@@ -186,6 +198,6 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
 
 </div>
 </div>
-<script src="./app.js?v=20260818-10"></script>
+<script src="./app.js?v=20260818-11"></script>
 </body>
 </html>
