@@ -37,6 +37,24 @@ function excelDate(v){if(!v)return null;if(v instanceof Date)return `${v.getFull
 function keyOfArray(r){return [r[2],r[3],r[4]].map(v=>String(v??"").trim()).join("|")}
 function dbToArray(o){return COLNAMES.map(c=>o[c]??"")}
 function arrToPayload(r){const p={};COLNAMES.forEach((c,i)=>p[c]=[5,16,17,18,19,20,21,22].includes(i)?excelDate(r[i]):r[i]);return p}
+// TD 進度參考可能在不同版本 Excel 中持續更新。從文字中抓 MM/DD HH:mm，保留日期時間最新的那一筆。
+function progressStamp(v){
+  const s=String(v??"");
+  const re=/(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/g;
+  let m,best=-1;
+  while((m=re.exec(s))){
+    const mo=Number(m[1]),d=Number(m[2]),h=Number(m[3]||0),mi=Number(m[4]||0);
+    if(mo>=1&&mo<=12&&d>=1&&d<=31&&h<=23&&mi<=59)best=Math.max(best,(((mo*32+d)*24+h)*60+mi));
+  }
+  return best;
+}
+function latestProgressRef(a,b){
+  const sa=progressStamp(a),sb=progressStamp(b);
+  if(sa>=0&&sb>=0)return sb>=sa?(b||a):(a||b);
+  if(sb>=0)return b;
+  if(sa>=0)return a;
+  return String(b??"").trim()?b:a;
+}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function changedSet(o){return new Set(o.changed_fields||[])}
 function prevPh3(o){return o.prev_ph3_date||((o.ever_replied&&o.ph3_date)?o.ph3_date:"")}
@@ -405,6 +423,16 @@ async function importFiles(){
       });
     }
 
+    // 同一筆訂單的 TD 進度參考，以文字中「日期時間最新」者為準。
+    // 即使不小心先後匯入不同版本 Excel，也不讓較舊的 TD 日期覆蓋較新的資料。
+    const existingProgress=new Map(rows.map(o=>[o.unique_key,o.progress_ref||""]));
+    const newestProgress=new Map(existingProgress);
+    for(const item of allPayload){
+      const chosen=latestProgressRef(newestProgress.get(item.unique_key)||"",item.data.progress_ref||"");
+      newestProgress.set(item.unique_key,chosen||"");
+    }
+    for(const item of allPayload)item.data.progress_ref=newestProgress.get(item.unique_key)||item.data.progress_ref||"";
+
     const user=(await sb.auth.getUser()).data.user;
     const batchName=names.length===1?names[0]:`${names[0]} + ${names.length-1} files`;
     const {data:batch,error:batchErr}=await sb.from("ph3_import_batches")
@@ -552,6 +580,42 @@ function exportData(){
     return String(a.customer||"").localeCompare(String(b.customer||"")) || String(a.order_no||"").localeCompare(String(b.order_no||"")) || String(a.net||"").localeCompare(String(b.net||""));
   });
 }
+async function downloadBlankTemplate(){
+  try{
+    const wb=new ExcelJS.Workbook();
+    const ws=wb.addWorksheet("PH3匯入範本");
+    ws.addRow(HEADERS);
+    ws.views=[{state:"frozen",xSplit:5,ySplit:1}];
+    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:HEADERS.length}};
+    ws.getRow(1).height=38;
+    ws.getRow(1).eachCell((c,i)=>{
+      c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
+      c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
+      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:i>=18?"FFBF9000":"FF548235"}};
+      c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
+    });
+    const widths=[5,7,9,12,6,12,11,8,7,11,7,9,18,24,18,20,12,12,12,12,12,13,13];
+    widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+    // 留 10 列空白，讓使用者可直接貼資料；日期欄先套好格式。
+    for(let r=2;r<=11;r++){
+      ws.addRow(Array(HEADERS.length).fill(""));
+      ws.getRow(r).height=21;
+      [6,17,18,19,20,21,22,23].forEach(c=>ws.getCell(r,c).numFmt="yyyy/m/d");
+      for(let c=1;c<=HEADERS.length;c++)ws.getCell(r,c).border={bottom:{style:"hair",color:{argb:"FFD9E2E8"}}};
+    }
+    // 提醒 TD 進度參考會由系統自動保留日期時間最新的內容。
+    ws.getCell(1,13).note="TD進度參考可持續更新；重複匯入時，系統會保留日期時間最新的一筆。";
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="PH3匯入空白範本_A-W.xlsx";document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    $("importMsg").innerHTML='<span class="ok">✓ 已下載空白匯入範本 / Đã tải mẫu Excel trống</span>';
+  }catch(err){
+    console.error(err);$("importMsg").innerHTML=`<span class="bad">範本下載失敗 / Tải mẫu thất bại：${esc(err.message||err)}</span>`;
+  }
+}
+
 async function downloadCurrent(){
   if(blockIfUnsaved("下載 / tải Excel"))return;
   try{
@@ -823,7 +887,7 @@ async function refillExcel(){
 $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});$("logoutBtn").onclick=logout;if($("createAccountsBtn"))$("createAccountsBtn").onclick=createAccountsBulk;$("refreshBtn").onclick=async()=>{
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
   dirtyKeys.clear();issueKeys.clear();await loadAll()
-};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
+};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
 ["fCustomer","fOrder","fItem"].forEach(id=>$(id).addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});

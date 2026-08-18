@@ -92,8 +92,10 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
         <input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls">
       </label>
     </div>
+    <button id="downloadTemplateBtn" class="btn outline">⬇ 下載空白匯入範本 / Tải mẫu Excel trống</button>
     <button id="importBtn" class="btn green">匯入到共用資料庫 / Nhập vào dữ liệu chung</button>
   </div>
+  <div class="compact-note">範本固定 A～W 共 23 欄；TD 進度參考若重複匯入，系統會自動保留日期時間最新的一筆。 / Mẫu cố định A～W, 23 cột; TD sẽ giữ bản có ngày giờ mới nhất.</div>
   <div id="importMsg" class="msg"></div>
 </section>
 
@@ -198,6 +200,6 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
 
 </div>
 </div>
-<script src="./app.js?v=20260818-11"></script>
+<script src="./app.js?v=20260818-13"></script>
 </body>
 </html>
