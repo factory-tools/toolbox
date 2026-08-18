@@ -294,6 +294,11 @@ function render(){
     if(c.kind==="data" && c.idx>=17)cls="progress";
     if(c.kind==="data" && KEYCOLS.includes(c.idx))cls="key";
     if(["prevStage","prevPh3","prev99","days","status"].includes(c.kind))cls="progress";
+    if(c.kind==="prevStage")cls+=" h-prevstage";
+    if(c.kind==="prevPh3")cls+=" h-prevph3";
+    if(c.kind==="prev99")cls+=" h-prev99";
+    if(c.kind==="days")cls+=" h-days";
+    if(c.kind==="status")cls+=" h-status";
     h+=`<th data-display-col="${di}" class="${cls}" title="${esc(c.label)}">${esc(c.label)}</th>`;
   });
   h+="</tr></thead><tbody>";
@@ -319,18 +324,18 @@ function render(){
           if(i===0 && issue)content=`<span class="issue-marker" title="${esc(issueText)}">⚠</span>`+content;
         }
       }else if(c.kind==="prevStage"){
-        cls="progress";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
+        cls="progress c-prevstage";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
       }else if(c.kind==="prevPh3"){
-        cls="progress";content=esc(fmt(prevPh3(o))||"—");
+        cls="progress c-prevph3";content=esc(fmt(prevPh3(o))||"—");
       }else if(c.kind==="prev99"){
-        cls="progress";content=esc(fmt(prev99(o))||"—");
+        cls="progress c-prev99";content=esc(fmt(prev99(o))||"—");
       }else if(c.kind==="days"){
-        cls="progress";
+        cls="progress c-days";
         if(days===null)content="—";
         else if(days>7)content=`<span class="badge b-red">${days}天 / ${days} ngày</span>`;
         else content=`<span class="badge b-green">${days}天 / ${days} ngày</span>`;
       }else if(c.kind==="status"){
-        cls="progress";
+        cls="progress c-status";
         let status=o.needs_reply?'<span class="badge b-red">待重回 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>';
         if((o.changed_fields||[]).length)status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
         if(ph3BeforeUpstream(o))status+=' <span class="badge b-red">PH3早於前站 / PH3 sớm hơn công đoạn trước</span>';
@@ -580,6 +585,22 @@ function exportData(){
     return String(a.customer||"").localeCompare(String(b.customer||"")) || String(a.order_no||"").localeCompare(String(b.order_no||"")) || String(a.net||"").localeCompare(String(b.net||""));
   });
 }
+function excelHeaderColorByOriginalIndex(i){
+  // i 為 1-based Excel 欄號：93~96 使用金色；PH3 使用藍色；99 使用青綠色。
+  if(i===22)return "FF2F75B5"; // V: PH3
+  if(i===23)return "FF008C95"; // W: 99
+  if(i>=18)return "FFBF9000";  // R~U: 93~96
+  return "FF548235";
+}
+function excelDerivedColor(kind){
+  // 所有系統提示/參考欄統一藍色，與 93~96 的黃色工段欄清楚區隔。
+  return ["prevStage","prevPh3","prev99","days","status"].includes(kind)?"FF4472C4":null;
+}
+function excelDerivedBodyColor(kind){
+  // 提示/參考資料格統一淡藍色。
+  return ["prevStage","prevPh3","prev99","days","status"].includes(kind)?"FFEAF2FF":null;
+}
+
 async function downloadBlankTemplate(){
   try{
     const wb=new ExcelJS.Workbook();
@@ -591,7 +612,7 @@ async function downloadBlankTemplate(){
     ws.getRow(1).eachCell((c,i)=>{
       c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
       c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
-      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:i>=18?"FFBF9000":"FF548235"}};
+      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:excelHeaderColorByOriginalIndex(i)}};
       c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
     });
     const widths=[5,7,9,12,6,12,11,8,7,11,7,9,18,24,18,20,12,12,12,12,12,13,13];
@@ -677,6 +698,12 @@ async function downloadCurrent(){
         `IF(AND(${w}${rn}<>"",Q${rn}<>"",${w}${rn}>Q${rn}),"99晚於客需 / 99 trễ hơn KH；","")&"已回覆 / Đã trả lời")`
       };
 
+      // 提示/參考欄統一使用淡藍色，與黃色工段欄清楚區隔。
+      WEB_COLUMNS.forEach((col,idx)=>{
+        const bodyColor=excelDerivedBodyColor(col.kind);
+        if(bodyColor) r.getCell(idx+1).fill={type:"pattern",pattern:"solid",fgColor:{argb:bodyColor}};
+      });
+
       // Existing changed fields red.
       const changes=new Set(o.changed_fields||[]);
       [16,17,18,19,20].forEach(i=>{
@@ -711,8 +738,10 @@ async function downloadCurrent(){
       c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
       c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
       const col=WEB_COLUMNS[i-1];
-      const isProgress=(col.kind==="data"&&col.idx>=17)||["prevStage","prevPh3","prev99","days","status"].includes(col.kind);
-      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:isProgress?"FFBF9000":"FF548235"}};
+      let headerColor="FF548235";
+      if(col.kind==="data") headerColor=excelHeaderColorByOriginalIndex(col.idx+1);
+      else headerColor=excelDerivedColor(col.kind)||"FF548235";
+      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:headerColor}};
     });
     // Excel 回填時只需要修改 PH3 與 99 兩欄：用醒目藍色表頭 + 淡黃色資料格標示，避免改錯欄。
     const editColPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
@@ -791,7 +820,7 @@ async function downloadMailReady(){
     ws.getRow(1).eachCell((c,i)=>{
       c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
       c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
-      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:i>=18?"FFBF9000":"FF548235"}};
+      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:excelHeaderColorByOriginalIndex(i)}};
       c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
     });
 
