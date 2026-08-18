@@ -11,6 +11,7 @@ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_URL.includ
 const sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
 let rows=[], histories=[], batches=[], tab="current";
 const dirtyKeys=new Set();
+const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
 function fmt(v){if(!v)return"";if(v instanceof Date)return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;if(/^\d{4}-\d{2}-\d{2}/.test(String(v)))return String(v).slice(0,10).replaceAll("-","/");return String(v)}
 function excelDate(v){if(!v)return null;if(v instanceof Date)return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,"0")}-${String(v.getDate()).padStart(2,"0")}`;if(typeof v==="number"){const p=XLSX.SSF.parse_date_code(v);return p?`${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}`:null}const s=String(v).trim();const m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);if(m)return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;const d=new Date(v);return isNaN(d)?null:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -83,6 +84,25 @@ function ph3BeforeUpstream(o){
 function warehouseBeforePh3(o){
   return !!(o.warehouse99_date && o.ph3_date && String(o.warehouse99_date).slice(0,10) < String(o.ph3_date).slice(0,10));
 }
+function issueReason(o){
+  const reasons=[];
+  if(issueKeys.has(o.unique_key))reasons.push(issueKeys.get(o.unique_key));
+  if(ph3BeforeUpstream(o))reasons.push("PH3早於前工段 / PH3 sớm hơn công đoạn trước");
+  if(warehouseBeforePh3(o))reasons.push("99早於PH3 / 99 sớm hơn PH3");
+  if(is99Late(o))reasons.push("99晚於客需 / 99 trễ hơn KH");
+  if(ph3Days(o)>7)reasons.push("PH3超過7天 / PH3 >7 ngày");
+  return [...new Set(reasons)].join("；");
+}
+function hasIssue(o){return !!issueReason(o)}
+function rowDomId(key){return "row_"+String(key).replace(/[^a-zA-Z0-9_-]/g,"_")}
+function markIssueAndFocus(o,message){
+  issueKeys.set(o.unique_key,message);
+  render();
+  requestAnimationFrame(()=>{
+    const el=document.getElementById(rowDomId(o.unique_key));
+    if(el)el.scrollIntoView({behavior:"smooth",block:"center",inline:"nearest"});
+  });
+}
 function refreshPrevDateOptions(){
   const el=$("fPrevDate"); if(!el)return;
   const current=el.value;
@@ -145,6 +165,7 @@ function filtered(){
     if(st==="had"&&!o.ever_replied)return false;
     if(st==="late99"&&!is99Late(o))return false;
     if(st==="over7"&&!(ph3Days(o)>7))return false;
+    if(st==="issue"&&!hasIssue(o))return false;
     return true;
   });
 
@@ -173,24 +194,26 @@ async function loadHistory(){
 }
 const WEB_COLUMNS=[
   ...HEADERS.slice(0,21).map((h,i)=>({kind:"data",idx:i,label:h,width:[
-    44,58,68,84,46,82,84,58,54,84,52,66,64,142,112,126,94,96,96,96,96
-  ][i]||78})),
-  {kind:"prevStage",label:"前工段 / Công đoạn trước",width:112},
-  {kind:"data",idx:21,label:HEADERS[21],width:118},
-  {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:102},
-  {kind:"data",idx:22,label:HEADERS[22],width:118},
-  {kind:"prev99",label:"99 lần trước / 99上次回覆日",width:102},
-  {kind:"days",label:"PH3工段天數 / Số ngày PH3",width:88},
-  {kind:"status",label:"狀態 / Trạng thái",width:168}
+    38,42,58,76,38,78,74,50,46,74,42,58,54,158,108,116,82,84,84,84,84
+  ][i]||72})),
+  {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
+  {kind:"data",idx:21,label:HEADERS[21],width:106},
+  {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:96},
+  {kind:"data",idx:22,label:HEADERS[22],width:106},
+  {kind:"prev99",label:"99 lần trước / 99上次回覆日",width:96},
+  {kind:"days",label:"PH3工段天數 / Số ngày PH3",width:80},
+  {kind:"status",label:"狀態 / Trạng thái",width:180}
 ]
 
 function initFreezeSetting(){
-  const saved=localStorage.getItem("ph3_freeze_cols");
-  $("freezeCols").value=saved!==null?saved:"12";
+  const el=$("freezeCols");
+  el.innerHTML=Array.from({length:WEB_COLUMNS.length+1},(_,i)=>`<option value="${i}">${i}</option>`).join("");
+  const saved=localStorage.getItem("ph3_freeze_cols_v8");
+  el.value=saved!==null?saved:"5";
 }
 function applyFrozenColumns(){
-  const count=Number($("freezeCols")?.value||12);
-  localStorage.setItem("ph3_freeze_cols",String(count));
+  const count=Number($("freezeCols")?.value||5);
+  localStorage.setItem("ph3_freeze_cols_v8",String(count));
   const table=$("grid"); if(!table)return;
   table.querySelectorAll(".sticky-col").forEach(x=>{
     x.classList.remove("sticky-col","sticky-head","sticky-edge");
@@ -234,7 +257,8 @@ function render(){
 
   for(const o of data){
     const arr=dbToArray(o), ch=changedSet(o), prev=latestUpstream(o), days=ph3Days(o), late99=is99Late(o);
-    h+=`<tr class="${o.needs_reply?"need":""}">`;
+    const issue=hasIssue(o), issueText=issueReason(o);
+    h+=`<tr id="${rowDomId(o.unique_key)}" class="${o.needs_reply?"need":""} ${issue?"issue-row":""}" data-key="${esc(o.unique_key)}">`;
     WEB_COLUMNS.forEach((c,di)=>{
       let cls="fixed", content="";
       if(c.kind==="data"){
@@ -247,7 +271,10 @@ function render(){
           if(dirtyKeys.has(o.unique_key))cls+=" draftcell";
           const val=arr[i]?String(arr[i]).slice(0,10):"";
           content=`<input class="cell-date" type="date" data-key="${esc(o.unique_key)}" data-col="${i}" value="${esc(val)}">`;
-        }else content=esc(fmt(arr[i]));
+        }else{
+          content=esc(fmt(arr[i]));
+          if(i===0 && issue)content=`<span class="issue-marker" title="${esc(issueText)}">⚠</span>`+content;
+        }
       }else if(c.kind==="prevStage"){
         cls="progress";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
       }else if(c.kind==="prevPh3"){
@@ -268,6 +295,7 @@ function render(){
         if(late99)status+=' <span class="badge b-red">99晚於客需 / 99 trễ hơn KH</span>';
         if(days>7)status+=' <span class="badge b-red">PH3超7天 / PH3 >7 ngày</span>';
         if(dirtyKeys.has(o.unique_key))status+=' <span class="badge draftbadge">尚未儲存 / Chưa lưu</span>';
+        if(issueKeys.has(o.unique_key))status=`<span class="badge b-red">⚠ ${esc(issueKeys.get(o.unique_key))}</span> `+status;
         content=status;
       }
       h+=`<td data-display-col="${di}" class="${cls}" title="${esc(String(content).replace(/<[^>]*>/g,""))}">${content}</td>`;
@@ -350,16 +378,20 @@ async function saveDirectCell(e){
     ph3=e.target.value;
     const prev=latestUpstream(o);
     if(ph3 && prev.date && ph3 < prev.date){
-      $("replyMsg").innerHTML=`<span class="bad">PH3完工日不能早於前工段日期 ${esc(fmt(prev.date))} / Ngày PH3 không được sớm hơn công đoạn trước</span>`;
+      const msg=`PH3早於前工段 ${fmt(prev.date)} / PH3 sớm hơn công đoạn trước`;
+      $("replyMsg").innerHTML=`<span class="bad">⚠ ${esc(key)}：${esc(msg)}</span>`;
       e.target.value=oldPh3;
+      markIssueAndFocus(o,msg);
       return;
     }
     w99=ph3?calendarAdd(ph3,3):"";
   }else{
     w99=e.target.value;
     if(w99 && ph3 && w99 < ph3){
-      $("replyMsg").innerHTML='<span class="bad">99入庫日不能早於PH3完工日 / Ngày 99 không được sớm hơn ngày PH3</span>';
+      const msg="99早於PH3 / 99 sớm hơn PH3";
+      $("replyMsg").innerHTML=`<span class="bad">⚠ ${esc(key)}：${esc(msg)}</span>`;
       e.target.value=old99;
+      markIssueAndFocus(o,msg);
       return;
     }
   }
@@ -367,8 +399,14 @@ async function saveDirectCell(e){
   // Draft only: do not reload or reorder the table.
   o.ph3_date=ph3||null;
   o.warehouse99_date=w99||null;
+  issueKeys.delete(key);
   dirtyKeys.add(key);
-  $("replyMsg").innerHTML='<span class="warn">已暫存於畫面，確認全部後請按「儲存目前修改」 / Đã giữ tạm trên màn hình, hãy bấm Lưu các thay đổi khi hoàn tất</span>';
+  if($("fStatus").value==="issue" && filtered().length===0){
+    $("fStatus").value="";
+    $("replyMsg").innerHTML='<span class="ok">異常已修正，已自動返回全部資料 / Đã sửa lỗi, tự động trở về tất cả dữ liệu</span>';
+  }else{
+    $("replyMsg").innerHTML='<span class="warn">已暫存於畫面，確認全部後請按「儲存目前修改」 / Đã giữ tạm trên màn hình, hãy bấm Lưu các thay đổi khi hoàn tất</span>';
+  }
   render();
 }
 
@@ -407,13 +445,16 @@ async function saveDraftReplies(){
     const w99=String(o.warehouse99_date||"").slice(0,10)||null;
     const prev=latestUpstream(o).date;
 
-    if(ph3 && prev && ph3<prev){invalid.push(`${key}: PH3 < 前站`);continue}
-    if(w99 && ph3 && w99<ph3){invalid.push(`${key}: 99 < PH3`);continue}
+    if(ph3 && prev && ph3<prev){invalid.push(`${key}: PH3 < 前站`);issueKeys.set(key,"PH3早於前工段 / PH3 sớm hơn công đoạn trước");continue}
+    if(w99 && ph3 && w99<ph3){invalid.push(`${key}: 99 < PH3`);issueKeys.set(key,"99早於PH3 / 99 sớm hơn PH3");continue}
     payload.push({unique_key:key,ph3_date:ph3,warehouse99_date:w99});
   }
 
   if(invalid.length){
-    $("replyMsg").innerHTML=`<span class="bad">有 ${invalid.length} 筆日期不合法，請先修正 / Có ${invalid.length} dòng ngày không hợp lệ</span>`;
+    $("replyMsg").innerHTML=`<span class="bad">⚠ 有 ${invalid.length} 筆日期不合法，已在表格標示；狀態可選「只看異常」 / Có ${invalid.length} dòng lỗi, đã đánh dấu trong bảng</span>`;
+    render();
+    const firstKey=invalid[0].split(":")[0];
+    requestAnimationFrame(()=>document.getElementById(rowDomId(firstKey))?.scrollIntoView({behavior:"smooth",block:"center"}));
     return;
   }
 
@@ -431,9 +472,25 @@ async function saveDraftReplies(){
   await loadAll();
 }
 
+function exportData(){
+  // 下載永遠以「處理範圍」為準，不受畫面上的客戶/料號/日期/狀態/只看異常篩選影響，避免漏寄資料。
+  const scope=$("workScope").value, batchId=selectedBatchId(), today=todayYMD();
+  const data=rows.filter(o=>{
+    if(scope==="latest" && batchId && String(o.last_batch_id||"")!==String(batchId))return false;
+    if(scope==="today_unreplied"){
+      const imported=String(o.last_imported_at||o.updated_at||"").slice(0,10);
+      if(imported!==today || !o.needs_reply)return false;
+    }
+    return true;
+  });
+  return data.sort((a,b)=>{
+    if(scope==="latest")return Number(a.last_batch_row_no||999999)-Number(b.last_batch_row_no||999999);
+    return String(a.customer||"").localeCompare(String(b.customer||"")) || String(a.order_no||"").localeCompare(String(b.order_no||"")) || String(a.net||"").localeCompare(String(b.net||""));
+  });
+}
 async function downloadCurrent(){
   try{
-    const data=filtered();
+    const data=exportData();
     if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
 
     const wb=new ExcelJS.Workbook();
@@ -518,7 +575,7 @@ async function downloadCurrent(){
       };
     });
 
-    ws.views=[{state:"frozen",xSplit:12,ySplit:1}];
+    ws.views=[{state:"frozen",xSplit:Number($("freezeCols")?.value||5),ySplit:1}];
     ws.autoFilter={from:{row:1,column:1},to:{row:ws.rowCount,column:WEB_COLUMNS.length}};
     ws.getRow(1).height=42;
     ws.getRow(1).eachCell((c,i)=>{
@@ -557,7 +614,7 @@ async function downloadCurrent(){
     const url=URL.createObjectURL(blob),a=document.createElement("a");
     a.href=url;a.download="PH3目前資料_可修改回填.xlsx";document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-    $("replyMsg").innerHTML=`<span class="ok">已下載 ${data.length} 筆，Excel順序與網頁一致 / Đã tải ${data.length} dòng</span>`;
+    $("replyMsg").innerHTML=`<span class="ok">已下載完整 ${data.length} 筆（不受畫面篩選影響） / Đã tải đủ ${data.length} dòng, không bị ảnh hưởng bởi bộ lọc</span>`;
   }catch(err){
     console.error(err);$("replyMsg").innerHTML=`<span class="bad">下載失敗 / Tải thất bại：${esc(err.message||err)}</span>`;
   }
@@ -609,7 +666,7 @@ async function refillExcel(){
   }
 }
 
-$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{dirtyKeys.clear();await loadAll()};$("importBtn").onclick=importFiles;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;
+$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{dirtyKeys.clear();issueKeys.clear();await loadAll()};$("importBtn").onclick=importFiles;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;
 ["fCustomer","fOrder","fItem"].forEach(id=>$(id).addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});

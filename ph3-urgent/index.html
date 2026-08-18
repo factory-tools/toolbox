@@ -19,7 +19,7 @@ label{font-weight:700;font-size:13px}input,select{width:100%;padding:9px;border:
 .btn:disabled{opacity:.45;cursor:not-allowed}.muted{font-size:12px;color:#64748b}.msg{margin-top:8px;font-weight:800}.ok{color:#2e7d32}.bad{color:#b3261e}.warn{color:#9a5d00}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8fafc}.stat b{font-size:24px}.stat small{display:block;color:#64748b}
 .tablewrap{overflow:auto;max-height:590px;border:1px solid var(--line);border-radius:10px;margin-top:10px}table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content;font-size:12px}
-th,td{border-right:1px solid #dfe5eb;border-bottom:1px solid #dfe5eb;padding:5px 6px;white-space:nowrap}th{position:sticky;top:0;color:#fff;z-index:2;text-align:center}
+th,td{border-right:1px solid #dfe5eb;border-bottom:1px solid #dfe5eb;padding:5px 6px;white-space:nowrap}th{position:sticky;top:0;color:#fff;z-index:2;text-align:center;white-space:normal;line-height:1.2;word-break:keep-all}
 th.fixed{background:var(--green)}th.key{background:#375623}th.progress{background:var(--yellow)}
 td.fixed{background:#f2f8ef}td.progress{background:#fff8e3}tr:nth-child(even) td.fixed{background:#e9f4e4}tr:nth-child(even) td.progress{background:#fff2cc}
 td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}
@@ -27,7 +27,12 @@ td.warncell{background:#ffb3b3!important;color:#7f0000;font-weight:800}
 td.okcell{background:#dff3e1!important;color:#1f6b27;font-weight:800}
 td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
 .cell-date{min-width:0;width:100%;padding:4px 5px;border:1px solid #aebdca;border-radius:6px;background:white}
-.draftcell{background:#fff4bf!important}.draftbadge{background:#fff0ad;color:#7a5100}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
+.draftcell{background:#fff4bf!important}.draftbadge{background:#fff0ad;color:#7a5100}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}
+tr.issue-row td{box-shadow:inset 0 2px 0 #e53935,inset 0 -2px 0 #e53935!important}
+tr.issue-row td:first-child{border-left:5px solid #e53935!important}
+.issuecell{background:#ffe0e0!important;color:#8b0000!important;font-weight:900!important}
+.issue-marker{display:inline-block;margin-right:4px;font-size:14px;vertical-align:middle}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
 .b-red{background:#ffd3d3;color:#8b0000}.b-orange{background:#ffe6bd;color:#8b5100}.b-green{background:#ddf3df;color:#1f6b27}.b-blue{background:#e1efff;color:#174f86}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tab{border:1px solid var(--line);background:white;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
 .stepbox{border:1px solid #d9e3ed;background:#f8fbff;border-radius:12px;padding:12px;margin-top:10px}
@@ -119,6 +124,7 @@ td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
           <option value="had">以前回覆過 / Đã từng trả lời</option>
           <option value="late99">99晚於客需 / 99 trễ hơn KH</option>
           <option value="over7">PH3超過前站7天 / PH3 >7 ngày</option>
+          <option value="issue">⚠ 只看異常 / Chỉ xem lỗi</option>
         </select>
       </label></div>
       <div class="grow" style="align-self:center"><div id="batchInfo" class="msg" style="color:#174f86"></div></div>
@@ -158,10 +164,7 @@ td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
   <div class="row" style="margin-top:10px">
     <div id="filterCount" class="msg grow" style="color:#174f86"></div>
     <div class="freeze-label"><label>凍結前幾欄 / Cố định bao nhiêu cột
-      <select id="freezeCols">
-        <option value="0">0</option><option value="4">4</option><option value="8">8</option>
-        <option value="12" selected>12</option><option value="15">15</option>
-      </select>
+      <select id="freezeCols"></select>
     </label></div>
   </div>
 
