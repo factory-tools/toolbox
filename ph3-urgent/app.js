@@ -13,6 +13,25 @@ let rows=[], histories=[], batches=[], tab="current";
 const dirtyKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
+function updateActionState(){
+  const n=dirtyKeys.size;
+  const save=$("saveReplyBtn"), dl=$("downloadBtn"), mail=$("downloadMailBtn"), guard=$("saveGuard");
+  if(save)save.disabled=n===0;
+  if(dl)dl.disabled=n>0;
+  if(mail)mail.disabled=n>0;
+  if(guard){
+    guard.innerHTML=n>0
+      ? `<span class="bad">⚠ 尚有 ${n} 筆未儲存：請先按「儲存目前修改」，儲存成功後才能下載 / Còn ${n} dòng chưa lưu: phải lưu trước khi tải Excel</span>`
+      : `<span class="ok">✓ 目前資料已同步，可下載 / Dữ liệu hiện tại đã đồng bộ, có thể tải Excel</span>`;
+  }
+}
+function blockIfUnsaved(actionText){
+  if(!dirtyKeys.size)return false;
+  $("replyMsg").innerHTML=`<span class="bad">⚠ 尚有 ${dirtyKeys.size} 筆未儲存，請先按「儲存目前修改」，再${actionText} / Còn dữ liệu chưa lưu, hãy lưu trước</span>`;
+  updateActionState();
+  return true;
+}
+
 function fmt(v){if(!v)return"";if(v instanceof Date)return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;if(/^\d{4}-\d{2}-\d{2}/.test(String(v)))return String(v).slice(0,10).replaceAll("-","/");return String(v)}
 function excelDate(v){if(!v)return null;if(v instanceof Date)return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,"0")}-${String(v.getDate()).padStart(2,"0")}`;if(typeof v==="number"){const p=XLSX.SSF.parse_date_code(v);return p?`${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}`:null}const s=String(v).trim();const m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);if(m)return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;const d=new Date(v);return isNaN(d)?null:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function keyOfArray(r){return [r[2],r[3],r[4]].map(v=>String(v??"").trim()).join("|")}
@@ -306,6 +325,7 @@ function render(){
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
   applyFrozenColumns();
+  updateActionState();
 }
 async function login(){
   $("loginMsg").textContent="";
@@ -490,6 +510,7 @@ function exportData(){
   });
 }
 async function downloadCurrent(){
+  if(blockIfUnsaved("下載 / tải Excel"))return;
   try{
     const data=exportData();
     if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
@@ -586,6 +607,20 @@ async function downloadCurrent(){
       const isProgress=(col.kind==="data"&&col.idx>=17)||["prevStage","prevPh3","prev99","days","status"].includes(col.kind);
       c.fill={type:"pattern",pattern:"solid",fgColor:{argb:isProgress?"FFBF9000":"FF548235"}};
     });
+    // Excel 回填時只需要修改 PH3 與 99 兩欄：用醒目藍色表頭 + 淡黃色資料格標示，避免改錯欄。
+    const editColPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
+    const editCol99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
+    [editColPh3,editCol99].forEach(ci=>{
+      const head=ws.getCell(1,ci);
+      head.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FF2F75B5"}};
+      head.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
+      head.note="★ 請只修改此欄日期 / Chỉ sửa ngày ở cột này";
+      for(let rr=2;rr<=ws.rowCount;rr++){
+        const cell=ws.getCell(rr,ci);
+        cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
+        cell.border={left:{style:"medium",color:{argb:"FF2F75B5"}},right:{style:"medium",color:{argb:"FF2F75B5"}}};
+      }
+    });
     WEB_COLUMNS.forEach((c,i)=>ws.getColumn(i+1).width=Math.max(7,Math.min(24,Math.round(c.width/9.4))));
     for(let r=2;r<=ws.rowCount;r++){
       ws.getRow(r).height=22;
@@ -622,6 +657,7 @@ async function downloadCurrent(){
 }
 
 async function downloadMailReady(){
+  if(blockIfUnsaved("下載可直接回覆 MAIL 的檔案 / tải file gửi MAIL"))return;
   try{
     const data=exportData();
     if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
@@ -678,14 +714,18 @@ async function downloadMailReady(){
 async function refillExcel(){
   const file=$("refillFile").files[0];if(!file)return;
   try{
-    $("replyMsg").textContent="回填中… / Đang nhập lại…";
+    if(dirtyKeys.size){
+      $("replyMsg").innerHTML=`<span class="bad">⚠ 畫面上還有 ${dirtyKeys.size} 筆未儲存，請先儲存後再回填另一份 Excel / Còn ${dirtyKeys.size} dòng chưa lưu, hãy lưu trước khi nhập Excel khác</span>`;
+      $("refillFile").value="";
+      return;
+    }
+    $("replyMsg").textContent="回填到畫面中… / Đang nhập lại vào màn hình…";
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array",cellDates:false});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
     if(a.length<2)throw new Error("Excel沒有資料 / Excel không có dữ liệu");
 
-    // Use header names, not fixed positions, because Excel now mirrors web display order.
     const headers=a[0].map(x=>String(x??"").trim());
     const idxCustomer=headers.indexOf(HEADERS[2]);
     const idxOrder=headers.indexOf(HEADERS[3]);
@@ -695,7 +735,8 @@ async function refillExcel(){
     const upstreamIdx=[17,18,19,20].map(i=>headers.indexOf(HEADERS[i]));
     if([idxCustomer,idxOrder,idxNet,idxPh3,idx99].some(i=>i<0))throw new Error("Excel欄位不符 / Sai cột Excel");
 
-    const payload=[], invalid=[];
+    const invalid=[], notFound=[];
+    let applied=0;
     for(const r of a.slice(1)){
       if(!r.some(v=>v!==""&&v!=null))continue;
       const key=[r[idxCustomer],r[idxOrder],r[idxNet]].map(v=>String(v??"").trim()).join("|");
@@ -705,23 +746,41 @@ async function refillExcel(){
       const prev=prevDates.length?prevDates[prevDates.length-1]:"";
       if(ph3&&prev&&ph3<prev){invalid.push(`${key}: PH3 ${ph3} < ${prev}`);continue}
       if(w99&&ph3&&w99<ph3){invalid.push(`${key}: 99 ${w99} < PH3 ${ph3}`);continue}
-      payload.push({unique_key:key,ph3_date:ph3,warehouse99_date:w99});
+
+      const o=rows.find(x=>x.unique_key===key);
+      if(!o){notFound.push(key);continue}
+      const oldPh3=String(o.ph3_date||"").slice(0,10);
+      const old99=String(o.warehouse99_date||"").slice(0,10);
+      if(oldPh3!==String(ph3||"") || old99!==String(w99||"")){
+        o.ph3_date=ph3||null;
+        o.warehouse99_date=w99||null;
+        dirtyKeys.add(key);
+        issueKeys.delete(key);
+        applied++;
+      }
     }
     if(invalid.length)throw new Error(`有 ${invalid.length} 筆日期不合法，未回填 / Có ${invalid.length} dòng ngày không hợp lệ`);
-    if(!payload.length)throw new Error("沒有可回填資料 / Không có dữ liệu");
+    if(!applied){
+      $("replyMsg").innerHTML=`<span class="warn">Excel 已讀取，但沒有不同的 PH3/99 日期需要回填 / Đã đọc Excel nhưng không có ngày PH3/99 thay đổi</span>`+
+        (notFound.length?` <span class="warn">；另有 ${notFound.length} 筆找不到對應資料</span>`:"");
+      $("refillFile").value="";
+      render();
+      return;
+    }
 
-    const {data,error}=await sb.rpc("ph3_import_replies",{p_rows:payload});
-    if(error)throw error;
-    $("replyMsg").innerHTML=`<span class="ok">回填完成 ${data.updated} 筆 / Đã nhập lại ${data.updated} dòng</span>`+
-      (data.late99?` <span class="warn">；99晚於客需 ${data.late99} 筆</span>`:"")+
-      (data.over7?` <span class="warn">；PH3超過7天 ${data.over7} 筆</span>`:"");
-    $("refillFile").value="";await loadAll();
+    $("replyMsg").innerHTML=`<span class="warn">✓ 已把 Excel 的 ${applied} 筆修改帶回畫面，但<strong>尚未儲存到系統</strong>。請確認後按「儲存目前修改」 / Đã nhập ${applied} dòng vào màn hình nhưng <strong>chưa lưu vào hệ thống</strong>. Hãy bấm Lưu các thay đổi.</span>`+
+      (notFound.length?` <span class="warn">；${notFound.length} 筆找不到對應資料 / không tìm thấy ${notFound.length} dòng</span>`:"");
+    $("refillFile").value="";
+    render();
   }catch(err){
     console.error(err);$("replyMsg").innerHTML=`<span class="bad">回填失敗 / Nhập lại thất bại：${esc(err.message||err)}</span>`;$("refillFile").value="";
   }
 }
 
-$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{dirtyKeys.clear();issueKeys.clear();await loadAll()};$("importBtn").onclick=importFiles;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
+$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{
+  if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
+  dirtyKeys.clear();issueKeys.clear();await loadAll()
+};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
 ["fCustomer","fOrder","fItem"].forEach(id=>$(id).addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
@@ -730,3 +789,9 @@ $("freezeCols").addEventListener("change",applyFrozenColumns);
 initFreezeSetting();
 document.querySelectorAll(".tab").forEach(b=>b.onclick=async()=>{tab=b.dataset.tab;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));if(tab==="history")await loadHistory();else render()});
 checkSession();
+
+window.addEventListener("beforeunload",e=>{
+  if(!dirtyKeys.size)return;
+  e.preventDefault();
+  e.returnValue="";
+});
