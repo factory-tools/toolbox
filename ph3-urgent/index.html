@@ -22,7 +22,11 @@ label{font-weight:700;font-size:13px}input,select{width:100%;padding:9px;border:
 th,td{border-right:1px solid #dfe5eb;border-bottom:1px solid #dfe5eb;padding:7px 8px;white-space:nowrap}th{position:sticky;top:0;color:#fff;z-index:2;text-align:center}
 th.fixed{background:var(--green)}th.key{background:#375623}th.progress{background:var(--yellow)}
 td.fixed{background:#f2f8ef}td.progress{background:#fff8e3}tr:nth-child(even) td.fixed{background:#e9f4e4}tr:nth-child(even) td.progress{background:#fff2cc}
-td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
+td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}
+td.warncell{background:#ffb3b3!important;color:#7f0000;font-weight:800}
+td.okcell{background:#dff3e1!important;color:#1f6b27;font-weight:800}
+td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
+.cell-date{min-width:132px;padding:6px 7px;border:1px solid #aebdca;border-radius:6px;background:white}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
 .b-red{background:#ffd3d3;color:#8b0000}.b-orange{background:#ffe6bd;color:#8b5100}.b-green{background:#ddf3df;color:#1f6b27}.b-blue{background:#e1efff;color:#174f86}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tab{border:1px solid var(--line);background:white;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
 @media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.app{padding:8px}}
@@ -90,22 +94,38 @@ td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}tr.need td
         <option value="need">待回覆 / Chờ trả lời</option>
         <option value="changed">有異動 / Có thay đổi</option>
         <option value="had">以前回覆過 / Đã từng trả lời</option>
+        <option value="late99">99晚於客需 / 99 trễ hơn KH</option>
+        <option value="over7">PH3超過前站7天 / PH3 >7 ngày</option>
       </select>
     </label></div>
   </div>
-  <div id="filterCount" class="msg" style="color:#174f86"></div>
 
-  <div class="row" style="margin-top:12px">
-    <div class="grow"><label>PH3 完工日 V欄 / Ngày hoàn thành PH3
-      <input id="replyDate" type="date">
+  <div class="row" style="margin-top:8px">
+    <div class="grow"><label>前工段日期從 / Ngày công đoạn trước từ
+      <input id="fPrevFrom" type="date">
     </label></div>
-    <div class="grow"><label>99 入庫日 / Ngày nhập kho 99
-      <input id="warehouseDate" type="date" readonly>
+    <div class="grow"><label>前工段日期到 / Ngày công đoạn trước đến
+      <input id="fPrevTo" type="date">
     </label></div>
-    <button id="bulkReplyBtn" class="btn primary">套用目前篩選全部 / Áp dụng tất cả dòng đang lọc</button>
-    <button id="downloadBtn" class="btn outline">⬇ 下載目前畫面 Excel / Tải Excel</button>
+    <div class="grow"><label>PH3 要加幾天（週日不算） / PH3 cộng mấy ngày (không tính CN)
+      <select id="addDays">
+        <option value="5">+5 天 / ngày</option>
+        <option value="6">+6 天 / ngày</option>
+        <option value="7" selected>+7 天 / ngày</option>
+      </select>
+    </label></div>
+    <button id="calcReplyBtn" class="btn primary">依目前篩選批量計算 V/W / Tính hàng loạt V/W</button>
   </div>
-  <div class="muted" style="margin-top:6px">規則：PH3 最晚日 = min（客戶要求日，最近前工段日期 + 5 天；週日不計）。超過直接不允許儲存。99 = PH3 + 3 天。</div>
+
+  <div class="row" style="margin-top:8px">
+    <div id="filterCount" class="msg grow" style="color:#174f86"></div>
+    <button id="downloadBtn" class="btn outline">⬇ 下載目前畫面 Excel / Tải Excel đang hiển thị</button>
+  </div>
+
+  <div class="muted" style="margin-top:6px">
+    規則：V欄 PH3完工日＝最近前工段日期＋你選的5／6／7天（週日不算）；V超過前工段7天會警示。W欄 99入庫日＝V＋3天；W可以晚於客戶要求日，但會紅色警示。<br>
+    Quy tắc: V = ngày công đoạn trước + 5/6/7 ngày (không tính Chủ nhật); nếu V >7 ngày sẽ cảnh báo. W = V +3 ngày; W có thể trễ hơn ngày KH yêu cầu nhưng sẽ cảnh báo đỏ.
+  </div>
   <div id="replyMsg" class="msg"></div>
 
   <div class="tabs">
@@ -116,6 +136,6 @@ td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}tr.need td
 </section>
 </div>
 </div>
-<script src="./app.js"></script>
+<script src="./app.js?v=20260818-2"></script>
 </body>
 </html>
