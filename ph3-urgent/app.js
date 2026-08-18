@@ -9,7 +9,7 @@ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_URL.includ
   alert("請先設定 config.js 的 Supabase URL 與 Publishable key。");
 }
 const sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
-let rows=[], histories=[], tab="current";
+let rows=[], histories=[], batches=[], tab="current";
 
 function fmt(v){if(!v)return"";if(v instanceof Date)return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;if(/^\d{4}-\d{2}-\d{2}/.test(String(v)))return String(v).slice(0,10).replaceAll("-","/");return String(v)}
 function excelDate(v){if(!v)return null;if(v instanceof Date)return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,"0")}-${String(v.getDate()).padStart(2,"0")}`;if(typeof v==="number"){const p=XLSX.SSF.parse_date_code(v);return p?`${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}`:null}const s=String(v).trim();const m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);if(m)return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;const d=new Date(v);return isNaN(d)?null:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -88,13 +88,50 @@ function refreshPrevDateOptions(){
     dates.map(d=>`<option value="${esc(d)}">${esc(fmt(d))}</option>`).join("");
   if(dates.includes(current))el.value=current;
 }
+function todayYMD(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+async function loadBatches(){
+  const {data,error}=await sb.from("ph3_import_batches").select("*").order("created_at",{ascending:false}).limit(100);
+  if(error){console.error(error);batches=[];return}
+  batches=data||[];
+  const el=$("batchSelect");
+  const current=el.value;
+  el.innerHTML='<option value="">自動選最新 / Tự chọn mới nhất</option>'+
+    batches.map(b=>`<option value="${esc(b.id)}">${esc(new Date(b.created_at).toLocaleString())}｜${esc(b.source_file||"")}｜${Number(b.row_count||0)}筆</option>`).join("");
+  if(batches.some(b=>String(b.id)===current))el.value=current;
+  updateBatchInfo();
+}
+function selectedBatchId(){
+  const manual=$("batchSelect").value;
+  if(manual)return manual;
+  return batches.length?String(batches[0].id):"";
+}
+function updateBatchInfo(){
+  if(!$("batchInfo"))return;
+  const id=selectedBatchId(), b=batches.find(x=>String(x.id)===String(id));
+  $("batchInfo").textContent=b
+    ? `這一批 ${Number(b.row_count||0)} 筆｜${b.source_file||""} / Lần này ${Number(b.row_count||0)} dòng`
+    : "目前沒有匯入批次 / Chưa có lần nhập";
+}
+
 function filtered(){
   const c=$("fCustomer").value.trim().toLowerCase(),
         d=$("fOrder").value.trim().toLowerCase(),
         g=$("fItem").value.trim().toLowerCase(),
         st=$("fStatus").value,
-        prevDate=$("fPrevDate").value;
+        prevDate=$("fPrevDate").value,
+        scope=$("workScope").value,
+        batchId=selectedBatchId(),
+        today=todayYMD();
+
   return rows.filter(o=>{
+    if(scope==="latest" && batchId && String(o.last_batch_id||"")!==String(batchId))return false;
+    if(scope==="today_unreplied"){
+      const imported=String(o.last_imported_at||o.updated_at||"").slice(0,10);
+      if(imported!==today || !o.needs_reply)return false;
+    }
     if(c&&!String(o.customer??"").toLowerCase().includes(c))return false;
     if(d&&!String(o.order_no??"").toLowerCase().includes(d))return false;
     if(g&&!String(o.item_no??"").toLowerCase().includes(g))return false;
@@ -116,6 +153,7 @@ async function loadAll(){
   $("sHad").textContent=rows.filter(x=>x.ever_replied).length;
   $("sChanged").textContent=rows.filter(x=>(x.changed_fields||[]).length).length;
   refreshPrevDateOptions();
+  await loadBatches();
   render();
 }
 async function loadHistory(){
@@ -191,12 +229,19 @@ async function importFiles(){
         const row=Array.from({length:23},(_,i)=>r[i]??"");
         return {unique_key:keyOfArray(row),source_file:f.name,data:arrToPayload(row)}
       });
+
+      const {data:batch,error:batchErr}=await sb.from("ph3_import_batches")
+        .insert({source_file:f.name,row_count:payload.length,imported_by:(await sb.auth.getUser()).data.user?.id})
+        .select("*").single();
+      if(batchErr)throw batchErr;
+
       total+=payload.length;
-      const {data,error}=await sb.rpc("ph3_import_orders",{p_rows:payload});
+      const {data,error}=await sb.rpc("ph3_import_orders",{p_rows:payload,p_batch_id:batch.id});
       if(error)throw error; ok+=Number(data?.processed||payload.length);
     }catch(e){console.error(e);err++; }
   }
-  $("importMsg").innerHTML=`<span class="ok">完成 ${ok} 筆 / Hoàn tất ${ok} dòng</span>`+(err?` <span class="bad">；${err} 個檔案失敗</span>`:"");
+  $("importMsg").innerHTML=`<span class="ok">完成 ${ok} 筆，最新一批已可直接評估 / Hoàn tất ${ok} dòng, có thể đánh giá ngay</span>`+(err?` <span class="bad">；${err} 個檔案失敗</span>`:"");
+  $("workScope").value="latest";
   await loadAll();
 }
 
@@ -482,7 +527,8 @@ async function refillExcel(){
 
 $("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=loadAll;$("importBtn").onclick=importFiles;$("calcReplyBtn").onclick=calcBulkReply;$("downloadBtn").onclick=downloadCurrent;
 ["fCustomer","fOrder","fItem"].forEach(id=>$(id).addEventListener("input",render));
-["fStatus","fPrevDate"].forEach(id=>$(id).addEventListener("change",render));
+["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
+$("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
 $("refillFile").addEventListener("change",refillExcel);
 document.querySelectorAll(".tab").forEach(b=>b.onclick=async()=>{tab=b.dataset.tab;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));if(tab==="history")await loadHistory();else render()});
 checkSession();
