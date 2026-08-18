@@ -29,14 +29,20 @@ td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
 .cell-date{min-width:132px;padding:6px 7px;border:1px solid #aebdca;border-radius:6px;background:white}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
 .b-red{background:#ffd3d3;color:#8b0000}.b-orange{background:#ffe6bd;color:#8b5100}.b-green{background:#ddf3df;color:#1f6b27}.b-blue{background:#e1efff;color:#174f86}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tab{border:1px solid var(--line);background:white;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
+.stepbox{border:1px solid #d9e3ed;background:#f8fbff;border-radius:12px;padding:12px;margin-top:10px}
+.stepbox h4{margin:0 0 9px;color:#17365d;font-size:14px}.stepno{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;background:#2f75b5;color:white;margin-right:6px}
+.compact-note{font-size:12px;color:#64748b;line-height:1.65;margin-top:8px}.freeze-label{min-width:145px}
+.tablewrap table{table-layout:fixed}.tablewrap th,.tablewrap td{overflow:hidden;text-overflow:ellipsis}
+.sticky-col{position:sticky!important;z-index:3}.sticky-head{z-index:6!important}
+.sticky-edge{box-shadow:4px 0 5px rgba(15,23,42,.14)}
 @media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.app{padding:8px}}
 </style>
 </head>
 <body>
 <div class="app">
 <section class="hero">
-  <h1>PH3 急單共用系統 / Hệ thống đơn gấp PH3 dùng chung</h1>
-  <p>三位生管共用同一資料庫｜C+D+E 唯一值｜歷史保留｜異動紅底｜PH3 最晚日自動限制｜99 自動 +3 天</p>
+  <h1>PH3 急單共用系統 / Hệ thống đơn gấp PH3</h1>
+  <p>客戶 + 訂單號碼 + 筆數 = 唯一值 / KH + Mã đơn + NET = mã duy nhất｜歷史保留 / Lưu lịch sử｜異動紅底 / Đổi dữ liệu tô đỏ｜99 自動 +3 天 / 99 tự động +3 ngày</p>
 </section>
 
 <section id="loginPanel" class="panel">
@@ -83,69 +89,82 @@ td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
 </section>
 
 <section class="panel">
-  <h3 style="margin-top:0">② PH3 評估 / Đánh giá PH3</h3>
-  <div class="row" style="margin-bottom:10px">
-    <div class="grow"><label>我要處理 / Tôi muốn xử lý
-      <select id="workScope">
-        <option value="latest">最新一批 / Lần nhập mới nhất</option>
-        <option value="today_unreplied">今天尚未回覆 / Hôm nay chưa trả lời</option>
-        <option value="all">全部資料 / Tất cả dữ liệu</option>
-      </select>
-    </label></div>
-    <div class="grow"><label>匯入批次 / Lần nhập
-      <select id="batchSelect">
-        <option value="">自動選最新 / Tự chọn mới nhất</option>
-      </select>
-    </label></div>
-    <div class="grow" style="align-self:center">
-      <div id="batchInfo" class="msg" style="color:#174f86"></div>
+  <h3 style="margin:0">② PH3 評估 / Đánh giá PH3</h3>
+  <div class="compact-note">
+    收到信件 → 匯入 → 系統比對以前回覆 → 處理最新一批 → 回覆完成 → 下載 Excel 寄回<br>
+    Nhận email → Nhập Excel → So lịch sử → Xử lý lần mới nhất → Hoàn tất → Tải Excel gửi lại
+  </div>
+
+  <div class="stepbox">
+    <h4><span class="stepno">1</span>先選這次要處理的資料 / Chọn dữ liệu cần xử lý</h4>
+    <div class="row">
+      <div class="grow"><label>我要處理 / Tôi muốn xử lý
+        <select id="workScope">
+          <option value="latest">最新一批 / Lần nhập mới nhất</option>
+          <option value="today_unreplied">今天尚未回覆 / Hôm nay chưa trả lời</option>
+          <option value="all">全部資料 / Tất cả dữ liệu</option>
+        </select>
+      </label></div>
+      <div class="grow"><label>匯入批次 / Lần nhập
+        <select id="batchSelect">
+          <option value="">自動選最新 / Tự chọn mới nhất</option>
+        </select>
+      </label></div>
+      <div class="grow"><label>狀態 / Trạng thái
+        <select id="fStatus">
+          <option value="">全部 / Tất cả</option>
+          <option value="need">待回覆 / Chờ trả lời</option>
+          <option value="changed">有異動 / Có thay đổi</option>
+          <option value="had">以前回覆過 / Đã từng trả lời</option>
+          <option value="late99">99晚於客需 / 99 trễ hơn KH</option>
+          <option value="over7">PH3超過前站7天 / PH3 >7 ngày</option>
+        </select>
+      </label></div>
+      <div class="grow" style="align-self:center"><div id="batchInfo" class="msg" style="color:#174f86"></div></div>
     </div>
   </div>
 
-  <div class="row">
-    <div class="grow"><label>客戶 / KH<input id="fCustomer" placeholder="C欄"></label></div>
-    <div class="grow"><label>訂單號 / Mã đơn<input id="fOrder" placeholder="D欄"></label></div>
-    <div class="grow"><label>料號 / Mã SP<input id="fItem" placeholder="G欄"></label></div>
-    <div class="grow"><label>狀態 / Trạng thái
-      <select id="fStatus">
-        <option value="">全部 / Tất cả</option>
-        <option value="need">待回覆 / Chờ trả lời</option>
-        <option value="changed">有異動 / Có thay đổi</option>
-        <option value="had">以前回覆過 / Đã từng trả lời</option>
-        <option value="late99">99晚於客需 / 99 trễ hơn KH</option>
-        <option value="over7">PH3超過前站7天 / PH3 >7 ngày</option>
-      </select>
-    </label></div>
+  <div class="stepbox">
+    <h4><span class="stepno">2</span>需要時再縮小範圍 / Lọc thêm khi cần</h4>
+    <div class="row">
+      <div class="grow"><label>客戶 / KH<input id="fCustomer" placeholder="客戶 / KH"></label></div>
+      <div class="grow"><label>訂單號碼 / Mã đơn<input id="fOrder" placeholder="訂單號碼 / Mã đơn"></label></div>
+      <div class="grow"><label>料號 / Mã SP<input id="fItem" placeholder="料號 / Mã SP"></label></div>
+      <div class="grow"><label>前工段日期 / Ngày công đoạn trước
+        <select id="fPrevDate"><option value="">全部日期 / Tất cả ngày</option></select>
+      </label></div>
+    </div>
   </div>
 
-  <div class="row" style="margin-top:8px">
-    <div class="grow"><label>前工段日期 / Ngày công đoạn trước
-      <select id="fPrevDate">
-        <option value="">全部日期 / Tất cả ngày</option>
-      </select>
-    </label></div>
-    <div class="grow"><label>PH3 要加幾天（週日不算） / PH3 cộng mấy ngày (không tính CN)
-      <select id="addDays">
-        <option value="5">+5 天 / ngày</option>
-        <option value="6">+6 天 / ngày</option>
-        <option value="7" selected>+7 天 / ngày</option>
-      </select>
-    </label></div>
-    <button id="calcReplyBtn" class="btn primary">依目前篩選批量計算 V/W / Tính hàng loạt V/W</button>
+  <div class="stepbox">
+    <h4><span class="stepno">3</span>批量回覆或 Excel 回覆 / Trả lời hàng loạt hoặc bằng Excel</h4>
+    <div class="row">
+      <div class="grow"><label>PH3 加幾天（週日不算） / PH3 cộng mấy ngày (không tính CN)
+        <select id="addDays">
+          <option value="5">+5 天 / ngày</option>
+          <option value="6">+6 天 / ngày</option>
+          <option value="7" selected>+7 天 / ngày</option>
+        </select>
+      </label></div>
+      <button id="calcReplyBtn" class="btn primary">依目前資料批量計算 / Tính hàng loạt</button>
+      <button id="downloadBtn" class="btn outline">⬇ 下載目前 Excel / Tải Excel hiện tại</button>
+      <label class="btn outline" for="refillFile" style="cursor:pointer">⬆ 回填修改後 Excel / Nhập lại Excel đã sửa</label>
+      <input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
+    </div>
   </div>
 
-  <div class="row" style="margin-top:8px">
+  <div class="row" style="margin-top:10px">
     <div id="filterCount" class="msg grow" style="color:#174f86"></div>
-    <button id="downloadBtn" class="btn outline">⬇ 下載目前畫面 Excel / Tải Excel đang hiển thị</button>
-    <label class="btn outline" for="refillFile" style="cursor:pointer">⬆ 回填修改後 Excel / Nhập lại Excel đã sửa</label>
-    <input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
+    <div class="freeze-label"><label>凍結前幾欄 / Cố định bao nhiêu cột
+      <select id="freezeCols">
+        <option value="0">0</option><option value="4">4</option><option value="8">8</option>
+        <option value="12" selected>12</option><option value="15">15</option>
+      </select>
+    </label></div>
   </div>
 
-  <div class="muted" style="margin-top:6px">
-    規則：V欄 PH3完工日＝最近前工段日期＋你選的5／6／7天（週日不算）；V超過前工段7天會警示。W欄 99入庫日＝V＋3天；W可以晚於客戶要求日，但會紅色警示。<br>
-    操作建議：收到信件 → 匯入 → 系統自動比對有沒有回過 → 只看最新一批 → 回覆完成 → 下載 Excel 寄回。<br>
-    Excel：下載後可直接修改 V/W；欄位順序與網頁一致，會同步顯示前工段、PH3天數、上次PH3回覆與狀態；日期異常會紅底並提示，修改完成可再回填。<br>
-    Quy tắc: V = ngày công đoạn trước + 5/6/7 ngày (không tính Chủ nhật); nếu V >7 ngày sẽ cảnh báo. W = V +3 ngày; W có thể trễ hơn ngày KH yêu cầu nhưng sẽ cảnh báo đỏ.
+  <div class="compact-note">
+    規則 / Quy tắc：PH3不能早於前工段；99不能早於PH3；PH3超過前工段7天（週日不算）紅色警示；99晚於客需可保存但紅色警示。
   </div>
   <div id="replyMsg" class="msg"></div>
 
@@ -155,8 +174,9 @@ td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
   </div>
   <div class="tablewrap"><table id="grid"></table></div>
 </section>
+
 </div>
 </div>
-<script src="./app.js?v=20260818-5"></script>
+<script src="./app.js?v=20260818-6"></script>
 </body>
 </html>

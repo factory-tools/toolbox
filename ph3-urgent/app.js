@@ -18,7 +18,9 @@ function dbToArray(o){return COLNAMES.map(c=>o[c]??"")}
 function arrToPayload(r){const p={};COLNAMES.forEach((c,i)=>p[c]=[5,16,17,18,19,20,21,22].includes(i)?excelDate(r[i]):r[i]);return p}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function changedSet(o){return new Set(o.changed_fields||[])}
-function latestPrev(o){return o.prev_ph3_date?`${fmt(o.prev_ph3_date)} / 99 ${fmt(o.prev_99_date)}`:"—"}
+function prevPh3(o){return o.prev_ph3_date||((o.ever_replied&&o.ph3_date)?o.ph3_date:"")}
+function prev99(o){return o.prev_99_date||((o.ever_replied&&o.warehouse99_date)?o.warehouse99_date:"")}
+function latestPrev(o){return prevPh3(o)?`${fmt(prevPh3(o))} / 99 ${fmt(prev99(o))}`:"—"}
 function latestUpstream(o){
   const candidates=[
     ["aglet_date","束頭/96",o.aglet_date],
@@ -126,7 +128,7 @@ function filtered(){
         batchId=selectedBatchId(),
         today=todayYMD();
 
-  return rows.filter(o=>{
+  const data=rows.filter(o=>{
     if(scope==="latest" && batchId && String(o.last_batch_id||"")!==String(batchId))return false;
     if(scope==="today_unreplied"){
       const imported=String(o.last_imported_at||o.updated_at||"").slice(0,10);
@@ -144,6 +146,14 @@ function filtered(){
     if(st==="over7"&&!(ph3Days(o)>7))return false;
     return true;
   });
+
+  // 編輯後不可因 updated_at 改變而跳列；最新批次固定照原 Excel 列順序。
+  return data.sort((a,b)=>{
+    if(scope==="latest") return Number(a.last_batch_row_no||999999)-Number(b.last_batch_row_no||999999);
+    return String(a.customer||"").localeCompare(String(b.customer||"")) ||
+           String(a.order_no||"").localeCompare(String(b.order_no||"")) ||
+           String(a.net||"").localeCompare(String(b.net||""));
+  });
 }
 async function loadAll(){
   const {data,error}=await sb.from("ph3_orders").select("*").order("updated_at",{ascending:false}).limit(50000);
@@ -160,51 +170,105 @@ async function loadHistory(){
   const {data,error}=await sb.from("ph3_order_history").select("*").order("changed_at",{ascending:false}).limit(50000);
   if(error)throw error; histories=data||[];render();
 }
+const WEB_COLUMNS=[
+  // A-U original
+  ...HEADERS.slice(0,21).map((h,i)=>({kind:"data",idx:i,label:h,width:[64,78,86,112,62,98,110,78,66,106,62,86,80,190,145,160,110,115,115,115,115][i]||95})),
+  {kind:"prevStage",label:"前工段 / Công đoạn trước",width:138},
+  {kind:"data",idx:21,label:HEADERS[21],width:132},
+  {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:122},
+  {kind:"data",idx:22,label:HEADERS[22],width:132},
+  {kind:"prev99",label:"99 lần trước / 99上次回覆日",width:122},
+  {kind:"days",label:"PH3工段天數 / Số ngày PH3",width:116},
+  {kind:"status",label:"狀態 / Trạng thái",width:210}
+];
+
+function applyFrozenColumns(){
+  const count=Number($("freezeCols")?.value||12);
+  const table=$("grid"); if(!table)return;
+  table.querySelectorAll(".sticky-col").forEach(x=>{
+    x.classList.remove("sticky-col","sticky-head","sticky-edge");
+    x.style.left="";
+  });
+  let left=0;
+  for(let i=0;i<count && i<WEB_COLUMNS.length;i++){
+    const width=WEB_COLUMNS[i].width;
+    table.querySelectorAll(`[data-display-col="${i}"]`).forEach(el=>{
+      el.classList.add("sticky-col");
+      if(el.tagName==="TH")el.classList.add("sticky-head");
+      el.style.left=`${left}px`;
+      if(i===count-1)el.classList.add("sticky-edge");
+    });
+    left+=width;
+  }
+}
+
 function render(){
   const grid=$("grid");
   if(tab==="history"){
-    grid.innerHTML=`<thead><tr><th class="fixed">時間 / Thời gian</th><th class="fixed">C+D+E</th><th class="fixed">欄位 / Cột</th><th class="progress">原值 / Cũ</th><th class="progress">新值 / Mới</th><th class="fixed">來源 / Nguồn</th></tr></thead><tbody>`+
+    grid.innerHTML=`<thead><tr><th class="fixed">時間 / Thời gian</th><th class="fixed">客戶+訂單號碼+筆數 / KH+Mã đơn+NET</th><th class="fixed">欄位 / Cột</th><th class="progress">原值 / Cũ</th><th class="progress">新值 / Mới</th><th class="fixed">來源 / Nguồn</th></tr></thead><tbody>`+
       histories.map(h=>`<tr><td class="fixed">${esc(new Date(h.changed_at).toLocaleString())}</td><td class="fixed">${esc(h.unique_key)}</td><td class="fixed">${esc(h.field_name)}</td><td class="progress">${esc(fmt(h.old_value))}</td><td class="progress">${esc(fmt(h.new_value))}</td><td class="fixed">${esc(h.source_file||"")}</td></tr>`).join("")+"</tbody>";
     return;
   }
+
   const data=filtered();
   $("filterCount").textContent=`目前顯示 ${data.length.toLocaleString()} 筆 / Đang hiển thị ${data.length.toLocaleString()} dòng`;
-  let h="<thead><tr>";
-  HEADERS.forEach((x,i)=>h+=`<th class="${i>=17?"progress":(KEYCOLS.includes(i)?"key":"fixed")}">${esc(x)}</th>`);
-  h+=`<th class="progress">前工段<br>Công đoạn trước</th><th class="progress">PH3工段天數<br>Số ngày PH3</th><th class="progress">上次PH3回覆<br>PH3 lần trước</th><th class="progress">狀態<br>Trạng thái</th></tr></thead><tbody>`;
+
+  let h="<colgroup>";
+  WEB_COLUMNS.forEach(c=>h+=`<col style="width:${c.width}px;min-width:${c.width}px;max-width:${c.width}px">`);
+  h+="</colgroup><thead><tr>";
+  WEB_COLUMNS.forEach((c,di)=>{
+    let cls="fixed";
+    if(c.kind==="data" && c.idx>=17)cls="progress";
+    if(c.kind==="data" && KEYCOLS.includes(c.idx))cls="key";
+    if(["prevStage","prevPh3","prev99","days","status"].includes(c.kind))cls="progress";
+    h+=`<th data-display-col="${di}" class="${cls}" title="${esc(c.label)}">${esc(c.label)}</th>`;
+  });
+  h+="</tr></thead><tbody>";
 
   for(const o of data){
     const arr=dbToArray(o), ch=changedSet(o), prev=latestUpstream(o), days=ph3Days(o), late99=is99Late(o);
     h+=`<tr class="${o.needs_reply?"need":""}">`;
-    arr.forEach((v,i)=>{
-      const field=COLNAMES[i], isChanged=ch.has(field);
-      let cls=`${i>=17?"progress":"fixed"} ${isChanged?"changed":""}`;
-      if(i===21 && (days>7 || ph3BeforeUpstream(o)))cls+=" warncell";
-      if(i===22 && (late99 || warehouseBeforePh3(o)))cls+=" warncell";
-      if(i===21 || i===22){
-        const val=v?String(v).slice(0,10):"";
-        h+=`<td class="${cls}"><input class="cell-date" type="date" data-key="${esc(o.unique_key)}" data-col="${i}" value="${esc(val)}"></td>`;
-      }else{
-        h+=`<td class="${cls}">${esc(fmt(v))}</td>`;
+    WEB_COLUMNS.forEach((c,di)=>{
+      let cls="fixed", content="";
+      if(c.kind==="data"){
+        const i=c.idx, field=COLNAMES[i], isChanged=ch.has(field);
+        cls=i>=17?"progress":"fixed";
+        if(isChanged)cls+=" changed";
+        if(i===21 && (days>7 || ph3BeforeUpstream(o)))cls+=" warncell";
+        if(i===22 && (late99 || warehouseBeforePh3(o)))cls+=" warncell";
+        if(i===21 || i===22){
+          const val=arr[i]?String(arr[i]).slice(0,10):"";
+          content=`<input class="cell-date" style="min-width:0;width:100%;padding:5px" type="date" data-key="${esc(o.unique_key)}" data-col="${i}" value="${esc(val)}">`;
+        }else content=esc(fmt(arr[i]));
+      }else if(c.kind==="prevStage"){
+        cls="progress";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
+      }else if(c.kind==="prevPh3"){
+        cls="progress";content=esc(fmt(prevPh3(o))||"—");
+      }else if(c.kind==="prev99"){
+        cls="progress";content=esc(fmt(prev99(o))||"—");
+      }else if(c.kind==="days"){
+        cls="progress";
+        if(days===null)content="—";
+        else if(days>7)content=`<span class="badge b-red">${days}天 / ${days} ngày</span>`;
+        else if(days>=5)content=`<span class="badge b-green">${days}天 / ${days} ngày</span>`;
+        else content=`<span class="badge b-blue">${days}天：提前 / ${days} ngày: sớm</span>`;
+      }else if(c.kind==="status"){
+        cls="progress";
+        let status=o.needs_reply?'<span class="badge b-red">待重回 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>';
+        if((o.changed_fields||[]).length)status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
+        if(ph3BeforeUpstream(o))status+=' <span class="badge b-red">PH3早於前站 / PH3 sớm hơn công đoạn trước</span>';
+        if(warehouseBeforePh3(o))status+=' <span class="badge b-red">99早於PH3 / 99 sớm hơn PH3</span>';
+        if(late99)status+=' <span class="badge b-red">99晚於客需 / 99 trễ hơn KH</span>';
+        if(days>7)status+=' <span class="badge b-red">PH3超7天 / PH3 >7 ngày</span>';
+        content=status;
       }
+      h+=`<td data-display-col="${di}" class="${cls}" title="${esc(String(content).replace(/<[^>]*>/g,""))}">${content}</td>`;
     });
-    let dayBadge="—";
-    if(days!==null){
-      if(days>7)dayBadge=`<span class="badge b-red">${days}天：超過7天 / >7 ngày</span>`;
-      else if(days>=5)dayBadge=`<span class="badge b-green">${days}天 / ${days} ngày</span>`;
-      else dayBadge=`<span class="badge b-blue">${days}天：提前 / sớm</span>`;
-    }
-    let status=o.needs_reply?'<span class="badge b-red">待重回 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>';
-    if((o.changed_fields||[]).length)status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
-    if(ph3BeforeUpstream(o))status+=' <span class="badge b-red">PH3早於前站 / PH3 sớm hơn công đoạn trước</span>';
-    if(warehouseBeforePh3(o))status+=' <span class="badge b-red">99早於PH3 / 99 sớm hơn PH3</span>';
-    if(late99)status+=' <span class="badge b-red">99晚於客需 / 99 trễ hơn KH</span>';
-    if(days>7)status+=' <span class="badge b-red">PH3超7天 / PH3 >7 ngày</span>';
-    h+=`<td class="progress">${esc(prev.label)} ${esc(fmt(prev.date))}</td><td class="progress">${dayBadge}</td><td class="progress">${esc(latestPrev(o))}</td><td class="progress">${status}</td></tr>`;
+    h+="</tr>";
   }
   grid.innerHTML=h+"</tbody>";
-
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
+  applyFrozenColumns();
 }
 async function login(){
   $("loginMsg").textContent="";
@@ -217,32 +281,53 @@ async function logout(){await sb.auth.signOut();location.reload()}
 async function checkSession(){const {data}=await sb.auth.getSession();if(data.session){showApp(data.session.user);await loadAll()}}
 
 async function importFiles(){
-  const fs=[...$("files").files]; if(!fs.length){$("importMsg").innerHTML='<span class="warn">請先選 Excel / Chọn Excel</span>';return}
+  const fs=[...$("files").files];
+  if(!fs.length){$("importMsg").innerHTML='<span class="warn">請先選 Excel / Chọn Excel</span>';return}
   $("importMsg").textContent="匯入中… / Đang nhập…";
-  let total=0,ok=0,err=0;
-  for(const f of fs){
-    try{
-      const buf=await f.arrayBuffer(), wb=XLSX.read(buf,{type:"array",cellDates:false}), ws=wb.Sheets[wb.SheetNames[0]];
+
+  try{
+    const allPayload=[];
+    const names=[];
+    let rowNo=1;
+
+    for(const f of fs){
+      const buf=await f.arrayBuffer();
+      const wb=XLSX.read(buf,{type:"array",cellDates:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
       const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
-      if(a.length<2||HEADERS.some((x,i)=>String(a[0][i]??"").trim()!==String(x).trim()))throw new Error("格式不符");
-      const payload=a.slice(1).filter(r=>r.some(v=>v!==""&&v!=null)).map(r=>{
+      if(a.length<2||HEADERS.some((x,i)=>String(a[0][i]??"").trim()!==String(x).trim())){
+        throw new Error(`${f.name} 格式不符 / Sai định dạng`);
+      }
+      names.push(f.name);
+      a.slice(1).filter(r=>r.some(v=>v!==""&&v!=null)).forEach(r=>{
         const row=Array.from({length:23},(_,i)=>r[i]??"");
-        return {unique_key:keyOfArray(row),source_file:f.name,data:arrToPayload(row)}
+        allPayload.push({unique_key:keyOfArray(row),source_file:f.name,row_no:rowNo++,data:arrToPayload(row)});
       });
+    }
 
-      const {data:batch,error:batchErr}=await sb.from("ph3_import_batches")
-        .insert({source_file:f.name,row_count:payload.length,imported_by:(await sb.auth.getUser()).data.user?.id})
-        .select("*").single();
-      if(batchErr)throw batchErr;
+    const user=(await sb.auth.getUser()).data.user;
+    const batchName=names.length===1?names[0]:`${names[0]} + ${names.length-1} files`;
+    const {data:batch,error:batchErr}=await sb.from("ph3_import_batches")
+      .insert({source_file:batchName,row_count:allPayload.length,imported_by:user?.id})
+      .select("*").single();
+    if(batchErr)throw batchErr;
 
-      total+=payload.length;
-      const {data,error}=await sb.rpc("ph3_import_orders",{p_rows:payload,p_batch_id:batch.id});
-      if(error)throw error; ok+=Number(data?.processed||payload.length);
-    }catch(e){console.error(e);err++; }
+    let ok=0;
+    for(let i=0;i<allPayload.length;i+=500){
+      const chunk=allPayload.slice(i,i+500);
+      const {data,error}=await sb.rpc("ph3_import_orders",{p_rows:chunk,p_batch_id:batch.id});
+      if(error)throw error;
+      ok+=Number(data?.processed||chunk.length);
+    }
+
+    $("importMsg").innerHTML=`<span class="ok">完成 ${ok} 筆，已自動切到最新一批 / Hoàn tất ${ok} dòng, đã chuyển sang lần mới nhất</span>`;
+    $("workScope").value="latest";
+    $("batchSelect").value="";
+    await loadAll();
+  }catch(e){
+    console.error(e);
+    $("importMsg").innerHTML=`<span class="bad">匯入失敗 / Nhập thất bại：${esc(e.message||e)}</span>`;
   }
-  $("importMsg").innerHTML=`<span class="ok">完成 ${ok} 筆，最新一批已可直接評估 / Hoàn tất ${ok} dòng, có thể đánh giá ngay</span>`+(err?` <span class="bad">；${err} 個檔案失敗</span>`:"");
-  $("workScope").value="latest";
-  await loadAll();
 }
 
 async function saveDirectCell(e){
@@ -297,231 +382,178 @@ async function calcBulkReply(){
 async function downloadCurrent(){
   try{
     const data=filtered();
-    if(!data.length){
-      $("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';
-      return;
-    }
+    if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
 
     const wb=new ExcelJS.Workbook();
     const ws=wb.addWorksheet("PH3回覆");
 
-    // EXACTLY same order as web:
-    // A-W original + X previous stage + Y PH3 days + Z last PH3 reply + AA status
-    const excelHeaders=[
-      ...HEADERS,
-      "前工段 / Công đoạn trước",
-      "PH3工段天數 / Số ngày PH3",
-      "上次PH3回覆 / PH3 lần trước",
-      "狀態 / Trạng thái"
-    ];
-    ws.addRow(excelHeaders);
+    const headers=WEB_COLUMNS.map(c=>c.label);
+    ws.addRow(headers);
 
-    function excelDateObj(s){
+    function dateObj(s){
       if(!s)return "";
       const p=parseYMD(String(s).slice(0,10));
-      return p ? new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0) : s;
+      return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s;
     }
 
     data.forEach(o=>{
-      const arr=dbToArray(o);
-      const rowVals=arr.map((v,i)=>{
-        if([5,16,17,18,19,20,21,22].includes(i) && v) return excelDateObj(v);
-        return v??"";
+      const arr=dbToArray(o), prev=latestUpstream(o);
+      const values=[];
+      WEB_COLUMNS.forEach(c=>{
+        if(c.kind==="data"){
+          const v=arr[c.idx];
+          values.push([5,16,17,18,19,20,21,22].includes(c.idx)&&v?dateObj(v):(v??""));
+        }else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
+        else if(c.kind==="prevPh3")values.push(prevPh3(o)?dateObj(prevPh3(o)):"");
+        else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
+        else if(c.kind==="days")values.push("");
+        else if(c.kind==="status")values.push("");
       });
-      const r=ws.addRow(rowVals);
-      const rn=r.number;
+      const r=ws.addRow(values), rn=r.number;
 
-      // X: same content style as web, formula reacts if R-U are modified in Excel.
-      r.getCell(24).value={formula:
-        `IF(U${rn}<>"","束頭/96 "&TEXT(U${rn},"yyyy/mm/dd"),`+
-        `IF(T${rn}<>"","上漿/95 "&TEXT(T${rn},"yyyy/mm/dd"),`+
-        `IF(S${rn}<>"","染色/94 "&TEXT(S${rn},"yyyy/mm/dd"),`+
-        `IF(R${rn}<>"","織造/93 "&TEXT(R${rn},"yyyy/mm/dd"),"—"))))`
+      // Locate Excel columns by web display order.
+      const colPrevStage=WEB_COLUMNS.findIndex(c=>c.kind==="prevStage")+1;
+      const colPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
+      const colPrevPh3=WEB_COLUMNS.findIndex(c=>c.kind==="prevPh3")+1;
+      const col99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
+      const colPrev99=WEB_COLUMNS.findIndex(c=>c.kind==="prev99")+1;
+      const colDays=WEB_COLUMNS.findIndex(c=>c.kind==="days")+1;
+      const colStatus=WEB_COLUMNS.findIndex(c=>c.kind==="status")+1;
+
+      const L=n=>ws.getColumn(n).letter;
+      const R="R",S="S",T="T",U="U",Q="Q";
+      const ph=L(colPh3), w=L(col99), days=L(colDays);
+
+      // Dynamic previous-stage display using original R:U fields.
+      r.getCell(colPrevStage).value={formula:
+        `IF(U${rn}<>"","束頭/96 "&TEXT(U${rn},"yyyy/mm/dd"),IF(T${rn}<>"","上漿/95 "&TEXT(T${rn},"yyyy/mm/dd"),IF(S${rn}<>"","染色/94 "&TEXT(S${rn},"yyyy/mm/dd"),IF(R${rn}<>"","織造/93 "&TEXT(R${rn},"yyyy/mm/dd"),"—"))))`
+      };
+      r.getCell(colDays).value={formula:
+        `IF(${ph}${rn}="","",IF(MAX(R${rn}:U${rn})=0,"",IF(${ph}${rn}<MAX(R${rn}:U${rn}),-1,NETWORKDAYS.INTL(MAX(R${rn}:U${rn})+1,${ph}${rn},11))))`
+      };
+      r.getCell(colStatus).value={formula:
+        `IF(${ph}${rn}="","待回覆 / Chờ trả lời",`+
+        `IF(MAX(R${rn}:U${rn})>0,IF(${ph}${rn}<MAX(R${rn}:U${rn}),"PH3早於前站 / PH3 sớm hơn công đoạn trước；",""),"")&`+
+        `IF(AND(${days}${rn}<>"",${days}${rn}>7),"PH3超7天 / PH3 >7 ngày；","")&`+
+        `IF(AND(${w}${rn}<>"",${ph}${rn}<>"",${w}${rn}<${ph}${rn}),"99早於PH3 / 99 sớm hơn PH3；","")&`+
+        `IF(AND(${w}${rn}<>"",Q${rn}<>"",${w}${rn}>Q${rn}),"99晚於客需 / 99 trễ hơn KH；","")&"已回覆 / Đã trả lời")`
       };
 
-      // Y: workdays from latest upstream to V, excluding Sunday.
-      r.getCell(25).value={formula:
-        `IF(V${rn}="","",IF(MAX(R${rn}:U${rn})=0,"",`+
-        `IF(V${rn}<MAX(R${rn}:U${rn}),-1,NETWORKDAYS.INTL(MAX(R${rn}:U${rn})+1,V${rn},11))))`
-      };
-
-      // Z: previous PH3 reply - snapshot from DB, same as web.
-      r.getCell(26).value=latestPrev(o);
-
-      // AA: same status rules as web and reacts to V/W edits.
-      r.getCell(27).value={formula:
-        `IF(V${rn}="","待回覆 / Chờ trả lời",`+
-        `IF(MAX(R${rn}:U${rn})>0,IF(V${rn}<MAX(R${rn}:U${rn}),"PH3早於前站 / PH3 sớm hơn công đoạn trước；",""),"")&`+
-        `IF(AND(Y${rn}<>"",Y${rn}>7),"PH3超7天 / PH3 >7 ngày；","")&`+
-        `IF(AND(W${rn}<>"",V${rn}<>"",W${rn}<V${rn}),"99早於PH3 / 99 sớm hơn PH3；","")&`+
-        `IF(AND(W${rn}<>"",Q${rn}<>"",W${rn}>Q${rn}),"99晚於客需 / 99 trễ hơn KH；","")&`+
-        `"已回覆 / Đã trả lời")`
-      };
-
-      // Keep DB-detected changed fields red (Q + R-U)
+      // Existing changed fields red.
       const changes=new Set(o.changed_fields||[]);
       [16,17,18,19,20].forEach(i=>{
         if(changes.has(COLNAMES[i])){
+          // Original A-U are still same letters/positions before derived columns.
           r.getCell(i+1).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}};
           r.getCell(i+1).font={color:{argb:"FF7F0000"},bold:true};
         }
       });
+
+      // Date validations same as web.
+      r.getCell(colPh3).dataValidation={
+        type:"custom",allowBlank:true,
+        formulae:[`OR(${ph}${rn}="",MAX(R${rn}:U${rn})=0,${ph}${rn}>=MAX(R${rn}:U${rn}))`],
+        showErrorMessage:true,errorStyle:"stop",
+        errorTitle:"PH3日期錯誤 / Lỗi ngày PH3",
+        error:"PH3完工日不能早於前工段日期 / Ngày PH3 không được sớm hơn công đoạn trước"
+      };
+      r.getCell(col99).dataValidation={
+        type:"custom",allowBlank:true,
+        formulae:[`OR(${w}${rn}="",${ph}${rn}="",${w}${rn}>=${ph}${rn})`],
+        showErrorMessage:true,errorStyle:"stop",
+        errorTitle:"99日期錯誤 / Lỗi ngày 99",
+        error:"99入庫日不能早於PH3完工日 / Ngày 99 không được sớm hơn ngày PH3"
+      };
     });
 
-    ws.views=[{state:"frozen",ySplit:1}];
-    ws.autoFilter={from:{row:1,column:1},to:{row:ws.rowCount,column:27}};
-
-    // Header style: same green/yellow grouping as web
+    ws.views=[{state:"frozen",xSplit:12,ySplit:1}];
+    ws.autoFilter={from:{row:1,column:1},to:{row:ws.rowCount,column:WEB_COLUMNS.length}};
     ws.getRow(1).height=42;
     ws.getRow(1).eachCell((c,i)=>{
       c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
       c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
-      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:(i>=18&&i<=23)?"FFBF9000":"FF548235"}};
+      const col=WEB_COLUMNS[i-1];
+      const isProgress=(col.kind==="data"&&col.idx>=17)||["prevStage","prevPh3","prev99","days","status"].includes(col.kind);
+      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:isProgress?"FFBF9000":"FF548235"}};
     });
-
-    const widths=[7,10,11,14,8,13,14,9,8,14,8,12,11,28,22,25,16,17,17,17,17,17,17,24,16,24,34];
-    widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
-
+    WEB_COLUMNS.forEach((c,i)=>ws.getColumn(i+1).width=Math.max(8,Math.round(c.width/8.2)));
     for(let r=2;r<=ws.rowCount;r++){
-      [6,17,18,19,20,21,22,23].forEach(c=>ws.getCell(r,c).numFmt="yyyy/m/d");
-      ws.getCell(r,12).numFmt="#,##0";
       ws.getRow(r).height=22;
-
-      // Excel validation: V cannot be earlier than latest previous stage.
-      ws.getCell(r,22).dataValidation={
-        type:"custom",
-        allowBlank:true,
-        formulae:[`OR(V${r}="",MAX(R${r}:U${r})=0,V${r}>=MAX(R${r}:U${r}))`],
-        showErrorMessage:true,
-        errorStyle:"stop",
-        errorTitle:"PH3日期錯誤 / Lỗi ngày PH3",
-        error:"PH3完工日不能早於前工段日期 / Ngày PH3 không được sớm hơn công đoạn trước"
-      };
-
-      // Excel validation: W cannot be earlier than V.
-      ws.getCell(r,23).dataValidation={
-        type:"custom",
-        allowBlank:true,
-        formulae:[`OR(W${r}="",V${r}="",W${r}>=V${r})`],
-        showErrorMessage:true,
-        errorStyle:"stop",
-        errorTitle:"99日期錯誤 / Lỗi ngày 99",
-        error:"99入庫日不能早於PH3完工日 / Ngày 99 không được sớm hơn ngày PH3"
-      };
+      WEB_COLUMNS.forEach((c,i)=>{
+        if(c.kind==="data"&&[5,16,17,18,19,20,21,22].includes(c.idx))ws.getCell(r,i+1).numFmt="yyyy/m/d";
+        if(c.kind==="prevPh3"||c.kind==="prev99")ws.getCell(r,i+1).numFmt="yyyy/m/d";
+      });
     }
 
+    const colPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
+    const col99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
+    const ph=ws.getColumn(colPh3).letter, w=ws.getColumn(col99).letter;
     const last=ws.rowCount;
     if(last>=2){
-      // V < previous stage => red
-      ws.addConditionalFormatting({
-        ref:`V2:V${last}`,
-        rules:[{type:"expression",formulae:[`AND(V2<>"",MAX(R2:U2)>0,V2<MAX(R2:U2))`],
-          style:{fill:{type:"pattern",pattern:"solid",bgColor:{argb:"FFFFB3B3"},fgColor:{argb:"FFFFB3B3"}},font:{color:{argb:"FF7F0000"},bold:true}}}]
-      });
-      // V > 7 workdays => red warning
-      ws.addConditionalFormatting({
-        ref:`V2:V${last}`,
-        rules:[{type:"expression",formulae:[`AND(V2<>"",MAX(R2:U2)>0,V2>=MAX(R2:U2),NETWORKDAYS.INTL(MAX(R2:U2)+1,V2,11)>7)`],
-          style:{fill:{type:"pattern",pattern:"solid",bgColor:{argb:"FFFFB3B3"},fgColor:{argb:"FFFFB3B3"}},font:{color:{argb:"FF7F0000"},bold:true}}}]
-      });
-      // W < V => red
-      ws.addConditionalFormatting({
-        ref:`W2:W${last}`,
-        rules:[{type:"expression",formulae:[`AND(W2<>"",V2<>"",W2<V2)`],
-          style:{fill:{type:"pattern",pattern:"solid",bgColor:{argb:"FFFFB3B3"},fgColor:{argb:"FFFFB3B3"}},font:{color:{argb:"FF7F0000"},bold:true}}}]
-      });
-      // W > customer requested => red warning, but allowed
-      ws.addConditionalFormatting({
-        ref:`W2:W${last}`,
-        rules:[{type:"expression",formulae:[`AND(W2<>"",Q2<>"",W2>Q2)`],
-          style:{fill:{type:"pattern",pattern:"solid",bgColor:{argb:"FFFFB3B3"},fgColor:{argb:"FFFFB3B3"}},font:{color:{argb:"FF7F0000"},bold:true}}}]
-      });
+      ws.addConditionalFormatting({ref:`${ph}2:${ph}${last}`,rules:[
+        {type:"expression",formulae:[`AND(${ph}2<>"",MAX(R2:U2)>0,${ph}2<MAX(R2:U2))`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}},
+        {type:"expression",formulae:[`AND(${ph}2<>"",MAX(R2:U2)>0,${ph}2>=MAX(R2:U2),NETWORKDAYS.INTL(MAX(R2:U2)+1,${ph}2,11)>7)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}
+      ]});
+      ws.addConditionalFormatting({ref:`${w}2:${w}${last}`,rules:[
+        {type:"expression",formulae:[`AND(${w}2<>"",${ph}2<>"",${w}2<${ph}2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}},
+        {type:"expression",formulae:[`AND(${w}2<>"",Q2<>"",${w}2>Q2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}
+      ]});
     }
 
     const buf=await wb.xlsx.writeBuffer();
     const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download="PH3目前篩選_可修改回填.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="PH3目前資料_可修改回填.xlsx";document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-
-    $("replyMsg").innerHTML=`<span class="ok">已下載 ${data.length} 筆，欄位順序與網頁一致，可修改 V/W 後回填 / Đã tải ${data.length} dòng</span>`;
+    $("replyMsg").innerHTML=`<span class="ok">已下載 ${data.length} 筆，Excel順序與網頁一致 / Đã tải ${data.length} dòng</span>`;
   }catch(err){
-    console.error(err);
-    $("replyMsg").innerHTML=`<span class="bad">下載失敗 / Tải thất bại：${esc(err.message||err)}</span>`;
+    console.error(err);$("replyMsg").innerHTML=`<span class="bad">下載失敗 / Tải thất bại：${esc(err.message||err)}</span>`;
   }
 }
 
 async function refillExcel(){
-  const file=$("refillFile").files[0];
-  if(!file)return;
-
+  const file=$("refillFile").files[0];if(!file)return;
   try{
     $("replyMsg").textContent="回填中… / Đang nhập lại…";
-
-    // IMPORTANT: read Excel dates as raw serial numbers.
-    // This avoids timezone shifts such as 9/18 becoming 9/17.
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array",cellDates:false});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
+    if(a.length<2)throw new Error("Excel沒有資料 / Excel không có dữ liệu");
 
-    if(a.length<2 || HEADERS.some((h,i)=>String(a[0][i]??"").trim()!==String(h).trim())){
-      throw new Error("Excel格式不符，請使用本系統下載的檔案 / Sai định dạng Excel");
-    }
+    // Use header names, not fixed positions, because Excel now mirrors web display order.
+    const headers=a[0].map(x=>String(x??"").trim());
+    const idxCustomer=headers.indexOf(HEADERS[2]);
+    const idxOrder=headers.indexOf(HEADERS[3]);
+    const idxNet=headers.indexOf(HEADERS[4]);
+    const idxPh3=headers.indexOf(HEADERS[21]);
+    const idx99=headers.indexOf(HEADERS[22]);
+    const upstreamIdx=[17,18,19,20].map(i=>headers.indexOf(HEADERS[i]));
+    if([idxCustomer,idxOrder,idxNet,idxPh3,idx99].some(i=>i<0))throw new Error("Excel欄位不符 / Sai cột Excel");
 
-    const payload=[];
-    const invalid=[];
-
+    const payload=[], invalid=[];
     for(const r of a.slice(1)){
       if(!r.some(v=>v!==""&&v!=null))continue;
-
-      const key=[r[2],r[3],r[4]].map(v=>String(v??"").trim()).join("|");
-      if(!key || key==="||")continue;
-
-      const ph3=excelDate(r[21]);
-      const w99=excelDate(r[22]);
-
-      // Calculate latest previous-stage date from R-U using raw Excel values.
-      const prevDates=[17,18,19,20].map(i=>excelDate(r[i])).filter(Boolean).sort();
+      const key=[r[idxCustomer],r[idxOrder],r[idxNet]].map(v=>String(v??"").trim()).join("|");
+      if(!key||key==="||")continue;
+      const ph3=excelDate(r[idxPh3]),w99=excelDate(r[idx99]);
+      const prevDates=upstreamIdx.filter(i=>i>=0).map(i=>excelDate(r[i])).filter(Boolean).sort();
       const prev=prevDates.length?prevDates[prevDates.length-1]:"";
-
-      if(ph3 && prev && ph3 < prev){
-        invalid.push(`${key}: PH3 ${ph3} < 前站 ${prev}`);
-        continue;
-      }
-      if(w99 && ph3 && w99 < ph3){
-        invalid.push(`${key}: 99 ${w99} < PH3 ${ph3}`);
-        continue;
-      }
-
+      if(ph3&&prev&&ph3<prev){invalid.push(`${key}: PH3 ${ph3} < ${prev}`);continue}
+      if(w99&&ph3&&w99<ph3){invalid.push(`${key}: 99 ${w99} < PH3 ${ph3}`);continue}
       payload.push({unique_key:key,ph3_date:ph3,warehouse99_date:w99});
     }
-
-    if(invalid.length){
-      throw new Error(
-        `有 ${invalid.length} 筆日期不合法，未回填。例：${invalid.slice(0,3).join("；")} / Có ${invalid.length} dòng ngày không hợp lệ`
-      );
-    }
+    if(invalid.length)throw new Error(`有 ${invalid.length} 筆日期不合法，未回填 / Có ${invalid.length} dòng ngày không hợp lệ`);
     if(!payload.length)throw new Error("沒有可回填資料 / Không có dữ liệu");
 
     const {data,error}=await sb.rpc("ph3_import_replies",{p_rows:payload});
     if(error)throw error;
-
     $("replyMsg").innerHTML=`<span class="ok">回填完成 ${data.updated} 筆 / Đã nhập lại ${data.updated} dòng</span>`+
-      (data.late99?` <span class="warn">；99晚於客需 ${data.late99} 筆 / ${data.late99} dòng 99 trễ hơn KH</span>`:"")+
-      (data.over7?` <span class="warn">；PH3超過7天 ${data.over7} 筆 / PH3 >7 ngày: ${data.over7}</span>`:"");
-
-    $("refillFile").value="";
-    await loadAll();
+      (data.late99?` <span class="warn">；99晚於客需 ${data.late99} 筆</span>`:"")+
+      (data.over7?` <span class="warn">；PH3超過7天 ${data.over7} 筆</span>`:"");
+    $("refillFile").value="";await loadAll();
   }catch(err){
-    console.error(err);
-    $("replyMsg").innerHTML=`<span class="bad">回填失敗 / Nhập lại thất bại：${esc(err.message||err)}</span>`;
-    $("refillFile").value="";
+    console.error(err);$("replyMsg").innerHTML=`<span class="bad">回填失敗 / Nhập lại thất bại：${esc(err.message||err)}</span>`;$("refillFile").value="";
   }
 }
 
@@ -530,5 +562,6 @@ $("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclic
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
 $("refillFile").addEventListener("change",refillExcel);
+$("freezeCols").addEventListener("change",applyFrozenColumns);
 document.querySelectorAll(".tab").forEach(b=>b.onclick=async()=>{tab=b.dataset.tab;document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));if(tab==="history")await loadHistory();else render()});
 checkSession();
