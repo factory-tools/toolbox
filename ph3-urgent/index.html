@@ -27,11 +27,11 @@ td.warncell{background:#ffb3b3!important;color:#7f0000;font-weight:800}
 td.okcell{background:#dff3e1!important;color:#1f6b27;font-weight:800}
 td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
 .cell-date{min-width:0;width:100%;padding:4px 5px;border:1px solid #aebdca;border-radius:6px;background:white}
-.draftcell{background:#fff4bf!important}.draftbadge{background:#fff0ad;color:#7a5100}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}
-tr.issue-row td{box-shadow:inset 0 2px 0 #e53935,inset 0 -2px 0 #e53935!important}
-tr.issue-row td:first-child{border-left:5px solid #e53935!important}
-.issuecell{background:#ffe0e0!important;color:#8b0000!important;font-weight:900!important}
-.issue-marker{display:inline-block;margin-right:4px;font-size:14px;vertical-align:middle}
+.draftcell{background:#fff4bf!important}.draftbadge{background:#fff0ad;color:#7a5100}tr.need td{}
+tr.issue-row td{background-image:linear-gradient(rgba(255,248,225,.28),rgba(255,248,225,.28))}
+tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
+.issuecell{background:#fff3cd!important;color:#7a5200!important;font-weight:900!important}
+.issue-marker{display:inline-block;margin-right:4px;font-size:14px;vertical-align:middle;color:#b26a00}
 .badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
 .b-red{background:#ffd3d3;color:#8b0000}.b-orange{background:#ffe6bd;color:#8b5100}.b-green{background:#ddf3df;color:#1f6b27}.b-blue{background:#e1efff;color:#174f86}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tab{border:1px solid var(--line);background:white;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
@@ -156,6 +156,7 @@ tr.issue-row td:first-child{border-left:5px solid #e53935!important}
       <button id="calcReplyBtn" class="btn primary">先計算目前資料 / Tính trước dữ liệu hiện tại</button>
       <button id="saveReplyBtn" class="btn green">✓ 儲存目前修改 / Lưu các thay đổi</button>
       <button id="downloadBtn" class="btn outline">⬇ 下載目前 Excel / Tải Excel hiện tại</button>
+      <button id="downloadMailBtn" class="btn outline">✉ 下載為可直接回覆MAIL的格式 / Tải định dạng có thể trả lời MAIL trực tiếp</button>
       <label class="btn outline" for="refillFile" style="cursor:pointer">⬆ 回填修改後 Excel / Nhập lại Excel đã sửa</label>
       <input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
     </div>
@@ -170,7 +171,8 @@ tr.issue-row td:first-child{border-left:5px solid #e53935!important}
 
   <div class="compact-note">
     操作 / Thao tác：先選日期或批量計算，畫面不會跳動；全部確認後再按「儲存目前修改」。<br>
-    規則 / Quy tắc：PH3不能早於前工段；99不能早於PH3；PH3工段 0～7天皆可，超過7天（週日不算）才紅色警示；99晚於客需可保存但紅色警示。
+    規則 / Quy tắc：前工段＝93～96 已回覆日期中的最晚日期（不依工段順序）；PH3不能早於這個最後日期；99不能早於PH3；PH3工段 0～7天皆可，超過7天（週日不算）才警示；99晚於客需可保存但會警示。<br>
+    Công đoạn trước = ngày trả lời muộn nhất trong 93～96 (không theo thứ tự công đoạn); PH3 không được sớm hơn ngày cuối cùng này.
   </div>
   <div id="replyMsg" class="msg"></div>
 
@@ -183,6 +185,6 @@ tr.issue-row td:first-child{border-left:5px solid #e53935!important}
 
 </div>
 </div>
-<script src="./app.js?v=20260818-7"></script>
+<script src="./app.js?v=20260818-9"></script>
 </body>
 </html>

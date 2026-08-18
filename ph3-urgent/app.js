@@ -24,16 +24,17 @@ function prevPh3(o){return o.prev_ph3_date||((o.ever_replied&&o.ph3_date)?o.ph3_
 function prev99(o){return o.prev_99_date||((o.ever_replied&&o.warehouse99_date)?o.warehouse99_date:"")}
 function latestPrev(o){return prevPh3(o)?`${fmt(prevPh3(o))} / 99 ${fmt(prev99(o))}`:"—"}
 function latestUpstream(o){
+  // 前工段不依 93→94→95→96 的固定順序判斷；PH3 接手前，取所有已回覆前工段日期中的「最晚日期」。
   const candidates=[
-    ["aglet_date","束頭/96",o.aglet_date],
-    ["sizing_date","上漿/95",o.sizing_date],
-    ["dyeing_date","染色/94",o.dyeing_date],
-    ["weaving_date","織造/93",o.weaving_date]
-  ];
-  for(const [field,label,value] of candidates){
-    if(value)return {field,label,date:String(value).slice(0,10)};
-  }
-  return {field:"",label:"—",date:""};
+    ["weaving_date","織造/93",o.weaving_date,93],
+    ["dyeing_date","染色/94",o.dyeing_date,94],
+    ["sizing_date","上漿/95",o.sizing_date,95],
+    ["aglet_date","束頭/96",o.aglet_date,96]
+  ].filter(([, ,value])=>!!value)
+   .map(([field,label,value,stage])=>({field,label,date:String(value).slice(0,10),stage}));
+  if(!candidates.length)return {field:"",label:"—",date:""};
+  candidates.sort((a,b)=>b.date.localeCompare(a.date)||b.stage-a.stage);
+  return candidates[0];
 }
 function parseYMD(s){
   if(!s)return null;
@@ -533,9 +534,9 @@ async function downloadCurrent(){
       const R="R",S="S",T="T",U="U",Q="Q";
       const ph=L(colPh3), w=L(col99), days=L(colDays);
 
-      // Dynamic previous-stage display using original R:U fields.
+      // 前工段＝R:U (93~96) 已回覆日期中的最晚日期，不依工段欄位順序。
       r.getCell(colPrevStage).value={formula:
-        `IF(U${rn}<>"","束頭/96 "&TEXT(U${rn},"yyyy/mm/dd"),IF(T${rn}<>"","上漿/95 "&TEXT(T${rn},"yyyy/mm/dd"),IF(S${rn}<>"","染色/94 "&TEXT(S${rn},"yyyy/mm/dd"),IF(R${rn}<>"","織造/93 "&TEXT(R${rn},"yyyy/mm/dd"),"—"))))`
+        `IF(MAX(R${rn}:U${rn})=0,"—",CHOOSE(MATCH(MAX(R${rn}:U${rn}),R${rn}:U${rn},0),"織造/93 ","染色/94 ","上漿/95 ","束頭/96 ")&TEXT(MAX(R${rn}:U${rn}),"yyyy/mm/dd"))`
       };
       r.getCell(colDays).value={formula:
         `IF(${ph}${rn}="","",IF(MAX(R${rn}:U${rn})=0,"",IF(${ph}${rn}<MAX(R${rn}:U${rn}),-1,NETWORKDAYS.INTL(MAX(R${rn}:U${rn})+1,${ph}${rn},11))))`
@@ -620,6 +621,60 @@ async function downloadCurrent(){
   }
 }
 
+async function downloadMailReady(){
+  try{
+    const data=exportData();
+    if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
+
+    const wb=new ExcelJS.Workbook();
+    const ws=wb.addWorksheet("PH3回覆");
+    ws.addRow(HEADERS);
+
+    function dateObj(s){
+      if(!s)return "";
+      const p=parseYMD(String(s).slice(0,10));
+      return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s;
+    }
+
+    data.forEach(o=>{
+      const arr=dbToArray(o);
+      ws.addRow(arr.map((v,i)=>[5,16,17,18,19,20,21,22].includes(i)&&v?dateObj(v):(v??"")));
+    });
+
+    // 直接回覆 Mail 的版本只保留原始 A~W 23 欄：不包含網頁額外欄 V/X/Z/AA/AB。
+    ws.views=[{state:"frozen",xSplit:5,ySplit:1}];
+    ws.autoFilter={from:{row:1,column:1},to:{row:ws.rowCount,column:HEADERS.length}};
+    ws.getRow(1).height=38;
+    ws.getRow(1).eachCell((c,i)=>{
+      c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
+      c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
+      c.fill={type:"pattern",pattern:"solid",fgColor:{argb:i>=18?"FFBF9000":"FF548235"}};
+      c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
+    });
+
+    const widths=[5,7,9,12,6,12,11,8,7,11,7,9,9,24,18,20,12,12,12,12,12,13,13];
+    widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+    for(let r=2;r<=ws.rowCount;r++){
+      ws.getRow(r).height=21;
+      for(let c=1;c<=HEADERS.length;c++){
+        const cell=ws.getCell(r,c);
+        cell.alignment={vertical:"middle",horizontal:"left",wrapText:false};
+        cell.border={bottom:{style:"hair",color:{argb:"FFD9E2E8"}}};
+      }
+      [6,17,18,19,20,21,22,23].forEach(c=>ws.getCell(r,c).numFmt="yyyy/m/d");
+    }
+
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="PH3回覆_MAIL可直接寄出.xlsx";document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    $("replyMsg").innerHTML=`<span class="ok">已下載可直接回覆 MAIL 的完整 ${data.length} 筆 / Đã tải ${data.length} dòng ở định dạng có thể gửi MAIL trực tiếp</span>`;
+  }catch(err){
+    console.error(err);$("replyMsg").innerHTML=`<span class="bad">下載失敗 / Tải thất bại：${esc(err.message||err)}</span>`;
+  }
+}
+
 async function refillExcel(){
   const file=$("refillFile").files[0];if(!file)return;
   try{
@@ -666,7 +721,7 @@ async function refillExcel(){
   }
 }
 
-$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{dirtyKeys.clear();issueKeys.clear();await loadAll()};$("importBtn").onclick=importFiles;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;
+$("loginBtn").onclick=login;$("logoutBtn").onclick=logout;$("refreshBtn").onclick=async()=>{dirtyKeys.clear();issueKeys.clear();await loadAll()};$("importBtn").onclick=importFiles;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
 ["fCustomer","fOrder","fItem"].forEach(id=>$(id).addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
