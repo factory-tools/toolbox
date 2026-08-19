@@ -1,3 +1,4 @@
+// PH3 V16：以 V15 為母版微調，保留原有登入/匯入/批次/儲存/MAIL Excel 核心流程
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
@@ -10,6 +11,7 @@ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_URL.includ
 }
 const sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
 let rows=[], histories=[], batches=[], tab="current", currentProfile=null;
+let lastReplyMap=new Map();
 const dirtyKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
@@ -56,6 +58,64 @@ function latestProgressRef(a,b){
   return String(b??"").trim()?b:a;
 }
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+
+function lastReplyUser(o){
+  const h=lastReplyMap.get(o.unique_key);
+  return h?`${h.employee_no||""} ${h.employee_name||""}`.trim():"";
+}
+function statusText(o){
+  const parts=[];
+  if(o.needs_reply)parts.push("待回覆 / Cần trả lời"); else if(o.ever_replied)parts.push("已回覆 / Đã trả lời");
+  if(is99Late(o))parts.push("99晚於客需 / 99 trễ hơn KH");
+  if(ph3Days(o)>7)parts.push("PH3超過7天 / PH3 >7 ngày");
+  if(ph3BeforeUpstream(o))parts.push("PH3早於前工段 / PH3 sớm hơn công đoạn trước");
+  if(warehouseBeforePh3(o))parts.push("99早於PH3 / 99 sớm hơn PH3");
+  return parts.join("；");
+}
+function searchableText(o){
+  const arr=dbToArray(o).map(v=>fmt(v));
+  const p=latestUpstream(o);
+  return [...arr,p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
+}
+function autoFitWorksheet(ws,{min=7,max=42,padding=2}={}){
+  ws.columns.forEach(col=>{
+    let longest=0;
+    col.eachCell({includeEmpty:true},cell=>{
+      let text="";
+      if(cell.value instanceof Date) text="yyyy/mm/dd";
+      else if(cell.value && typeof cell.value==="object" && cell.value.formula) text=String(cell.value.result??cell.value.formula??"");
+      else text=cell.text??String(cell.value??"");
+      longest=Math.max(longest,...String(text).split(/\r?\n/).map(x=>x.length));
+    });
+    col.width=Math.min(max,Math.max(min,longest+padding));
+  });
+}
+function importColumnLetter(n){let s="";while(n>0){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26)}return s}
+function validateImportRows(fileName,a){
+  const problems=[];
+  if(!a.length){problems.push(`${fileName}：Excel 是空白 / Excel trống`);return problems}
+  const hdr=a[0]||[];
+  for(let i=0;i<HEADERS.length;i++){
+    const got=String(hdr[i]??"").trim(), exp=String(HEADERS[i]).trim();
+    if(got!==exp)problems.push(`${fileName}｜第 ${importColumnLetter(i+1)} 欄：標題「${got||"空白"}」應為「${exp}」 / Cột ${importColumnLetter(i+1)} sai tiêu đề`);
+  }
+  a.slice(1).forEach((r,ri)=>{
+    if(!r.some(v=>v!==""&&v!=null))return;
+    [2,3,4].forEach(i=>{if(String(r[i]??"").trim()==="")problems.push(`${fileName}｜Excel 第 ${ri+2} 列 ${importColumnLetter(i+1)} 欄「${HEADERS[i]}」不可空白，請補資料 / Dòng ${ri+2} cột ${importColumnLetter(i+1)} không được trống`)});
+    [5,16,17,18,19,20,21,22].forEach(i=>{
+      const v=r[i]; if(v===""||v==null)return;
+      if(!excelDate(v))problems.push(`${fileName}｜Excel 第 ${ri+2} 列 ${importColumnLetter(i+1)} 欄「${HEADERS[i]}」日期無法辨識：${v}，請改成 yyyy/mm/dd / Ngày không hợp lệ`);
+    });
+  });
+  return problems;
+}
+function showImportProblems(problems){
+  const box=$("importDetail"); if(!box)return;
+  if(!problems.length){box.innerHTML="";return}
+  const shown=problems.slice(0,80);
+  box.innerHTML=`<div class="import-help"><b>⚠ 發現 ${problems.length} 個匯入問題 / Phát hiện ${problems.length} lỗi</b><br>${shown.map((x,i)=>`${i+1}. ${esc(x)}`).join("<br>")}${problems.length>80?"<br>…請先修正前面的錯誤後再重新匯入 / Hãy sửa các lỗi trên trước":""}</div>`;
+}
+
 function changedSet(o){return new Set(o.changed_fields||[])}
 function prevPh3(o){return o.prev_ph3_date||((o.ever_replied&&o.ph3_date)?o.ph3_date:"")}
 function prev99(o){return o.prev_99_date||((o.ever_replied&&o.warehouse99_date)?o.warehouse99_date:"")}
@@ -178,7 +238,8 @@ function updateBatchInfo(){
 }
 
 function filtered(){
-  const c=$("fCustomer").value.trim().toLowerCase(),
+  const allq=($("fAllSearch")?.value||"").trim().toLowerCase(),
+        c=$("fCustomer").value.trim().toLowerCase(),
         d=$("fOrder").value.trim().toLowerCase(),
         g=$("fItem").value.trim().toLowerCase(),
         st=$("fStatus").value,
@@ -193,6 +254,7 @@ function filtered(){
       const imported=String(o.last_imported_at||o.updated_at||"").slice(0,10);
       if(imported!==today || !o.needs_reply)return false;
     }
+    if(allq&&!searchableText(o).includes(allq))return false;
     if(c&&!String(o.customer??"").toLowerCase().includes(c))return false;
     if(d&&!String(o.order_no??"").toLowerCase().includes(d))return false;
     if(g&&!String(o.item_no??"").toLowerCase().includes(g))return false;
@@ -218,6 +280,14 @@ function filtered(){
 async function loadAll(){
   const {data,error}=await sb.from("ph3_orders").select("*").order("updated_at",{ascending:false}).limit(50000);
   if(error)throw error; rows=data||[];
+  // 用既有異動歷史推算每筆「最後回覆人」，不新增資料表、不改原本儲存流程。
+  const {data:replyHistory,error:replyHistoryErr}=await sb.from("ph3_order_history")
+    .select("unique_key,field_name,employee_no,employee_name,changed_at")
+    .in("field_name",["ph3_date","warehouse99_date"])
+    .order("changed_at",{ascending:false}).limit(50000);
+  if(replyHistoryErr)console.warn(replyHistoryErr);
+  lastReplyMap=new Map();
+  (replyHistory||[]).forEach(h=>{if(!lastReplyMap.has(h.unique_key))lastReplyMap.set(h.unique_key,h)});
   $("sAll").textContent=rows.length;
   $("sNeed").textContent=rows.filter(x=>x.needs_reply).length;
   $("sHad").textContent=rows.filter(x=>x.ever_replied).length;
@@ -240,7 +310,8 @@ const WEB_COLUMNS=[
   {kind:"data",idx:22,label:HEADERS[22],width:106},
   {kind:"prev99",label:"99 lần trước / 99上次回覆日",width:96},
   {kind:"days",label:"PH3工段天數 / Số ngày PH3",width:80},
-  {kind:"status",label:"狀態 / Trạng thái",width:180}
+  {kind:"status",label:"狀態 / Trạng thái",width:180},
+  {kind:"lastReply",label:"最後回覆人 / Người trả lời cuối",width:120}
 ]
 
 function initFreezeSetting(){
@@ -293,12 +364,13 @@ function render(){
     let cls="fixed";
     if(c.kind==="data" && c.idx>=17)cls="progress";
     if(c.kind==="data" && KEYCOLS.includes(c.idx))cls="key";
-    if(["prevStage","prevPh3","prev99","days","status"].includes(c.kind))cls="progress";
+    if(["prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
     if(c.kind==="prevStage")cls+=" h-prevstage";
     if(c.kind==="prevPh3")cls+=" h-prevph3";
     if(c.kind==="prev99")cls+=" h-prev99";
     if(c.kind==="days")cls+=" h-days";
     if(c.kind==="status")cls+=" h-status";
+    if(c.kind==="lastReply")cls+=" h-lastreply";
     h+=`<th data-display-col="${di}" class="${cls}" title="${esc(c.label)}">${esc(c.label)}</th>`;
   });
   h+="</tr></thead><tbody>";
@@ -345,6 +417,8 @@ function render(){
         if(dirtyKeys.has(o.unique_key))status+=' <span class="badge draftbadge">尚未儲存 / Chưa lưu</span>';
         if(issueKeys.has(o.unique_key))status=`<span class="badge b-red">⚠ ${esc(issueKeys.get(o.unique_key))}</span> `+status;
         content=status;
+      }else if(c.kind==="lastReply"){
+        cls="progress c-lastreply";content=esc(lastReplyUser(o)||"—");
       }
       h+=`<td data-display-col="${di}" class="${cls}" title="${esc(String(content).replace(/<[^>]*>/g,""))}">${content}</td>`;
     });
@@ -418,9 +492,10 @@ async function importFiles(){
       const wb=XLSX.read(buf,{type:"array",cellDates:false});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
-      if(a.length<2||HEADERS.some((x,i)=>String(a[0][i]??"").trim()!==String(x).trim())){
-        throw new Error(`${f.name} 格式不符 / Sai định dạng`);
-      }
+      const problems=validateImportRows(f.name,a);
+      if(problems.length){showImportProblems(problems);throw new Error(`請依下方提示修正 ${f.name} / Hãy sửa lỗi theo hướng dẫn bên dưới`);}
+      showImportProblems([]);
+      if(a.length<2)throw new Error(`${f.name} 沒有資料 / Không có dữ liệu`);
       names.push(f.name);
       a.slice(1).filter(r=>r.some(v=>v!==""&&v!=null)).forEach(r=>{
         const row=Array.from({length:23},(_,i)=>r[i]??"");
@@ -508,6 +583,11 @@ async function saveDirectCell(e){
 }
 
 async function calcBulkReply(){
+  const rawDays=Number($("addDays").value);
+  if(!Number.isInteger(rawDays)||rawDays<0||rawDays>60){
+    $("replyMsg").innerHTML='<span class="bad">PH3 加天數請輸入 0～60 的整數 / Số ngày PH3 phải là số nguyên từ 0～60</span>';return;
+  }
+
   const data=filtered(), add=Number($("addDays").value);
   if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前篩選沒有資料 / Không có dữ liệu đang lọc</span>';return}
   const missing=data.filter(o=>!latestUpstream(o).date);
@@ -594,11 +674,11 @@ function excelHeaderColorByOriginalIndex(i){
 }
 function excelDerivedColor(kind){
   // 所有系統提示/參考欄統一藍色，與 93~96 的黃色工段欄清楚區隔。
-  return ["prevStage","prevPh3","prev99","days","status"].includes(kind)?"FF4472C4":null;
+  return ["prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FF4472C4":null;
 }
 function excelDerivedBodyColor(kind){
   // 提示/參考資料格統一淡藍色。
-  return ["prevStage","prevPh3","prev99","days","status"].includes(kind)?"FFEAF2FF":null;
+  return ["prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
 }
 
 async function downloadBlankTemplate(){
@@ -667,6 +747,7 @@ async function downloadCurrent(){
         else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
         else if(c.kind==="days")values.push("");
         else if(c.kind==="status")values.push("");
+        else if(c.kind==="lastReply")values.push(lastReplyUser(o));
       });
       const r=ws.addRow(values), rn=r.number;
 
@@ -823,9 +904,7 @@ async function downloadMailReady(){
       c.fill={type:"pattern",pattern:"solid",fgColor:{argb:excelHeaderColorByOriginalIndex(i)}};
       c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
     });
-
-    const widths=[5,7,9,12,6,12,11,8,7,11,7,9,9,24,18,20,12,12,12,12,12,13,13];
-    widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+    autoFitWorksheet(ws,{min:7,max:42,padding:2});
     for(let r=2;r<=ws.rowCount;r++){
       ws.getRow(r).height=21;
       for(let c=1;c<=HEADERS.length;c++){
@@ -917,7 +996,7 @@ $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.ke
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
   dirtyKeys.clear();issueKeys.clear();await loadAll()
 };$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
-["fCustomer","fOrder","fItem"].forEach(id=>$(id).addEventListener("input",render));
+["fAllSearch","fCustomer","fOrder","fItem"].forEach(id=>$(id)?.addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
 $("refillFile").addEventListener("change",refillExcel);
