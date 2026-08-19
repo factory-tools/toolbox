@@ -200,3 +200,55 @@ if($('actualMethod')){
   ['actualOrderQty','actualWidth','actualPcLength','actualStrips','actualTableLength'].forEach(id=>$(id).addEventListener('input',calcActualTable));
   calcActualTable();
 }
+
+// 機印產能試算 / Tính sản lượng in máy
+let machineMode='PC';
+function machineTimeText(hours, hoursPerDay){
+  if(!(hours>=0) || !Number.isFinite(hours)) return '—';
+  const totalMin=Math.round(hours*60);
+  const h=Math.floor(totalMin/60), m=totalMin%60;
+  const simple=`約 ${h} 小時 ${m} 分鐘 / Khoảng ${h} giờ ${m} phút`;
+  if(!(hoursPerDay>0) || hours<=hoursPerDay) return simple;
+  const days=Math.floor(hours/hoursPerDay);
+  const remainHours=hours-days*hoursPerDay;
+  const remainMin=Math.round(remainHours*60);
+  const rh=Math.floor(remainMin/60), rm=remainMin%60;
+  return `約 ${days} 工作日 ${rh} 小時 ${rm} 分鐘 / Khoảng ${days} ngày làm việc ${rh} giờ ${rm} phút`;
+}
+function setMachineMode(mode){
+  machineMode=mode;
+  if(!$('machineModePc'))return;
+  $('machineModePc').classList.toggle('active',mode==='PC');
+  $('machineModeY').classList.toggle('active',mode==='Y');
+  $('machinePcPatternField').classList.toggle('hidden',mode!=='PC');
+  $('machineYLengthField').classList.toggle('hidden',mode!=='Y');
+  $('machinePcGuide').classList.toggle('hidden',mode!=='PC');
+  if($('machineOrderLabelZh')) $('machineOrderLabelZh').textContent=`訂單數量（${mode}）`;
+  if($('machineOrderLabelVi')) $('machineOrderLabelVi').textContent=`Số lượng đơn hàng（${mode}）`;
+  calcMachinePrint();
+}
+function calcMachinePrint(){
+  if(!$('machinePerHour'))return;
+  const order=Number($('machineOrderQty').value), strips=Number($('machineStrips').value), fph=Number($('machineFramesPerHour').value), hpd=Number($('machineHoursPerDay').value);
+  let perFrame=0, perHour=0, unit=machineMode;
+  if(machineMode==='PC'){
+    const patterns=Number($('machinePatternsPerRow').value);
+    if(patterns>0&&strips>0){perFrame=patterns*strips;perHour=perFrame*(fph>0?fph:0);}
+    $('machineFormulaNote').textContent=patterns>0&&strips>0&&fph>0?`${fmt(patterns,0)} 圖案/hình × ${fmt(strips,0)} 條/dây × ${fmt(fph,0)} 框/giờ = ${fmt(perHour,0)} PC/小時`:'每行圖案數 × 同時印條數 × 框/小時 / Số hình mỗi hàng × số dây × khung/giờ';
+  }else{
+    const mm=Number($('machineFrameLength').value);
+    if(mm>0&&strips>0){perFrame=mm*strips/914.4;perHour=perFrame*(fph>0?fph:0);}
+    $('machineFormulaNote').textContent=mm>0&&strips>0&&fph>0?`${fmt(mm,0)} MM × ${fmt(strips,0)} 條/dây × ${fmt(fph,0)} 框/giờ ÷ 914.4 = ${fmt(perHour,2)} Y/小時`:'每框實際印刷長度 × 同時印條數 × 框/小時 ÷ 914.4 / Chiều dài × số dây × khung/giờ ÷ 914.4';
+  }
+  $('machinePerFrame').textContent=perFrame>0?fmt(perFrame,machineMode==='PC'?0:2)+' '+unit:'—';
+  $('machinePerHour').textContent=perHour>0?fmt(perHour,machineMode==='PC'?0:2)+' '+unit+'/H':'—';
+  const perDay=perHour*(hpd>0?hpd:0);
+  $('machinePerDay').textContent=perDay>0?fmt(perDay,machineMode==='PC'?0:2)+' '+unit:'—';
+  $('machineOrderTime').textContent=(order>0&&perHour>0)?machineTimeText(order/perHour,hpd):'—';
+}
+if($('machineModePc')){
+  $('machineModePc').addEventListener('click',()=>setMachineMode('PC'));
+  $('machineModeY').addEventListener('click',()=>setMachineMode('Y'));
+  ['machineOrderQty','machinePatternsPerRow','machineFrameLength','machineStrips','machineFramesPerHour','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  setMachineMode('PC');
+}
