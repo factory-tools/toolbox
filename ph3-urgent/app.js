@@ -302,16 +302,16 @@ async function loadHistory(){
 }
 const WEB_COLUMNS=[
   ...HEADERS.slice(0,21).map((h,i)=>({kind:"data",idx:i,label:h,width:[
-    32,34,50,70,34,70,68,45,40,62,36,52,50,110,80,86,72,72,72,72,72
-  ][i]||64})),
-  {kind:"prevStage",label:"前工段 / Công đoạn trước",width:90},
-  {kind:"data",idx:21,label:HEADERS[21],width:94},
-  {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:78},
-  {kind:"data",idx:22,label:HEADERS[22],width:94},
-  {kind:"prev99",label:"99 lần trước / 99上次回覆日",width:78},
-  {kind:"days",label:"PH3工段天數 / Số ngày PH3",width:68},
-  {kind:"status",label:"狀態 / Trạng thái",width:145},
-  {kind:"lastReply",label:"最後回覆人 / Người trả lời cuối",width:100}
+    38,42,58,76,38,78,74,50,46,74,42,58,54,158,108,116,82,84,84,84,84
+  ][i]||72})),
+  {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
+  {kind:"data",idx:21,label:HEADERS[21],width:106},
+  {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:96},
+  {kind:"data",idx:22,label:HEADERS[22],width:106},
+  {kind:"prev99",label:"99 lần trước / 99上次回覆日",width:96},
+  {kind:"days",label:"PH3工段天數 / Số ngày PH3",width:80},
+  {kind:"status",label:"狀態 / Trạng thái",width:180},
+  {kind:"lastReply",label:"最後回覆人 / Người trả lời cuối",width:120}
 ]
 
 function initFreezeSetting(){
