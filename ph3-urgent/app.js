@@ -97,7 +97,8 @@ function validateImportRows(fileName,a){
   const hdr=a[0]||[];
   for(let i=0;i<HEADERS.length;i++){
     const got=String(hdr[i]??"").trim(), exp=String(HEADERS[i]).trim();
-    if(got!==exp)problems.push(`${fileName}｜第 ${importColumnLetter(i+1)} 欄：標題「${got||"空白"}」應為「${exp}」 / Cột ${importColumnLetter(i+1)} sai tiêu đề`);
+    const gotClean=got.replace(/\s*\*\s*$/g,"").trim();
+    if(gotClean!==exp)problems.push(`${fileName}｜第 ${importColumnLetter(i+1)} 欄：標題「${got||"空白"}」應為「${exp}」 / Cột ${importColumnLetter(i+1)} sai tiêu đề`);
   }
   a.slice(1).forEach((r,ri)=>{
     if(!r.some(v=>v!==""&&v!=null))return;
@@ -696,6 +697,18 @@ async function downloadBlankTemplate(){
       c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
     });
 
+    // 必填欄位用「紅色 * + 淺黃色表頭」提醒，但仍保留原欄名供系統辨識。
+    const requiredCols=[3,4,5];
+    requiredCols.forEach(c=>{
+      const cell=ws.getCell(1,c);
+      const base=HEADERS[c-1];
+      cell.value={richText:[
+        {text:base,font:{bold:true,color:{argb:"FFFFFFFF"},size:10}},
+        {text:" *",font:{bold:true,color:{argb:"FFFF3333"},size:11}}
+      ]};
+      cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFF4B183"}};
+    });
+
     // 欄寬依內容預先設定，避免日期顯示 ######、料號/訂單號被過度折行。
     const widths=[7,10,12,18,8,13,14,12,9,15,8,12,22,30,22,24,14,14,14,14,14,14,14];
     widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
@@ -705,7 +718,8 @@ async function downloadBlankTemplate(){
     const textCols=[1,2,3,4,5,7,8,10,11,13,14,15,16];
     const numberCols=[9,12];
     const dateCols=[6,17,18,19,20,21,22,23];
-    for(let r=2;r<=1001;r++){
+    const last=1001;
+    for(let r=2;r<=last;r++){
       const row=ws.getRow(r); row.height=21;
       textCols.forEach(c=>{ws.getCell(r,c).numFmt="@"});
       numberCols.forEach(c=>{ws.getCell(r,c).numFmt="#,##0.###"});
@@ -713,9 +727,49 @@ async function downloadBlankTemplate(){
       for(let c=1;c<=HEADERS.length;c++)ws.getCell(r,c).border={bottom:{style:"hair",color:{argb:"FFD9E2E8"}}};
     }
 
-    // 必填欄位：C 客戶、D 訂單號碼、E NET。空白時以淡紅色提醒。
-    const last=1001;
-    [3,4,5].forEach(c=>{
+    // A：表頭只保留「需要時才看」的中越文 Note，不再出現長篇常駐說明。
+    ws.getCell(1,3).note="必填 / Bắt buộc\n請保留前導 0，例如 020891。\nGiữ số 0 ở đầu, ví dụ 020891.";
+    ws.getCell(1,4).note="必填 / Bắt buộc\n請以文字格式輸入訂單號碼。\nNhập mã đơn dưới dạng văn bản.";
+    ws.getCell(1,5).note="必填 / Bắt buộc\nNET 是辨識同筆資料的關鍵欄位。\nNET là trường khóa để xác định đúng dòng.";
+    ws.getCell(1,13).note="TD 進度參考可持續更新；重複匯入時保留日期時間最新的一筆。\nTD có thể tiếp tục cập nhật; khi nhập trùng, hệ thống giữ bản mới nhất theo ngày giờ.";
+    dateCols.forEach(c=>{
+      ws.getCell(1,c).note="日期格式 / Định dạng ngày\nyyyy/mm/dd";
+    });
+
+    // C：點到儲存格才出現短提示，不占畫面。
+    ws.getRange = ws.getRange || null; // 相容註記；實際以每欄設定 dataValidation。
+    const setPrompt=(col,rule)=>{
+      for(let r=2;r<=last;r++)ws.getCell(r,col).dataValidation=rule;
+    };
+    setPrompt(3,{
+      type:"textLength",operator:"greaterThan",allowBlank:false,formulae:[0],
+      showInputMessage:true,promptTitle:"KH 客戶 * / Bắt buộc",prompt:"請輸入客戶代碼並保留前導 0。\nNhập mã KH và giữ số 0 ở đầu.",
+      showErrorMessage:true,errorStyle:"stop",errorTitle:"必填 / Bắt buộc",error:"KH 客戶不可空白 / KH không được để trống"
+    });
+    setPrompt(4,{
+      type:"textLength",operator:"greaterThan",allowBlank:false,formulae:[0],
+      showInputMessage:true,promptTitle:"訂單號碼 * / Mã đơn",prompt:"請以文字格式輸入。\nNhập dưới dạng văn bản.",
+      showErrorMessage:true,errorStyle:"stop",errorTitle:"必填 / Bắt buộc",error:"訂單號碼不可空白 / Mã đơn không được để trống"
+    });
+    setPrompt(5,{
+      type:"textLength",operator:"greaterThan",allowBlank:false,formulae:[0],
+      showInputMessage:true,promptTitle:"NET * / Bắt buộc",prompt:"NET 為同筆資料辨識鍵。\nNET là khóa nhận diện dòng dữ liệu.",
+      showErrorMessage:true,errorStyle:"stop",errorTitle:"必填 / Bắt buộc",error:"NET 不可空白 / NET không được để trống"
+    });
+    setPrompt(13,{
+      type:"textLength",operator:"greaterThanOrEqual",allowBlank:true,formulae:[0],
+      showInputMessage:true,promptTitle:"TD 進度參考 / Tham khảo TD",prompt:"可持續更新；重複匯入保留最新日期時間。\nCó thể cập nhật; nhập trùng sẽ giữ bản mới nhất.",
+      showErrorMessage:false
+    });
+    dateCols.forEach(c=>setPrompt(c,{
+      type:"date",operator:"between",allowBlank:true,
+      formulae:[new Date(2000,0,1),new Date(2100,11,31)],
+      showInputMessage:true,promptTitle:"日期 / Ngày",prompt:"格式 / Định dạng：yyyy/mm/dd",
+      showErrorMessage:true,errorStyle:"stop",errorTitle:"日期格式錯誤 / Sai định dạng ngày",error:"請輸入有效日期 yyyy/mm/dd / Nhập ngày hợp lệ yyyy/mm/dd"
+    }));
+
+    // 必填欄位：有資料但 C/D/E 空白時，以淡紅色提醒。
+    requiredCols.forEach(c=>{
       const letter=ws.getColumn(c).letter;
       ws.addConditionalFormatting({ref:`${letter}2:${letter}${last}`,rules:[{
         type:"expression",
@@ -724,7 +778,7 @@ async function downloadBlankTemplate(){
       }]});
     });
 
-    // 日期欄如果貼成無法辨識的文字，直接用紅底警示。
+    // 日期欄如果貼成無法辨識的文字（貼上可能略過資料驗證），仍用紅底警示。
     dateCols.forEach(c=>{
       const letter=ws.getColumn(c).letter;
       ws.addConditionalFormatting({ref:`${letter}2:${letter}${last}`,rules:[{
@@ -734,24 +788,14 @@ async function downloadBlankTemplate(){
       }]});
     });
 
-    // 表頭註解全部中越文，讓使用者知道欄位格式與必填規則。
-    ws.getCell(1,3).note="★ 必填。請使用文字格式，避免 020891 變成 20891。 / Bắt buộc. Dùng định dạng văn bản để giữ số 0 ở đầu (ví dụ 020891).";
-    ws.getCell(1,4).note="★ 必填。訂單號碼請使用文字格式。 / Bắt buộc. Mã đơn nên dùng định dạng văn bản.";
-    ws.getCell(1,5).note="★ 必填。NET 為辨識同筆資料的關鍵欄位。 / Bắt buộc. NET là trường khóa để xác định đúng dòng dữ liệu.";
-    ws.getCell(1,13).note="TD進度參考可持續更新；重複匯入時，系統會保留日期時間最新的一筆。 / TD có thể tiếp tục cập nhật; khi nhập trùng, hệ thống giữ bản có ngày giờ mới nhất.";
-    dateCols.forEach(c=>{
-      const old=ws.getCell(1,c).note||"";
-      ws.getCell(1,c).note=(old?old+"\n":"")+"日期請使用 yyyy/mm/dd；若貼入格式錯誤，儲存格會以紅色警示。 / Ngày dùng định dạng yyyy/mm/dd; nếu dán sai định dạng, ô sẽ cảnh báo màu đỏ.";
-    });
-
     const buf=await wb.xlsx.writeBuffer();
     const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
     const url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download="PH3匯入空白範本_A-W.xlsx";document.body.appendChild(a);a.click();a.remove();
+    a.href=url;a.download="PH3匯入空白範本_A+C提示版.xlsx";document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-    $("importMsg").innerHTML='<span class="ok">✓ 已下載空白匯入範本；必填欄與日期格式已預先設定 / Đã tải mẫu; đã cài sẵn trường bắt buộc và định dạng ngày</span>';
+    $("importMsg").innerHTML='<span class="ok">已下載空白範本：平常畫面乾淨，滑過表頭看 Note；點儲存格顯示輸入提示 / Đã tải mẫu: xem Note ở tiêu đề, bấm ô để xem hướng dẫn</span>';
   }catch(err){
-    console.error(err);$("importMsg").innerHTML=`<span class="bad">範本下載失敗 / Tải mẫu thất bại：${esc(err.message||err)}</span>`;
+    console.error(err);$("importMsg").innerHTML=`<span class="bad">下載空白範本失敗 / Tải mẫu thất bại：${esc(err.message||err)}</span>`;
   }
 }
 
