@@ -41,7 +41,19 @@ td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}td.warncel
   <p>客戶 + 訂單號碼 + 筆數 = 唯一值 / KH + Mã đơn + NET = mã duy nhất｜歷史保留 / Lưu lịch sử｜異動紅底 / Đổi dữ liệu tô đỏ</p>
 </section>
 <section id="loginPanel" class="panel">
-  <div class="row"><div class="grow"><label>Email<input id="email" type="email" placeholder="name@company.com"></label></div><div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password"></label></div><button id="loginBtn" class="btn primary">登入 / Đăng nhập</button></div>
+  <div class="row">
+    <div class="grow">
+      <label>工號 / Mã nhân viên
+        <input id="empCode" type="text" placeholder="例如 / Ví dụ：VN1151" autocomplete="username">
+      </label>
+      <input id="email" type="hidden">
+      <input id="employeeNo" type="hidden">
+      <input id="empNo" type="hidden">
+      <div class="muted">輸入工號即可，系統自動轉成 @paiho.vn 帳號 / Chỉ cần nhập mã NV, hệ thống tự đổi sang tài khoản @paiho.vn</div>
+    </div>
+    <div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password" autocomplete="current-password"></label></div>
+    <button id="loginBtn" class="btn primary">登入 / Đăng nhập</button>
+  </div>
   <div id="loginMsg" class="msg"></div>
 </section>
 <div id="appPanel" style="display:none">
@@ -75,6 +87,46 @@ td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}td.warncel
   <div class="tabs"><button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button><button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button></div>
   <div class="tablewrap"><table id="grid"></table></div>
 </section></div></div>
+<script>
+(function(){
+  function normalizeEmpCode(v){
+    return String(v||'').trim();
+  }
+  function toEmail(v){
+    const code=normalizeEmpCode(v);
+    if(!code) return '';
+    if(code.includes('@')) return code.toLowerCase();
+    return code.toLowerCase() + '@paiho.vn';
+  }
+  function syncLoginFields(){
+    const codeEl=document.getElementById('empCode');
+    const emailEl=document.getElementById('email');
+    const employeeNoEl=document.getElementById('employeeNo');
+    const empNoEl=document.getElementById('empNo');
+    if(!codeEl) return;
+    const code=normalizeEmpCode(codeEl.value);
+    if(emailEl) emailEl.value=toEmail(code);
+    if(employeeNoEl) employeeNoEl.value=code;
+    if(empNoEl) empNoEl.value=code;
+  }
+  document.addEventListener('input', function(e){
+    if(e.target && e.target.id==='empCode') syncLoginFields();
+  });
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id==='loginBtn') syncLoginFields();
+  }, true);
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter'){ syncLoginFields(); }
+  }, true);
+  document.addEventListener('DOMContentLoaded', function(){
+    syncLoginFields();
+    const codeEl=document.getElementById('empCode');
+    if(codeEl){
+      codeEl.addEventListener('blur', syncLoginFields);
+    }
+  });
+})();
+</script>
 <script src="./app.js?v=20260819-1"></script>
 <script src="./enhancement.js?v=20260819-1"></script>
 </body></html>
