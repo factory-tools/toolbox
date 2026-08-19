@@ -119,6 +119,96 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
   .tablewrap{min-height:420px;max-height:calc(100vh - 340px)}
 }
 
+
+/* V19：紅區＋藍區做成真正的小工具列，資料表最大化 */
+:root{--ph3-toolbar-h:226px;--ph3-data-toolbar-h:82px}
+.app{max-width:none!important;width:100%;padding:8px 10px!important}
+#ph3WorkPanel{padding:5px 7px 7px!important;margin-top:6px!important}
+
+/* 紅色區：固定主工具列 */
+#ph3Toolbar{
+  position:sticky!important;top:0!important;z-index:80!important;
+  padding:4px 6px 5px!important;margin:-1px -1px 3px!important;
+  border-radius:7px!important;box-shadow:0 2px 7px rgba(15,23,42,.12)!important;
+}
+#ph3Toolbar>h3{font-size:14px!important;line-height:1.05!important;margin:0 0 1px!important}
+#ph3Toolbar>.compact-note{font-size:8.8px!important;line-height:1.1!important;margin:0 0 2px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ph3Toolbar .stepbox{padding:3px 5px!important;margin-top:3px!important;border-radius:6px!important}
+#ph3Toolbar .stepbox h4{font-size:10.5px!important;line-height:1!important;margin:0 0 2px!important}
+#ph3Toolbar .stepno{width:17px!important;height:17px!important;font-size:9px!important;margin-right:3px!important}
+#ph3Toolbar label{font-size:9.5px!important;line-height:1.05!important}
+#ph3Toolbar input,#ph3Toolbar select{height:26px!important;padding:2px 5px!important;margin-top:1px!important;font-size:10px!important;border-radius:5px!important}
+#ph3Toolbar .row{gap:5px!important}
+#ph3Toolbar .grow{min-width:145px!important}
+#ph3Toolbar .search-all{min-width:280px!important;flex:1.7!important}
+#ph3Toolbar #batchInfo{font-size:9.5px!important;line-height:1.08!important;margin:0!important;min-width:220px}
+#ph3Toolbar .btn{
+  min-height:27px!important;padding:5px 8px!important;font-size:10px!important;line-height:1.1!important;
+  white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;max-width:none!important;
+}
+
+/* 第3區：分兩列，所有按鈕完整顯示 */
+#ph3BatchRow{
+  display:grid!important;
+  grid-template-columns:180px minmax(310px,1.25fr) auto auto!important;
+  gap:5px!important;align-items:end!important;
+}
+#ph3BatchRow .days-box{width:auto!important;min-width:180px!important}
+#ph3BatchRow .days-box label{white-space:normal!important}
+#ph3BatchRow .days-box input{width:100%!important}
+#ph3MailRow{display:flex!important;gap:5px!important;align-items:center!important;flex-wrap:wrap!important;margin-top:4px!important}
+#ph3MailRow .btn,#ph3MailRow label.btn{flex:0 0 auto!important;width:auto!important}
+#ph3Toolbar #saveGuard{font-size:9px!important;line-height:1.05!important;margin-top:2px!important;min-height:10px}
+
+/* 藍色區：固定次工具列，跟在紅色工具列下方 */
+#ph3DataToolbar{
+  position:sticky;top:var(--ph3-toolbar-h);z-index:70;background:#f7fbff;
+  border:1px solid #8ab0d7;border-radius:6px;padding:3px 5px 4px;margin:2px 0 3px;
+  box-shadow:0 2px 6px rgba(15,23,42,.10)
+}
+#ph3DataTop{margin:0!important;min-height:25px!important;align-items:center!important}
+#ph3DataTop #filterCount{font-size:10px!important;line-height:1.05!important;margin:0!important}
+#ph3DataTop .freeze-label{min-width:145px!important;margin-left:auto!important}
+#ph3DataTop label{font-size:9.5px!important;line-height:1!important}
+#ph3DataTop select{height:24px!important;padding:1px 5px!important;margin-top:1px!important;font-size:9.5px!important}
+#ph3DataToolbar>.compact-note{font-size:8.5px!important;line-height:1.08!important;margin:1px 0!important;max-height:20px;overflow:hidden}
+#ph3DataToolbar #replyMsg{font-size:9px!important;line-height:1!important;margin:1px 0!important;min-height:0!important}
+#ph3DataToolbar .tabs{margin:2px 0 0!important;gap:4px!important}
+#ph3DataToolbar .tab{padding:3px 7px!important;font-size:9.5px!important;border-radius:5px!important;min-height:23px}
+
+/* 灰色區：主資料區最大 */
+#ph3DataArea{margin-top:0!important}
+.tablewrap{
+  height:calc(100vh - var(--ph3-toolbar-h) - var(--ph3-data-toolbar-h) - 22px)!important;
+  min-height:420px!important;max-height:none!important;margin-top:2px!important;border-radius:6px!important
+}
+#grid{font-size:10px!important}
+#grid th,#grid td{padding:3px 4px!important;line-height:1.08!important}
+#grid th{font-size:9.7px!important}
+#grid .cell-date{height:26px!important;min-width:108px!important;padding:2px 3px!important;font-size:9.8px!important}
+#grid .badge{padding:2px 4px!important;font-size:9px!important}
+
+/* 減少水平滑動，但不犧牲按鈕文字 */
+#grid th:nth-child(1),#grid td:nth-child(1){width:38px!important;max-width:38px}
+#grid th:nth-child(2),#grid td:nth-child(2){width:52px!important;max-width:52px}
+#grid th:nth-child(3),#grid td:nth-child(3){width:70px!important;max-width:70px}
+#grid th:nth-child(4),#grid td:nth-child(4){width:112px!important;max-width:112px}
+#grid th:nth-child(5),#grid td:nth-child(5){width:40px!important;max-width:40px}
+
+@media(max-width:1350px){
+  #ph3BatchRow{grid-template-columns:170px minmax(280px,1fr) auto!important}
+  #ph3BatchRow>*:last-child{grid-column:auto!important}
+  #ph3Toolbar .btn{font-size:9.4px!important;padding:5px 6px!important}
+  :root{--ph3-toolbar-h:246px}
+}
+@media(max-width:1050px){
+  #ph3Toolbar>.compact-note{display:none}
+  #ph3BatchRow{display:flex!important;flex-wrap:wrap!important}
+  #ph3BatchRow .days-box{width:170px!important;min-width:170px!important}
+  #ph3DataToolbar{top:var(--ph3-toolbar-h)}
+  :root{--ph3-toolbar-h:272px;--ph3-data-toolbar-h:86px}
+}
+
 </style>
 </head>
 <body>
@@ -255,6 +345,7 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
   </div><!-- /ph3Toolbar -->
 
   <div id="ph3DataArea">
+  <div id="ph3DataToolbar">
   <div id="ph3DataTop">
     <div id="filterCount" class="msg grow" style="color:#174f86"></div>
     <div class="freeze-label"><label>凍結前幾欄 / Cố định bao nhiêu cột
@@ -273,12 +364,35 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
     <button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button>
     <button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button>
   </div>
+  </div><!-- /ph3DataToolbar -->
   <div class="tablewrap"><table id="grid"></table></div>
   </div><!-- /ph3DataArea -->
 </section>
 
 </div>
 </div>
+
+<script>
+(function(){
+  function syncStickyHeights(){
+    var root=document.documentElement;
+    var main=document.getElementById('ph3Toolbar');
+    var sub=document.getElementById('ph3DataToolbar');
+    if(main) root.style.setProperty('--ph3-toolbar-h', Math.ceil(main.getBoundingClientRect().height + 3) + 'px');
+    if(sub) root.style.setProperty('--ph3-data-toolbar-h', Math.ceil(sub.getBoundingClientRect().height + 3) + 'px');
+  }
+  window.addEventListener('load', function(){
+    syncStickyHeights();
+    setTimeout(syncStickyHeights,250);
+    setTimeout(syncStickyHeights,800);
+    if(window.ResizeObserver){
+      var ro=new ResizeObserver(syncStickyHeights);
+      ['ph3Toolbar','ph3DataToolbar'].forEach(function(id){var el=document.getElementById(id); if(el) ro.observe(el);});
+    }
+  });
+  window.addEventListener('resize', syncStickyHeights);
+})();
+</script>
 <script src="./app.js?v=20260818-13"></script>
 </body>
 </html>
