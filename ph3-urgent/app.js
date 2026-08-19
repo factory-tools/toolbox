@@ -695,23 +695,61 @@ async function downloadBlankTemplate(){
       c.fill={type:"pattern",pattern:"solid",fgColor:{argb:excelHeaderColorByOriginalIndex(i)}};
       c.border={bottom:{style:"thin",color:{argb:"FFFFFFFF"}}};
     });
-    const widths=[5,7,9,12,6,12,11,8,7,11,7,9,18,24,18,20,12,12,12,12,12,13,13];
+
+    // 欄寬依內容預先設定，避免日期顯示 ######、料號/訂單號被過度折行。
+    const widths=[7,10,12,18,8,13,14,12,9,15,8,12,22,30,22,24,14,14,14,14,14,14,14];
     widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
-    // 留 10 列空白，讓使用者可直接貼資料；日期欄先套好格式。
-    for(let r=2;r<=11;r++){
-      ws.addRow(Array(HEADERS.length).fill(""));
-      ws.getRow(r).height=21;
-      [6,17,18,19,20,21,22,23].forEach(c=>ws.getCell(r,c).numFmt="yyyy/m/d");
+
+    // 先把 1000 列儲存格格式設定好，直接貼值即可使用。
+    // 文字欄用 @，避免客戶代碼 020891 之類的前導 0 被 Excel 吃掉。
+    const textCols=[1,2,3,4,5,7,8,10,11,13,14,15,16];
+    const numberCols=[9,12];
+    const dateCols=[6,17,18,19,20,21,22,23];
+    for(let r=2;r<=1001;r++){
+      const row=ws.getRow(r); row.height=21;
+      textCols.forEach(c=>{ws.getCell(r,c).numFmt="@"});
+      numberCols.forEach(c=>{ws.getCell(r,c).numFmt="#,##0.###"});
+      dateCols.forEach(c=>{ws.getCell(r,c).numFmt="yyyy/m/d"});
       for(let c=1;c<=HEADERS.length;c++)ws.getCell(r,c).border={bottom:{style:"hair",color:{argb:"FFD9E2E8"}}};
     }
-    // 提醒 TD 進度參考會由系統自動保留日期時間最新的內容。
-    ws.getCell(1,13).note="TD進度參考可持續更新；重複匯入時，系統會保留日期時間最新的一筆。";
+
+    // 必填欄位：C 客戶、D 訂單號碼、E NET。空白時以淡紅色提醒。
+    const last=1001;
+    [3,4,5].forEach(c=>{
+      const letter=ws.getColumn(c).letter;
+      ws.addConditionalFormatting({ref:`${letter}2:${letter}${last}`,rules:[{
+        type:"expression",
+        formulae:[`AND(COUNTA($A2:$W2)>0,${letter}2="")`],
+        style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFC7CE"}},font:{color:{argb:"FF9C0006"}}}
+      }]});
+    });
+
+    // 日期欄如果貼成無法辨識的文字，直接用紅底警示。
+    dateCols.forEach(c=>{
+      const letter=ws.getColumn(c).letter;
+      ws.addConditionalFormatting({ref:`${letter}2:${letter}${last}`,rules:[{
+        type:"expression",
+        formulae:[`AND(${letter}2<>"",NOT(ISNUMBER(${letter}2)))`],
+        style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFC7CE"}},font:{color:{argb:"FF9C0006"}}}
+      }]});
+    });
+
+    // 表頭註解全部中越文，讓使用者知道欄位格式與必填規則。
+    ws.getCell(1,3).note="★ 必填。請使用文字格式，避免 020891 變成 20891。 / Bắt buộc. Dùng định dạng văn bản để giữ số 0 ở đầu (ví dụ 020891).";
+    ws.getCell(1,4).note="★ 必填。訂單號碼請使用文字格式。 / Bắt buộc. Mã đơn nên dùng định dạng văn bản.";
+    ws.getCell(1,5).note="★ 必填。NET 為辨識同筆資料的關鍵欄位。 / Bắt buộc. NET là trường khóa để xác định đúng dòng dữ liệu.";
+    ws.getCell(1,13).note="TD進度參考可持續更新；重複匯入時，系統會保留日期時間最新的一筆。 / TD có thể tiếp tục cập nhật; khi nhập trùng, hệ thống giữ bản có ngày giờ mới nhất.";
+    dateCols.forEach(c=>{
+      const old=ws.getCell(1,c).note||"";
+      ws.getCell(1,c).note=(old?old+"\n":"")+"日期請使用 yyyy/mm/dd；若貼入格式錯誤，儲存格會以紅色警示。 / Ngày dùng định dạng yyyy/mm/dd; nếu dán sai định dạng, ô sẽ cảnh báo màu đỏ.";
+    });
+
     const buf=await wb.xlsx.writeBuffer();
     const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
     const url=URL.createObjectURL(blob),a=document.createElement("a");
     a.href=url;a.download="PH3匯入空白範本_A-W.xlsx";document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1500);
-    $("importMsg").innerHTML='<span class="ok">✓ 已下載空白匯入範本 / Đã tải mẫu Excel trống</span>';
+    $("importMsg").innerHTML='<span class="ok">✓ 已下載空白匯入範本；必填欄與日期格式已預先設定 / Đã tải mẫu; đã cài sẵn trường bắt buộc và định dạng ngày</span>';
   }catch(err){
     console.error(err);$("importMsg").innerHTML=`<span class="bad">範本下載失敗 / Tải mẫu thất bại：${esc(err.message||err)}</span>`;
   }
@@ -928,63 +966,135 @@ async function downloadMailReady(){
 
 async function refillExcel(){
   const file=$("refillFile").files[0];if(!file)return;
+  const showProblems=(title,items)=>{
+    const shown=items.slice(0,60);
+    $("replyMsg").innerHTML=`<div class="import-help"><b>⚠ ${esc(title)}</b><br>${shown.map((x,i)=>`${i+1}. ${esc(x)}`).join("<br>")}${items.length>60?`<br>…另外還有 ${items.length-60} 個問題 / Còn ${items.length-60} lỗi khác`:""}</div>`;
+  };
   try{
     if(dirtyKeys.size){
       $("replyMsg").innerHTML=`<span class="bad">⚠ 畫面上還有 ${dirtyKeys.size} 筆未儲存，請先儲存後再回填另一份 Excel / Còn ${dirtyKeys.size} dòng chưa lưu, hãy lưu trước khi nhập Excel khác</span>`;
       $("refillFile").value="";
       return;
     }
-    $("replyMsg").textContent="回填到畫面中… / Đang nhập lại vào màn hình…";
+    $("replyMsg").textContent="檢查回填 Excel… / Đang kiểm tra Excel nhập lại…";
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array",cellDates:false});
+    if(!wb.SheetNames.length)throw new Error("Excel 沒有工作表 / Excel không có sheet");
     const ws=wb.Sheets[wb.SheetNames[0]];
     const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
     if(a.length<2)throw new Error("Excel沒有資料 / Excel không có dữ liệu");
 
     const headers=a[0].map(x=>String(x??"").trim());
+    const required=[
+      {idx:2,name:HEADERS[2]},{idx:3,name:HEADERS[3]},{idx:4,name:HEADERS[4]},
+      {idx:21,name:HEADERS[21]},{idx:22,name:HEADERS[22]}
+    ];
+    const missing=required.filter(x=>headers.indexOf(x.name)<0);
+    if(missing.length){
+      showProblems("回填 Excel 欄位不完整，尚未回填 / Thiếu cột, chưa nhập dữ liệu",missing.map(x=>`缺少「${x.name}」；請使用系統下載的回填 Excel，不要刪除或改名欄位 / Thiếu cột \"${x.name}\"; hãy dùng file Excel tải từ hệ thống và không đổi tên cột`));
+      $("refillFile").value="";
+      return;
+    }
+
     const idxCustomer=headers.indexOf(HEADERS[2]);
     const idxOrder=headers.indexOf(HEADERS[3]);
     const idxNet=headers.indexOf(HEADERS[4]);
     const idxPh3=headers.indexOf(HEADERS[21]);
     const idx99=headers.indexOf(HEADERS[22]);
     const upstreamIdx=[17,18,19,20].map(i=>headers.indexOf(HEADERS[i]));
-    if([idxCustomer,idxOrder,idxNet,idxPh3,idx99].some(i=>i<0))throw new Error("Excel欄位不符 / Sai cột Excel");
+    const issues=[];
+    const staged=[];
+    const seenKeys=new Set();
 
-    const invalid=[], notFound=[];
-    let applied=0;
-    for(const r of a.slice(1)){
+    for(let i=1;i<a.length;i++){
+      const r=a[i];
+      const excelRow=i+1;
       if(!r.some(v=>v!==""&&v!=null))continue;
-      const key=[r[idxCustomer],r[idxOrder],r[idxNet]].map(v=>String(v??"").trim()).join("|");
-      if(!key||key==="||")continue;
-      const ph3=excelDate(r[idxPh3]),w99=excelDate(r[idx99]);
-      const prevDates=upstreamIdx.filter(i=>i>=0).map(i=>excelDate(r[i])).filter(Boolean).sort();
+      const customer=String(r[idxCustomer]??"").trim();
+      const order=String(r[idxOrder]??"").trim();
+      const net=String(r[idxNet]??"").trim();
+      if(!customer||!order||!net){
+        const miss=[]; if(!customer)miss.push(`C「${HEADERS[2]}」`); if(!order)miss.push(`D「${HEADERS[3]}」`); if(!net)miss.push(`E「${HEADERS[4]}」`);
+        issues.push(`Excel 第 ${excelRow} 列：必填欄空白 ${miss.join("、")} / Dòng ${excelRow}: thiếu trường bắt buộc`);
+        continue;
+      }
+      const key=[customer,order,net].join("|");
+      if(seenKeys.has(key)){
+        issues.push(`Excel 第 ${excelRow} 列：同一組 KH + 訂單號 + NET 重複（${key}）/ Dòng ${excelRow}: trùng KH + Mã đơn + NET`);
+        continue;
+      }
+      seenKeys.add(key);
+
+      const rawPh3=r[idxPh3], raw99=r[idx99];
+      const ph3=rawPh3===""||rawPh3==null?"":excelDate(rawPh3);
+      const w99=raw99===""||raw99==null?"":excelDate(raw99);
+      if(rawPh3!==""&&rawPh3!=null&&!ph3){
+        issues.push(`Excel 第 ${excelRow} 列 V「${HEADERS[21]}」格式錯誤：${rawPh3}；請使用 yyyy/mm/dd / Dòng ${excelRow} cột V sai định dạng ngày`);
+        continue;
+      }
+      if(raw99!==""&&raw99!=null&&!w99){
+        issues.push(`Excel 第 ${excelRow} 列 W「${HEADERS[22]}」格式錯誤：${raw99}；請使用 yyyy/mm/dd / Dòng ${excelRow} cột W sai định dạng ngày`);
+        continue;
+      }
+
+      const badUpstream=[];
+      const prevDates=[];
+      upstreamIdx.forEach((ci,k)=>{
+        if(ci<0)return;
+        const raw=r[ci]; if(raw===""||raw==null)return;
+        const d=excelDate(raw);
+        if(!d)badUpstream.push(`${importColumnLetter(ci+1)}=${raw}`); else prevDates.push(d);
+      });
+      if(badUpstream.length){
+        issues.push(`Excel 第 ${excelRow} 列：前工段日期格式錯誤 ${badUpstream.join("、")} / Dòng ${excelRow}: ngày công đoạn trước sai định dạng`);
+        continue;
+      }
+      prevDates.sort();
       const prev=prevDates.length?prevDates[prevDates.length-1]:"";
-      if(ph3&&prev&&ph3<prev){invalid.push(`${key}: PH3 ${ph3} < ${prev}`);continue}
-      if(w99&&ph3&&w99<ph3){invalid.push(`${key}: 99 ${w99} < PH3 ${ph3}`);continue}
+      if(ph3&&prev&&ph3<prev){
+        issues.push(`Excel 第 ${excelRow} 列（${key}）：PH3 ${ph3.replaceAll("-","/")} 早於最後前工段 ${prev.replaceAll("-","/")} / PH3 sớm hơn công đoạn trước`);
+        continue;
+      }
+      if(w99&&ph3&&w99<ph3){
+        issues.push(`Excel 第 ${excelRow} 列（${key}）：99 ${w99.replaceAll("-","/")} 早於 PH3 ${ph3.replaceAll("-","/")} / 99 sớm hơn PH3`);
+        continue;
+      }
 
       const o=rows.find(x=>x.unique_key===key);
-      if(!o){notFound.push(key);continue}
-      const oldPh3=String(o.ph3_date||"").slice(0,10);
-      const old99=String(o.warehouse99_date||"").slice(0,10);
-      if(oldPh3!==String(ph3||"") || old99!==String(w99||"")){
-        o.ph3_date=ph3||null;
-        o.warehouse99_date=w99||null;
-        dirtyKeys.add(key);
-        issueKeys.delete(key);
+      if(!o){
+        issues.push(`Excel 第 ${excelRow} 列（${key}）：系統找不到這筆資料；請確認 KH、訂單號、NET 沒被改動 / Không tìm thấy dữ liệu; kiểm tra KH, Mã đơn, NET`);
+        continue;
+      }
+      staged.push({o,key,ph3:ph3||null,w99:w99||null});
+    }
+
+    if(issues.length){
+      showProblems(`發現 ${issues.length} 個回填問題，為避免部分資料誤寫，本次完全沒有回填 / Phát hiện ${issues.length} lỗi; lần này chưa nhập bất kỳ dòng nào`,issues);
+      $("refillFile").value="";
+      return;
+    }
+
+    let applied=0;
+    staged.forEach(x=>{
+      const oldPh3=String(x.o.ph3_date||"").slice(0,10);
+      const old99=String(x.o.warehouse99_date||"").slice(0,10);
+      if(oldPh3!==String(x.ph3||"") || old99!==String(x.w99||"")){
+        x.o.ph3_date=x.ph3;
+        x.o.warehouse99_date=x.w99;
+        dirtyKeys.add(x.key);
+        issueKeys.delete(x.key);
         applied++;
       }
-    }
-    if(invalid.length)throw new Error(`有 ${invalid.length} 筆日期不合法，未回填 / Có ${invalid.length} dòng ngày không hợp lệ`);
+    });
+
     if(!applied){
-      $("replyMsg").innerHTML=`<span class="warn">Excel 已讀取，但沒有不同的 PH3/99 日期需要回填 / Đã đọc Excel nhưng không có ngày PH3/99 thay đổi</span>`+
-        (notFound.length?` <span class="warn">；另有 ${notFound.length} 筆找不到對應資料</span>`:"");
+      $("replyMsg").innerHTML=`<span class="warn">Excel 檢查通過，但 PH3/99 日期沒有任何變更 / Excel hợp lệ nhưng không có thay đổi ngày PH3/99</span>`;
       $("refillFile").value="";
       render();
       return;
     }
 
-    $("replyMsg").innerHTML=`<span class="warn">✓ 已把 Excel 的 ${applied} 筆修改帶回畫面，但<strong>尚未儲存到系統</strong>。請確認後按「儲存目前修改」 / Đã nhập ${applied} dòng vào màn hình nhưng <strong>chưa lưu vào hệ thống</strong>. Hãy bấm Lưu các thay đổi.</span>`+
-      (notFound.length?` <span class="warn">；${notFound.length} 筆找不到對應資料 / không tìm thấy ${notFound.length} dòng</span>`:"");
+    $("replyMsg").innerHTML=`<span class="warn">✓ Excel 檢查通過，已把 ${applied} 筆修改帶回畫面，但<strong>尚未儲存到系統</strong>。請確認後按「儲存目前修改」 / Excel hợp lệ, đã đưa ${applied} dòng vào màn hình nhưng <strong>chưa lưu vào hệ thống</strong>. Hãy kiểm tra rồi bấm Lưu.</span>`;
     $("refillFile").value="";
     render();
   }catch(err){
