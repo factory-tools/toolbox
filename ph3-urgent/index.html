@@ -54,69 +54,174 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
 @media(max-height:800px){.tablewrap{max-height:70vh;min-height:360px}}
 @media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.app{padding:8px}}
 
-/* V18 修正版：固定操作區，但不壓縮欄位到變形 */
-#ph3WorkPanel{padding:8px 10px 10px;margin-top:8px;overflow:visible}
-#ph3Toolbar{
-  position:sticky;top:0;z-index:50;background:#fff;
-  border:1px solid #d6dee7;border-radius:10px;padding:6px 8px 7px;
-  margin:-1px -1px 6px;box-shadow:0 3px 10px rgba(15,23,42,.12)
+/* V21.1 — 版面修正版：功能區固定、更多篩選確實收合、資料表獨立捲動 */
+.app{max-width:none;width:100%;padding:8px 10px}
+.panel{margin-top:8px;padding:10px 12px;border-radius:12px}
+.stats{gap:7px}.stat{padding:7px 10px}.stat b{font-size:20px}.stat small{font-size:11px}
+
+/* 工作區：功能區 + 資料工具列 + 資料表，三區分離，不互相覆蓋 */
+.ph3-workspace{
+  padding:0;
+  height:calc(100vh - 12px);
+  min-height:620px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#fff;
 }
-#ph3Toolbar>h3{font-size:16px!important;margin:0 0 2px!important;line-height:1.2}
-#ph3Toolbar>.compact-note{font-size:10px;line-height:1.25;margin:0 0 3px}
-#ph3Toolbar .stepbox{padding:5px 7px;margin-top:4px;border-radius:8px}
-#ph3Toolbar .stepbox h4{font-size:12px;margin:0 0 4px;line-height:1.2}
-#ph3Toolbar .stepno{width:20px;height:20px;font-size:11px;margin-right:4px}
-#ph3Toolbar label{font-size:11px;line-height:1.2}
-#ph3Toolbar input,#ph3Toolbar select{height:30px;padding:4px 6px;margin-top:2px;font-size:11px;border-radius:6px}
-#ph3Toolbar .btn{padding:7px 9px;font-size:11px;line-height:1.2;white-space:nowrap}
-#ph3Toolbar .row{gap:7px;align-items:end}
-#ph3Toolbar .grow{min-width:180px}
-#ph3Toolbar .search-all{min-width:360px;flex:1.7}
-#ph3Toolbar #batchInfo{font-size:11px;margin:0;line-height:1.25}
+.ph3-ribbon{
+  position:relative;
+  flex:0 0 auto;
+  z-index:30;
+  background:#f7f9fc;
+  border:1px solid #cfd9e5;
+  border-radius:10px 10px 0 0;
+  padding:6px 8px;
+  box-shadow:0 2px 5px rgba(15,23,42,.06)
+}
+.ribbon-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:22px;margin-bottom:4px}
+.ribbon-title{display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap}
+.ribbon-title b{font-size:15px;color:#1f2937;flex:0 0 auto}.ribbon-flow{font-size:10px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ribbon-batch{font-size:11px;color:#174f86;font-weight:800;white-space:nowrap;max-width:34%;overflow:hidden;text-overflow:ellipsis}
 
-/* 第3區固定版型：天數欄不會再被擠成直排 */
-#ph3BatchRow{display:grid;grid-template-columns:240px max-content max-content max-content;gap:7px;align-items:end}
-#ph3BatchRow .days-box{width:240px;min-width:240px}
-#ph3BatchRow .days-box label{display:block;white-space:normal}
-#ph3BatchRow .days-box input{width:100%}
-#ph3MailRow{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:6px}
-#ph3Toolbar #saveGuard{margin-top:4px!important;font-size:10.5px}
+/* 第一排：4 個常用條件 + 更多篩選 */
+.ribbon-main-grid{
+  display:grid;
+  grid-template-columns:minmax(180px,.9fr) minmax(220px,1.15fr) minmax(170px,.85fr) minmax(300px,1.45fr) 170px;
+  gap:6px;
+  align-items:end;
+}
+.ribbon-action-row{display:flex;align-items:end;gap:6px;margin-top:5px;min-width:0;flex-wrap:wrap}
+.r-field{display:block;min-width:0;font-size:11px;font-weight:700;color:#334155}
+.r-field>span{display:block;line-height:1.1;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r-field input,.r-field select{width:100%;height:30px;padding:4px 7px;margin:0;border-radius:6px;font-size:12px;min-width:0}
+.r-search input{width:100%}.r-days{width:112px;flex:0 0 112px}
+.ribbon-action{height:30px;padding:5px 10px;border-radius:6px;font-size:12px;line-height:1;white-space:nowrap;flex:0 0 auto}
+.ribbon-upload{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.ribbon-more{height:30px;width:100%;padding:5px 10px;background:#fff;border:1px solid #7ea6cc;color:#174f86;border-radius:6px;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ribbon-status{font-size:10px;color:#2e7d32;font-weight:800;min-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;padding-bottom:5px}
+.ribbon-reply-msg{margin:3px 0 0;font-size:11px;line-height:1.15}
 
-/* 資料區放大 */
-#ph3DataArea{margin-top:2px}
-#ph3DataTop{display:flex;align-items:end;gap:8px;margin:2px 0 4px}
-#ph3DataTop #filterCount{margin:0;font-size:12px}
-#ph3DataTop .freeze-label{min-width:150px;margin-left:auto}
-#ph3DataTop label{font-size:11px}
-#ph3DataTop select{height:28px;padding:3px 6px;margin-top:2px;font-size:11px}
-#ph3DataArea>.compact-note{font-size:10.5px;line-height:1.25;margin:2px 0}
-#ph3DataArea .tabs{margin-top:4px}
-#ph3DataArea .tab{padding:5px 8px;font-size:11px}
-.tablewrap{max-height:calc(100vh - 235px);min-height:560px;margin-top:4px}
-#grid{font-size:10.5px}
-#grid th,#grid td{padding:4px 4px;line-height:1.15}
-#grid th{font-size:10.5px}
-#grid .cell-date{padding:3px 3px;font-size:10.5px;height:28px;min-width:112px}
-#grid .badge{padding:2px 4px;font-size:9.5px}
+/* 更多篩選：預設一定隱藏，只有按鈕展開時才出現 */
+.ribbon-more-panel{grid-template-columns:repeat(4,minmax(180px,1fr));gap:6px;margin-top:6px;padding-top:6px;border-top:1px dashed #cbd5e1}
+.ribbon-more-panel[hidden]{display:none!important}
+.ribbon-more-panel:not([hidden]){display:grid!important}
 
-/* 降低左右滑動距離，但保持可讀性 */
-#grid th:nth-child(1),#grid td:nth-child(1){width:42px!important;max-width:42px}
-#grid th:nth-child(2),#grid td:nth-child(2){width:58px!important;max-width:58px}
-#grid th:nth-child(3),#grid td:nth-child(3){width:76px!important;max-width:76px}
-#grid th:nth-child(4),#grid td:nth-child(4){width:122px!important;max-width:122px}
-#grid th:nth-child(5),#grid td:nth-child(5){width:44px!important;max-width:44px}
+/* 第二層資料工具列：不浮在表格上，固定佔一小列 */
+.data-toolbar{
+  position:relative;
+  flex:0 0 40px;
+  z-index:20;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:4px 8px;
+  background:#eef5ff;
+  border:1px solid #9db9de;
+  border-top:0;
+}
+.data-toolbar-left{display:flex;align-items:center;gap:6px;min-width:0}.data-count{font-size:11px;font-weight:800;color:#174f86;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.data-toolbar .tab{margin:0;padding:5px 9px;height:30px;border-radius:6px;font-size:11px;white-space:nowrap}
+.freeze-compact{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;white-space:nowrap}.freeze-compact select{width:72px;height:30px;margin:0;padding:3px 5px;font-size:11px;border-radius:6px}
+.rules-pop{position:relative;margin-left:auto;font-size:11px}.rules-pop summary{cursor:pointer;list-style:none;border:1px solid #b9c9da;border-radius:6px;background:#fff;padding:6px 8px;font-weight:800;color:#475569;white-space:nowrap}.rules-pop summary::-webkit-details-marker{display:none}.rules-card{position:absolute;right:0;top:34px;width:min(560px,70vw);padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.16);line-height:1.45;color:#475569;z-index:90}
+
+/* 主要資料區：吃掉剩下全部空間，只有這裡上下/左右捲動 */
+.ph3-tablewrap{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none;
+  height:auto;
+  margin:0;
+  border:1px solid var(--line);
+  border-top:0;
+  border-radius:0 0 10px 10px;
+  overflow:auto;
+  background:#fff;
+}
+.ph3-tablewrap table{font-size:11px;table-layout:auto;width:max-content;min-width:100%}
+.ph3-tablewrap th,.ph3-tablewrap td{padding:4px 6px;white-space:nowrap;overflow:visible;text-overflow:clip}
+.ph3-tablewrap th{position:sticky;top:0;z-index:12;line-height:1.1;height:38px;min-height:38px;white-space:normal}
+.ph3-tablewrap .sticky-head{z-index:18!important}
+.cell-date{height:29px;padding:3px 4px;font-size:11px}
+
+/* 防止功能文字直排/重疊 */
+.ph3-ribbon button,.ph3-ribbon label,.ph3-ribbon input,.ph3-ribbon select,.data-toolbar *{writing-mode:horizontal-tb!important;word-break:normal!important}
 
 @media(max-width:1350px){
-  #ph3BatchRow{grid-template-columns:220px max-content max-content;}
-  #ph3BatchRow .days-box{width:220px;min-width:220px}
-  #ph3BatchRow>*:last-child{grid-column:auto}
-  .tablewrap{min-height:470px;max-height:calc(100vh - 300px)}
+  .ribbon-main-grid{grid-template-columns:minmax(150px,.9fr) minmax(180px,1.05fr) minmax(150px,.8fr) minmax(250px,1.35fr) 150px}
+  .ribbon-flow{display:none}.ribbon-batch{max-width:38%}
 }
-@media(max-width:1000px){
-  #ph3Toolbar{position:sticky;top:0}
-  #ph3BatchRow{display:flex;flex-wrap:wrap}
-  #ph3BatchRow .days-box{width:220px;min-width:220px}
-  .tablewrap{min-height:420px;max-height:calc(100vh - 340px)}
+@media(max-width:1050px){
+  .ribbon-main-grid{grid-template-columns:repeat(4,minmax(150px,1fr))}
+  .r-search{grid-column:span 2}.ribbon-more{grid-column:auto}.ribbon-batch{max-width:45%}
+  .ribbon-more-panel{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .ph3-workspace{height:calc(100vh - 8px);min-height:560px}
+  .ribbon-main-grid{grid-template-columns:1fr 1fr}.r-search{grid-column:span 2}.ribbon-title-row{align-items:flex-start}.ribbon-batch{max-width:50%}
+  .ribbon-more-panel{grid-template-columns:1fr 1fr}
+  .data-count{display:none}
+}
+
+
+/* V22 — 全頁橫向緊湊排版：匯入＋統計同列；PH3 功能區小、資料區最大 */
+:root{--need-brown:#9a5b16;--change-red:#c62828}
+body{overflow-x:hidden}
+.app{max-width:none;width:100%;padding:6px 8px}
+.hero{padding:7px 14px;border-radius:10px}.hero h1{font-size:18px}.hero p{font-size:10px;margin-top:2px}
+.panel{margin-top:6px;padding:8px 10px;border-radius:10px}
+.btn{writing-mode:horizontal-tb!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;word-break:keep-all!important}
+
+/* 登入者列縮小 */
+#appPanel>section.panel:first-child{padding:6px 10px}
+#appPanel>section.panel:first-child .row{gap:6px}#appPanel>section.panel:first-child .btn{padding:7px 10px;font-size:12px}
+
+/* 帳號管理改成可收合，避免長期占高度 */
+.account-compact{padding:0 10px}.account-compact details{padding:6px 0}.account-compact summary{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#17365d}.account-compact summary span{font-size:10px;color:#64748b;font-weight:400}
+.account-body{display:grid;grid-template-columns:minmax(380px,1fr) max-content;gap:6px 8px;align-items:end;padding:7px 0 2px}.account-help{grid-column:1/-1;font-size:10px;color:#64748b}.account-body textarea{height:74px;width:100%;padding:6px;border:1px solid #b8c4cf;border-radius:6px;font-family:inherit}.account-body .btn{height:32px;padding:5px 10px}.account-body .msg{grid-column:1/-1;margin:0}
+
+/* ① 生管匯入在左、四個統計在右 */
+.import-stats-panel{display:grid;grid-template-columns:minmax(640px,1.45fr) minmax(520px,1fr);gap:10px;align-items:stretch;padding:8px 10px}
+.import-compact{min-width:0;border-right:1px solid #dbe3ec;padding-right:10px}.section-mini-title{font-size:14px;font-weight:900;color:#17365d;margin-bottom:5px}
+.import-line{display:flex;align-items:end;gap:6px;min-width:0}.import-file{flex:1;min-width:260px;font-size:11px}.import-file span{display:block;margin-bottom:2px}.import-file input{height:32px;margin:0;padding:3px 6px;font-size:11px;border-radius:6px}
+.compact-btn{height:32px;padding:5px 9px;font-size:11px;flex:0 0 auto;min-width:max-content}.import-foot{display:flex;align-items:center;gap:10px;margin-top:3px;min-height:16px;font-size:9px;color:#64748b;white-space:nowrap;overflow:hidden}.import-foot>span:first-child{overflow:hidden;text-overflow:ellipsis}.import-foot .msg{margin:0;font-size:10px;white-space:nowrap}
+.compact-stats{display:grid!important;grid-template-columns:repeat(4,minmax(95px,1fr));gap:5px;align-items:stretch}.compact-stats .stat{padding:6px 7px;border-radius:8px;min-width:0;display:flex;flex-direction:column;justify-content:center}.compact-stats .stat small{font-size:10px;white-space:normal;line-height:1.15;min-height:23px}.compact-stats .stat b{font-size:22px;line-height:1.05}.compact-stats .stat-need b,.compact-stats .stat-need small{color:var(--need-brown)!important}.compact-stats .stat-changed b,.compact-stats .stat-changed small{color:var(--change-red)!important}
+
+/* PH3 主工作區盡量吃滿可用畫面 */
+.ph3-workspace{height:calc(100vh - 8px);min-height:610px;margin-top:6px!important}
+.ph3-ribbon{padding:5px 7px;background:#f7f9fc}
+.ribbon-title-row{min-height:20px;margin-bottom:3px}.ribbon-title b{font-size:14px}.ribbon-flow{font-size:9px}.ribbon-batch{font-size:10px;max-width:30%}
+
+/* 第一排：使用整個左右空間，不截字 */
+.ribbon-controls{display:grid;grid-template-columns:minmax(165px,.82fr) minmax(220px,1.15fr) minmax(160px,.78fr) minmax(330px,1.6fr) max-content;gap:5px;align-items:end}
+.r-field{font-size:10px;min-width:0}.r-field>span{margin-bottom:2px;line-height:1.05;overflow:visible;text-overflow:clip}.r-field input,.r-field select{height:29px;padding:3px 6px;margin:0;font-size:11px;border-radius:6px}
+.ribbon-more{width:auto!important;min-width:max-content;height:29px;padding:4px 9px;font-size:11px;overflow:visible!important;text-overflow:clip!important}
+
+/* 第二排：按鈕依文字內容寬度，自然從左排到右，不互相蓋 */
+.ribbon-actions{display:flex;align-items:end;gap:5px;margin-top:4px;min-width:0;flex-wrap:wrap}
+.r-days{width:105px;flex:0 0 105px}.ribbon-action{height:29px;padding:4px 9px;font-size:11px;line-height:1;flex:0 0 auto;min-width:max-content;max-width:none}
+.ribbon-upload{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.ribbon-status{font-size:9px;min-width:150px;flex:1 1 180px;padding:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ribbon-reply-msg{font-size:10px;margin:2px 0 0}
+.ribbon-more-panel{grid-template-columns:repeat(4,minmax(190px,1fr));gap:5px;margin-top:4px;padding-top:4px}
+
+/* 資料工具列只佔 34px */
+.data-toolbar{flex:0 0 34px;height:34px;padding:2px 6px}.data-toolbar .tab{height:27px;padding:3px 8px;font-size:10px}.data-count{font-size:10px}.freeze-compact{font-size:10px}.freeze-compact select{height:27px;font-size:10px}.rules-pop summary{padding:4px 7px;font-size:10px}
+
+/* 表格最大化，標題列固定 */
+.ph3-tablewrap{flex:1 1 auto;min-height:0;overflow:auto}.ph3-tablewrap table{font-size:11px}.ph3-tablewrap th{height:36px;min-height:36px;padding:3px 5px;position:sticky;top:0;z-index:14}.ph3-tablewrap td{padding:4px 5px}.ph3-tablewrap .sticky-head{z-index:20!important}
+
+@media(max-width:1450px){
+ .import-stats-panel{grid-template-columns:minmax(560px,1.3fr) minmax(440px,1fr)}
+ .compact-stats .stat small{font-size:9px}.compact-stats .stat b{font-size:20px}
+ .ribbon-controls{grid-template-columns:minmax(145px,.8fr) minmax(190px,1.1fr) minmax(145px,.75fr) minmax(280px,1.5fr) max-content}
+ .ribbon-flow{display:none}
+}
+@media(max-width:1100px){
+ .import-stats-panel{grid-template-columns:1fr}.import-compact{border-right:0;border-bottom:1px solid #dbe3ec;padding-right:0;padding-bottom:6px}
+ .ribbon-controls{grid-template-columns:repeat(4,minmax(150px,1fr))}.r-search{grid-column:span 2}.ribbon-more{justify-self:start}
+ .ribbon-more-panel{grid-template-columns:1fr 1fr}
 }
 
 </style>
@@ -149,136 +254,117 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
   </div>
 </section>
 
-<section id="accountPanel" class="panel" style="display:none">
-  <h3 style="margin-top:0">帳號管理 / Quản lý tài khoản</h3>
-  <div class="compact-note">管理者可一次建立多位帳號。每行輸入：工號,姓名,初始密碼。系統會自動建立內部登入 Email，不需要員工輸入 Email。<br>Quản trị viên có thể tạo nhiều tài khoản cùng lúc. Mỗi dòng: Mã NV,Tên,Mật khẩu ban đầu.</div>
-  <div class="row" style="align-items:flex-start;margin-top:10px">
-    <div class="grow"><label>批量帳號 / Tạo nhiều tài khoản
-      <textarea id="accountBulk" rows="7" style="width:100%;margin-top:5px;padding:9px;border:1px solid #b8c4cf;border-radius:8px;font-family:inherit" placeholder="A002,王小美,Abc123456\nA003,Nguyễn Văn A,Abc123456"></textarea>
-    </label></div>
-    <button id="createAccountsBtn" class="btn primary">＋ 批量建立帳號 / Tạo nhiều tài khoản</button>
-  </div>
-  <div id="accountMsg" class="msg"></div>
-</section>
-
-<section class="panel">
-  <h3 style="margin-top:0">① 生管匯入 / Nhập dữ liệu kế hoạch</h3>
-  <div class="row">
-    <div class="grow">
-      <label>選擇 Excel（固定 A～W 23欄） / Chọn Excel
-        <input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls">
-      </label>
+<section id="accountPanel" class="panel account-compact" style="display:none">
+  <details>
+    <summary><b>帳號管理 / Quản lý tài khoản</b><span>管理者功能 / Chức năng quản trị</span></summary>
+    <div class="account-body">
+      <div class="account-help">每行輸入：工號,姓名,初始密碼；系統自動建立內部登入 Email。 / Mỗi dòng: Mã NV,Tên,Mật khẩu ban đầu.</div>
+      <textarea id="accountBulk" rows="3" placeholder="A002,王小美,Abc123456
+A003,Nguyễn Văn A,Abc123456"></textarea>
+      <button id="createAccountsBtn" class="btn primary">＋ 批量建立帳號 / Tạo nhiều tài khoản</button>
+      <div id="accountMsg" class="msg"></div>
     </div>
-    <button id="downloadTemplateBtn" class="btn outline">⬇ 下載空白匯入範本 / Tải mẫu Excel trống</button>
-    <button id="importBtn" class="btn green">匯入到共用資料庫 / Nhập vào dữ liệu chung</button>
-  </div>
-  <div class="compact-note">範本固定 A～W 共 23 欄；TD 進度參考若重複匯入，系統會自動保留日期時間最新的一筆。 / Mẫu cố định A～W, 23 cột; TD sẽ giữ bản có ngày giờ mới nhất.</div>
-  <div id="importMsg" class="msg"></div>
-  <div id="importDetail"></div>
+  </details>
 </section>
 
-<section class="panel">
-  <div class="stats">
+<section class="panel import-stats-panel">
+  <div class="import-compact">
+    <div class="section-mini-title">① 生管匯入 / Nhập dữ liệu kế hoạch</div>
+    <div class="import-line">
+      <label class="import-file"><span>Excel（固定 A～W 23欄） / Excel A～W</span><input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls"></label>
+      <button id="downloadTemplateBtn" class="btn outline compact-btn">⬇ 下載空白匯入範本 / Tải mẫu Excel trống</button>
+      <button id="importBtn" class="btn green compact-btn">⬆ 匯入共用資料 / Nhập dữ liệu chung</button>
+    </div>
+    <div class="import-foot"><span>同筆資料重複匯入時保留日期時間最新一筆 / Giữ bản mới nhất theo ngày giờ.</span><span id="importMsg" class="msg"></span></div>
+    <div id="importDetail"></div>
+  </div>
+  <div class="stats compact-stats">
     <div class="stat"><small>目前全部 / Tổng hiện tại</small><b id="sAll">0</b></div>
-    <div class="stat"><small>待 PH3 回覆 / Chờ PH3</small><b id="sNeed">0</b></div>
+    <div class="stat stat-need"><small>待 PH3 回覆 / Chờ PH3</small><b id="sNeed">0</b></div>
     <div class="stat"><small>曾經回覆過 / Đã từng trả lời</small><b id="sHad">0</b></div>
-    <div class="stat"><small>本次異動 / Có thay đổi</small><b id="sChanged">0</b></div>
+    <div class="stat stat-changed"><small>本次異動 / Có thay đổi</small><b id="sChanged">0</b></div>
   </div>
 </section>
 
-<section class="panel" id="ph3WorkPanel">
-  <div id="ph3Toolbar">
-  <h3 style="margin:0">② PH3 評估 / Đánh giá PH3</h3>
-  <div class="compact-note">
-    收到信件 → 匯入 → 系統比對以前回覆 → 處理最新一批 → 回覆完成 → 下載 Excel 寄回<br>
-    Nhận email → Nhập Excel → So lịch sử → Xử lý lần mới nhất → Hoàn tất → Tải Excel gửi lại
-  </div>
+<section class="panel ph3-workspace" id="ph3Workspace">
+  <div class="ph3-ribbon" id="ph3Ribbon">
+    <div class="ribbon-title-row">
+      <div class="ribbon-title"><b>② PH3 評估 / Đánh giá PH3</b><span class="ribbon-flow">收到信件 → 匯入 → 比對歷史 → 回覆 → 儲存 → 下載 / Nhập → So lịch sử → Trả lời → Lưu → Tải</span></div>
+      <div id="batchInfo" class="ribbon-batch"></div>
+    </div>
 
-  <div class="stepbox">
-    <h4><span class="stepno">1</span>先選這次要處理的資料 / Chọn dữ liệu cần xử lý</h4>
-    <div class="row">
-      <div class="grow"><label>我要處理 / Tôi muốn xử lý
+    <div class="ribbon-controls">
+      <label class="r-field scope"><span>範圍 / Phạm vi</span>
         <select id="workScope">
           <option value="latest">最新一批 / Lần nhập mới nhất</option>
           <option value="today_unreplied">今天尚未回覆 / Hôm nay chưa trả lời</option>
           <option value="all">全部資料 / Tất cả dữ liệu</option>
         </select>
-      </label></div>
-      <div class="grow"><label>匯入批次 / Lần nhập
-        <select id="batchSelect">
-          <option value="">自動選最新 / Tự chọn mới nhất</option>
-        </select>
-      </label></div>
-      <div class="grow"><label>狀態 / Trạng thái
+      </label>
+      <label class="r-field batch"><span>匯入批次 / Lần nhập</span><select id="batchSelect"><option value="">自動選最新 / Tự chọn mới nhất</option></select></label>
+      <label class="r-field status"><span>狀態 / Trạng thái</span>
         <select id="fStatus">
-          <option value="">全部 / Tất cả</option>
-          <option value="need">待回覆 / Chờ trả lời</option>
-          <option value="changed">有異動 / Có thay đổi</option>
-          <option value="had">以前回覆過 / Đã từng trả lời</option>
-          <option value="late99">99晚於客需 / 99 trễ hơn KH</option>
-          <option value="over7">PH3超過前站7天 / PH3 >7 ngày</option>
-          <option value="issue">⚠ 只看異常 / Chỉ xem lỗi</option>
+          <option value="">全部 / Tất cả</option><option value="need">待回覆 / Chờ trả lời</option><option value="changed">有異動 / Có thay đổi</option><option value="had">以前回覆過 / Đã từng trả lời</option><option value="late99">99晚於客需 / 99 trễ hơn KH</option><option value="over7">PH3超過前站7天 / PH3 &gt;7 ngày</option><option value="issue">⚠ 只看異常 / Chỉ xem lỗi</option>
         </select>
-      </label></div>
-      <div class="grow" style="align-self:center"><div id="batchInfo" class="msg" style="color:#174f86"></div></div>
+      </label>
+      <label class="r-field r-search"><span>搜尋全部 / Tìm tất cả</span><input id="fAllSearch" placeholder="客戶、訂單、料號、日期、數量、狀態、回覆人…"></label>
+      <button type="button" class="btn ribbon-more" id="moreFilterBtn" aria-expanded="false" aria-controls="moreFilters">＋ 更多篩選 / Lọc thêm</button>
     </div>
-  </div>
 
-  <div class="stepbox">
-    <h4><span class="stepno">2</span>需要時再縮小範圍 / Lọc thêm khi cần</h4>
-    <div class="row">
-      <div class="grow search-all"><label>搜尋所有欄位 / Tìm tất cả cột<input id="fAllSearch" placeholder="客戶、訂單、料號、日期、數量、狀態、回覆人… / KH, mã đơn, mã SP, ngày, SL, trạng thái, người trả lời..."></label></div>
-      <div class="grow"><label>客戶 / KH<input id="fCustomer" placeholder="客戶 / KH"></label></div>
-      <div class="grow"><label>訂單號碼 / Mã đơn<input id="fOrder" placeholder="訂單號碼 / Mã đơn"></label></div>
-      <div class="grow"><label>料號 / Mã SP<input id="fItem" placeholder="料號 / Mã SP"></label></div>
-      <div class="grow"><label>前工段日期 / Ngày công đoạn trước
-        <select id="fPrevDate"><option value="">全部日期 / Tất cả ngày</option></select>
-      </label></div>
-    </div>
-  </div>
-
-  <div class="stepbox">
-    <h4><span class="stepno">3</span>批量回覆或 Excel 回覆 / Trả lời hàng loạt hoặc bằng Excel</h4>
-    <div class="row" id="ph3BatchRow">
-      <div class="grow days-box"><label>PH3 加幾天（週日不算） / PH3 cộng mấy ngày (không tính CN)
-        <input id="addDays" type="number" min="0" max="60" step="1" value="7" inputmode="numeric">
-      </label></div>
-      <button id="calcReplyBtn" class="btn primary">依目前資料批量加天數 / Cộng ngày hàng loạt theo dữ liệu hiện tại</button>
-      <button id="saveReplyBtn" class="btn green">✓ 儲存目前修改 / Lưu các thay đổi</button>
-      <button id="downloadBtn" class="btn outline">⬇ 下載目前 Excel / Tải Excel hiện tại</button>
-      <button id="downloadMailBtn" class="btn outline">✉ 下載為可直接回覆MAIL的格式 / Tải định dạng có thể trả lời MAIL trực tiếp</button>
-      <label class="btn outline" for="refillFile" style="cursor:pointer">⬆ 回填修改後 Excel / Nhập lại Excel đã sửa</label>
+    <div class="ribbon-actions">
+      <label class="r-field r-days"><span>PH3 +天 / +ngày</span><input id="addDays" type="number" min="0" max="60" step="1" value="7" inputmode="numeric"></label>
+      <button id="calcReplyBtn" class="btn primary ribbon-action">＋ 批量加天 / Cộng ngày</button>
+      <button id="saveReplyBtn" class="btn green ribbon-action">✓ 儲存目前修改 / Lưu thay đổi</button>
+      <button id="downloadBtn" class="btn outline ribbon-action">⬇ 下載目前 Excel / Tải Excel</button>
+      <button id="downloadMailBtn" class="btn outline ribbon-action">✉ 下載可回覆 MAIL 格式 / Excel trả lời MAIL</button>
+      <label class="btn outline ribbon-action ribbon-upload" for="refillFile">⬆ 回填修改後 Excel / Nhập lại Excel</label>
       <input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
+      <div id="saveGuard" class="ribbon-status"></div>
     </div>
-    <div id="saveGuard" class="compact-note" style="margin-top:8px;font-weight:800"></div>
-  </div>
-  </div><!-- /ph3Toolbar -->
 
-  <div id="ph3DataArea">
-  <div id="ph3DataTop">
-    <div id="filterCount" class="msg grow" style="color:#174f86"></div>
-    <div class="freeze-label"><label>凍結前幾欄 / Cố định bao nhiêu cột
-      <select id="freezeCols"></select>
-    </label></div>
+    <div id="moreFilters" class="ribbon-more-panel" hidden>
+      <label class="r-field"><span>客戶 / KH</span><input id="fCustomer" placeholder="客戶 / KH"></label>
+      <label class="r-field"><span>訂單號碼 / Mã đơn</span><input id="fOrder" placeholder="訂單號碼 / Mã đơn"></label>
+      <label class="r-field"><span>料號 / Mã SP</span><input id="fItem" placeholder="料號 / Mã SP"></label>
+      <label class="r-field"><span>前工段日期 / Ngày công đoạn trước</span><select id="fPrevDate"><option value="">全部日期 / Tất cả ngày</option></select></label>
+    </div>
+    <div id="replyMsg" class="msg ribbon-reply-msg"></div>
   </div>
 
-  <div class="compact-note">
-    操作 / Thao tác：先選日期或批量計算，畫面不會跳動；全部確認後再按「儲存目前修改」。<br>
-    規則 / Quy tắc：前工段＝93～96 已回覆日期中的最晚日期（不依工段順序）；PH3不能早於這個最後日期；99不能早於PH3；PH3工段 0～7天皆可，超過7天（週日不算）才警示；99晚於客需可保存但會警示。<br>
-    Công đoạn trước = ngày trả lời muộn nhất trong 93～96 (không theo thứ tự công đoạn); PH3 không được sớm hơn ngày cuối cùng này.
+  <div class="data-toolbar" id="dataToolbar">
+    <div class="data-toolbar-left">
+      <button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button>
+      <button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button>
+      <span id="filterCount" class="data-count"></span>
+    </div>
+    <details class="rules-pop"><summary>規則 / Quy tắc</summary><div class="rules-card">前工段＝93～96 已回覆日期中的最晚日期；PH3不能早於最後前工段日；99不能早於PH3；PH3超過7天（週日不算）才警示；99晚於客需可保存但會警示。<br>Công đoạn trước = ngày trả lời muộn nhất 93～96; PH3 không sớm hơn ngày cuối; 99 không sớm hơn PH3.</div></details>
+    <label class="freeze-compact">凍結欄 / Cố định<select id="freezeCols"></select></label>
   </div>
-  <div id="replyMsg" class="msg"></div>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button>
-    <button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button>
-  </div>
-  <div class="tablewrap"><table id="grid"></table></div>
-  </div><!-- /ph3DataArea -->
+  <div class="tablewrap ph3-tablewrap"><table id="grid"></table></div>
 </section>
 
 </div>
 </div>
-<script src="./app.js?v=20260818-13"></script>
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded',function(){
+    var btn=document.getElementById('moreFilterBtn');
+    var panel=document.getElementById('moreFilters');
+    if(btn&&panel){
+      panel.hidden=true;
+      btn.setAttribute('aria-expanded','false');
+      btn.textContent='＋ 更多篩選 / Lọc thêm';
+      btn.addEventListener('click',function(){
+        var willOpen=panel.hidden;
+        panel.hidden=!willOpen;
+        btn.setAttribute('aria-expanded',String(willOpen));
+        btn.textContent=willOpen?'－ 收合篩選 / Thu gọn':'＋ 更多篩選 / Lọc thêm';
+      });
+    }
+  });
+})();
+</script>
+<script src="./app.js?v=20260819-22"></script>
 </body>
 </html>
