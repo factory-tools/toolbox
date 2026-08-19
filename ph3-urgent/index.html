@@ -11,197 +11,70 @@
 <style>
 :root{--navy:#17365d;--blue:#2f75b5;--green:#548235;--g2:#e2f0d9;--yellow:#bf9000;--y2:#fff2cc;--red:#c00000;--r2:#ffd9d9;--line:#d6dee7;--bg:#eef3f7;--white:#fff;--text:#263238}
 *{box-sizing:border-box}body{margin:0;font-family:"Microsoft JhengHei","Noto Sans",Arial,sans-serif;background:var(--bg);color:var(--text)}
-.app{max-width:1500px;margin:auto;padding:18px}.hero{background:linear-gradient(135deg,var(--navy),#2f75b5);color:white;border-radius:16px;padding:18px 22px}
-.hero h1{margin:0;font-size:24px}.hero p{margin:5px 0 0;opacity:.92;font-size:13px}.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.grow{flex:1;min-width:180px}
-label{font-weight:700;font-size:13px}input,select{width:100%;padding:9px;border:1px solid #b8c4cf;border-radius:8px;margin-top:5px;background:white}
-.btn{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.primary{background:#1565c0;color:white}.green{background:#2e7d32;color:white}.outline{background:white;border:1px solid #7ea6cc;color:#174f86}.gray{background:#e9eef3;color:#334155}.red{background:#b3261e;color:white}
-.btn:disabled{opacity:.45;cursor:not-allowed}.muted{font-size:12px;color:#64748b}.msg{margin-top:8px;font-weight:800}.ok{color:#2e7d32}.bad{color:#b3261e}.warn{color:#9a5d00}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8fafc}.stat b{font-size:24px}.stat small{display:block;color:#64748b}
-.tablewrap{overflow:auto;max-height:590px;border:1px solid var(--line);border-radius:10px;margin-top:10px}table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content;font-size:12px}
-th,td{border-right:1px solid #dfe5eb;border-bottom:1px solid #dfe5eb;padding:5px 6px;white-space:nowrap}th{position:sticky;top:0;color:#fff;z-index:2;text-align:center;white-space:normal;line-height:1.2;word-break:keep-all}
+.app{width:100%;max-width:none;margin:auto;padding:10px 14px}.hero{background:linear-gradient(135deg,var(--navy),#2f75b5);color:white;border-radius:12px;padding:10px 16px}
+.hero h1{margin:0;font-size:20px}.hero p{margin:3px 0 0;opacity:.92;font-size:11px}.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.grow{flex:1;min-width:150px}
+label{font-weight:700;font-size:12px}input,select{width:100%;padding:7px 8px;border:1px solid #b8c4cf;border-radius:7px;margin-top:4px;background:white}
+.btn{border:0;border-radius:8px;padding:8px 11px;font-weight:800;cursor:pointer;font-size:12px}.primary{background:#1565c0;color:white}.green{background:#2e7d32;color:white}.outline{background:white;border:1px solid #7ea6cc;color:#174f86}.gray{background:#e9eef3;color:#334155}.red{background:#b3261e;color:white}
+.btn:disabled{opacity:.45;cursor:not-allowed}.muted{font-size:11px;color:#64748b}.msg{margin-top:6px;font-weight:800;font-size:12px}.ok{color:#2e7d32}.bad{color:#b3261e}.warn{color:#9a5d00}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.stat{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:#f8fafc}.stat b{font-size:20px}.stat small{display:block;color:#64748b;font-size:11px}
+.tablewrap{overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:9px;margin-top:7px}table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content;font-size:12px}
+th,td{border-right:1px solid #dfe5eb;border-bottom:1px solid #dfe5eb;padding:7px 8px;white-space:nowrap}th{position:sticky;top:0;color:#fff;z-index:2;text-align:center}
 th.fixed{background:var(--green)}th.key{background:#375623}th.progress{background:var(--yellow)}
-th.h-prevstage,th.h-prevph3,th.h-prev99,th.h-days,th.h-status{background:#4472c4}
 td.fixed{background:#f2f8ef}td.progress{background:#fff8e3}tr:nth-child(even) td.fixed{background:#e9f4e4}tr:nth-child(even) td.progress{background:#fff2cc}
-td.c-prevstage,td.c-prevph3,td.c-prev99,td.c-days,td.c-status{background:#eaf2ff!important}
-td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}
-td.warncell{background:#ffb3b3!important;color:#7f0000;font-weight:800}
-td.okcell{background:#dff3e1!important;color:#1f6b27;font-weight:800}
-td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
-.cell-date{min-width:0;width:100%;padding:4px 5px;border:1px solid #aebdca;border-radius:6px;background:white}
-.draftcell{background:#fff4bf!important}.draftbadge{background:#fff0ad;color:#7a5100}tr.need td{}
-tr.issue-row td{background-image:linear-gradient(rgba(255,248,225,.28),rgba(255,248,225,.28))}
-tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
-.issuecell{background:#fff3cd!important;color:#7a5200!important;font-weight:900!important}
-.issue-marker{display:inline-block;margin-right:4px;font-size:14px;vertical-align:middle;color:#b26a00}
-.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
+td.changed{background:#ffb3b3!important;color:#7f0000;font-weight:800}td.warncell{background:#ffb3b3!important;color:#7f0000;font-weight:800}td.okcell{background:#dff3e1!important;color:#1f6b27;font-weight:800}td.earlycell{background:#e1efff!important;color:#174f86;font-weight:800}
+.cell-date{min-width:128px;padding:5px 6px;border:1px solid #aebdca;border-radius:6px;background:white}tr.need td{box-shadow:inset 0 1px 0 #ffb3b3,inset 0 -1px 0 #ffb3b3}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-weight:800;font-size:11px}
 .b-red{background:#ffd3d3;color:#8b0000}.b-orange{background:#ffe6bd;color:#8b5100}.b-green{background:#ddf3df;color:#1f6b27}.b-blue{background:#e1efff;color:#174f86}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.tab{border:1px solid var(--line);background:white;border-radius:8px;padding:7px 10px;font-weight:800;cursor:pointer}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
-.stepbox{border:1px solid #d9e3ed;background:#f8fbff;border-radius:12px;padding:12px;margin-top:10px}
-.stepbox h4{margin:0 0 9px;color:#17365d;font-size:14px}.stepno{display:inline-flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:50%;background:#2f75b5;color:white;margin-right:6px}
-.compact-note{font-size:12px;color:#64748b;line-height:1.65;margin-top:8px}.freeze-label{min-width:145px}
-.tablewrap table{table-layout:fixed}.tablewrap th,.tablewrap td{overflow:hidden;text-overflow:ellipsis}
-.sticky-col{position:sticky!important;z-index:3}.sticky-head{z-index:6!important}
-.sticky-edge{box-shadow:4px 0 5px rgba(15,23,42,.14)}
-@media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.app{padding:8px}}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.tab{border:1px solid var(--line);background:white;border-radius:7px;padding:6px 9px;font-weight:800;cursor:pointer;font-size:12px}.tab.active{background:#e7f1fb;color:#174f86;border-color:#8ab0d7}
+.stepbox{border:1px solid #d9e3ed;background:#f8fbff;border-radius:9px;padding:8px 9px;margin-top:7px}.stepbox h4{margin:0 0 6px;color:#17365d;font-size:13px}.stepno{display:inline-flex;width:21px;height:21px;align-items:center;justify-content:center;border-radius:50%;background:#2f75b5;color:white;margin-right:5px}
+.compact-note{font-size:11px;color:#64748b;line-height:1.45;margin-top:5px}.freeze-label{min-width:135px}
+.tablewrap table{table-layout:auto}.tablewrap th,.tablewrap td{overflow:visible;text-overflow:clip}
+.sticky-col{position:sticky!important;z-index:3}.sticky-head{z-index:6!important}.sticky-edge{box-shadow:4px 0 5px rgba(15,23,42,.14)}
+.compact-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:7px;align-items:end}.fullsearch{grid-column:span 2}.import-errors{margin-top:7px;padding:8px 10px;border-radius:8px;background:#fff6f6;border:1px solid #efb4b4;font-size:12px;line-height:1.55;max-height:180px;overflow:auto}.import-errors b{color:#9b1c1c}.batch-hint{margin-top:6px;padding:6px 8px;border-radius:7px;background:#eef7ff;color:#174f86;font-size:11px;line-height:1.5}
+@media(max-width:900px){.stats{grid-template-columns:1fr 1fr}.compact-grid{grid-template-columns:1fr 1fr}.fullsearch{grid-column:span 2}.app{padding:7px}}
 </style>
 </head>
 <body>
 <div class="app">
 <section class="hero">
   <h1>PH3 急單共用系統 / Hệ thống đơn gấp PH3</h1>
-  <p>客戶 + 訂單號碼 + 筆數 = 唯一值 / KH + Mã đơn + NET = mã duy nhất｜歷史保留 / Lưu lịch sử｜異動紅底 / Đổi dữ liệu tô đỏ｜99 自動 +3 天 / 99 tự động +3 ngày</p>
+  <p>客戶 + 訂單號碼 + 筆數 = 唯一值 / KH + Mã đơn + NET = mã duy nhất｜歷史保留 / Lưu lịch sử｜異動紅底 / Đổi dữ liệu tô đỏ</p>
 </section>
-
 <section id="loginPanel" class="panel">
-  <div class="row">
-    <div class="grow"><label>工號 / Mã nhân viên<input id="employeeNo" type="text" placeholder="例如 A001 / Ví dụ A001" autocomplete="username"></label></div>
-    <div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password" autocomplete="current-password"></label></div>
-    <button id="loginBtn" class="btn primary">登入 / Đăng nhập</button>
-  </div>
+  <div class="row"><div class="grow"><label>Email<input id="email" type="email" placeholder="name@company.com"></label></div><div class="grow"><label>密碼 / Mật khẩu<input id="password" type="password"></label></div><button id="loginBtn" class="btn primary">登入 / Đăng nhập</button></div>
   <div id="loginMsg" class="msg"></div>
 </section>
-
 <div id="appPanel" style="display:none">
+<section class="panel"><div class="row"><div class="grow"><b>登入者 / Người dùng：</b><span id="who"></span><br><span class="muted">所有電腦都讀取同一 Supabase 資料庫 / Mọi máy tính dùng chung một cơ sở dữ liệu Supabase</span></div><button id="refreshBtn" class="btn outline">↻ 重新整理 / Làm mới</button><button id="logoutBtn" class="btn gray">登出 / Đăng xuất</button></div></section>
 <section class="panel">
-  <div class="row">
-    <div class="grow">
-      <b>登入者 / Người dùng：</b><span id="who"></span><br>
-      <span class="muted">所有電腦都讀取同一 Supabase 資料庫 / Mọi máy tính dùng chung một cơ sở dữ liệu Supabase</span>
-    </div>
-    <button id="refreshBtn" class="btn outline">↻ 重新整理 / Làm mới</button>
-    <button id="logoutBtn" class="btn gray">登出 / Đăng xuất</button>
-  </div>
+  <h3 style="margin:0 0 5px;font-size:15px">① 生管匯入 / Nhập dữ liệu kế hoạch</h3>
+  <div class="row"><div class="grow"><label>選擇 Excel（固定 A～W 23欄） / Chọn Excel<input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls"></label></div><button id="importBtn" class="btn green">匯入到共用資料庫 / Nhập vào dữ liệu chung</button></div>
+  <div id="importMsg" class="msg"></div><div id="importDetail"></div>
 </section>
-
-<section id="accountPanel" class="panel" style="display:none">
-  <h3 style="margin-top:0">帳號管理 / Quản lý tài khoản</h3>
-  <div class="compact-note">管理者可一次建立多位帳號。每行輸入：工號,姓名,初始密碼。系統會自動建立內部登入 Email，不需要員工輸入 Email。<br>Quản trị viên có thể tạo nhiều tài khoản cùng lúc. Mỗi dòng: Mã NV,Tên,Mật khẩu ban đầu.</div>
-  <div class="row" style="align-items:flex-start;margin-top:10px">
-    <div class="grow"><label>批量帳號 / Tạo nhiều tài khoản
-      <textarea id="accountBulk" rows="7" style="width:100%;margin-top:5px;padding:9px;border:1px solid #b8c4cf;border-radius:8px;font-family:inherit" placeholder="A002,王小美,Abc123456\nA003,Nguyễn Văn A,Abc123456"></textarea>
-    </label></div>
-    <button id="createAccountsBtn" class="btn primary">＋ 批量建立帳號 / Tạo nhiều tài khoản</button>
-  </div>
-  <div id="accountMsg" class="msg"></div>
-</section>
-
+<section class="panel"><div class="stats"><div class="stat"><small>目前全部 / Tổng hiện tại</small><b id="sAll">0</b></div><div class="stat"><small>待 PH3 回覆 / Chờ PH3</small><b id="sNeed">0</b></div><div class="stat"><small>曾經回覆過 / Đã từng trả lời</small><b id="sHad">0</b></div><div class="stat"><small>本次異動 / Có thay đổi</small><b id="sChanged">0</b></div></div></section>
 <section class="panel">
-  <h3 style="margin-top:0">① 生管匯入 / Nhập dữ liệu kế hoạch</h3>
-  <div class="row">
-    <div class="grow">
-      <label>選擇 Excel（固定 A～W 23欄） / Chọn Excel
-        <input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls">
-      </label>
-    </div>
-    <button id="downloadTemplateBtn" class="btn outline">⬇ 下載空白匯入範本 / Tải mẫu Excel trống</button>
-    <button id="importBtn" class="btn green">匯入到共用資料庫 / Nhập vào dữ liệu chung</button>
-  </div>
-  <div class="compact-note">範本固定 A～W 共 23 欄；TD 進度參考若重複匯入，系統會自動保留日期時間最新的一筆。 / Mẫu cố định A～W, 23 cột; TD sẽ giữ bản có ngày giờ mới nhất.</div>
-  <div id="importMsg" class="msg"></div>
-</section>
-
-<section class="panel">
-  <div class="stats">
-    <div class="stat"><small>目前全部 / Tổng hiện tại</small><b id="sAll">0</b></div>
-    <div class="stat"><small>待 PH3 回覆 / Chờ PH3</small><b id="sNeed">0</b></div>
-    <div class="stat"><small>曾經回覆過 / Đã từng trả lời</small><b id="sHad">0</b></div>
-    <div class="stat"><small>本次異動 / Có thay đổi</small><b id="sChanged">0</b></div>
-  </div>
-</section>
-
-<section class="panel">
-  <h3 style="margin:0">② PH3 評估 / Đánh giá PH3</h3>
-  <div class="compact-note">
-    收到信件 → 匯入 → 系統比對以前回覆 → 處理最新一批 → 回覆完成 → 下載 Excel 寄回<br>
-    Nhận email → Nhập Excel → So lịch sử → Xử lý lần mới nhất → Hoàn tất → Tải Excel gửi lại
-  </div>
-
-  <div class="stepbox">
-    <h4><span class="stepno">1</span>先選這次要處理的資料 / Chọn dữ liệu cần xử lý</h4>
-    <div class="row">
-      <div class="grow"><label>我要處理 / Tôi muốn xử lý
-        <select id="workScope">
-          <option value="latest">最新一批 / Lần nhập mới nhất</option>
-          <option value="today_unreplied">今天尚未回覆 / Hôm nay chưa trả lời</option>
-          <option value="all">全部資料 / Tất cả dữ liệu</option>
-        </select>
-      </label></div>
-      <div class="grow"><label>匯入批次 / Lần nhập
-        <select id="batchSelect">
-          <option value="">自動選最新 / Tự chọn mới nhất</option>
-        </select>
-      </label></div>
-      <div class="grow"><label>狀態 / Trạng thái
-        <select id="fStatus">
-          <option value="">全部 / Tất cả</option>
-          <option value="need">待回覆 / Chờ trả lời</option>
-          <option value="changed">有異動 / Có thay đổi</option>
-          <option value="had">以前回覆過 / Đã từng trả lời</option>
-          <option value="late99">99晚於客需 / 99 trễ hơn KH</option>
-          <option value="over7">PH3超過前站7天 / PH3 >7 ngày</option>
-          <option value="issue">⚠ 只看異常 / Chỉ xem lỗi</option>
-        </select>
-      </label></div>
-      <div class="grow" style="align-self:center"><div id="batchInfo" class="msg" style="color:#174f86"></div></div>
-    </div>
-  </div>
-
-  <div class="stepbox">
-    <h4><span class="stepno">2</span>需要時再縮小範圍 / Lọc thêm khi cần</h4>
-    <div class="row">
-      <div class="grow"><label>客戶 / KH<input id="fCustomer" placeholder="客戶 / KH"></label></div>
-      <div class="grow"><label>訂單號碼 / Mã đơn<input id="fOrder" placeholder="訂單號碼 / Mã đơn"></label></div>
-      <div class="grow"><label>料號 / Mã SP<input id="fItem" placeholder="料號 / Mã SP"></label></div>
-      <div class="grow"><label>前工段日期 / Ngày công đoạn trước
-        <select id="fPrevDate"><option value="">全部日期 / Tất cả ngày</option></select>
-      </label></div>
-    </div>
-  </div>
-
-  <div class="stepbox">
-    <h4><span class="stepno">3</span>批量回覆或 Excel 回覆 / Trả lời hàng loạt hoặc bằng Excel</h4>
-    <div class="row">
-      <div class="grow"><label>PH3 加幾天（週日不算） / PH3 cộng mấy ngày (không tính CN)
-        <select id="addDays">
-          <option value="5">+5 天 / ngày</option>
-          <option value="6">+6 天 / ngày</option>
-          <option value="7" selected>+7 天 / ngày</option>
-        </select>
-      </label></div>
-      <button id="calcReplyBtn" class="btn primary">先計算目前資料 / Tính trước dữ liệu hiện tại</button>
-      <button id="saveReplyBtn" class="btn green">✓ 儲存目前修改 / Lưu các thay đổi</button>
-      <button id="downloadBtn" class="btn outline">⬇ 下載目前 Excel / Tải Excel hiện tại</button>
-      <button id="downloadMailBtn" class="btn outline">✉ 下載為可直接回覆MAIL的格式 / Tải định dạng có thể trả lời MAIL trực tiếp</button>
-      <label class="btn outline" for="refillFile" style="cursor:pointer">⬆ 回填修改後 Excel / Nhập lại Excel đã sửa</label>
-      <input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
-    </div>
-    <div id="saveGuard" class="compact-note" style="margin-top:8px;font-weight:800"></div>
-  </div>
-
-  <div class="row" style="margin-top:10px">
-    <div id="filterCount" class="msg grow" style="color:#174f86"></div>
-    <div class="freeze-label"><label>凍結前幾欄 / Cố định bao nhiêu cột
-      <select id="freezeCols"></select>
-    </label></div>
-  </div>
-
-  <div class="compact-note">
-    操作 / Thao tác：先選日期或批量計算，畫面不會跳動；全部確認後再按「儲存目前修改」。<br>
-    規則 / Quy tắc：前工段＝93～96 已回覆日期中的最晚日期（不依工段順序）；PH3不能早於這個最後日期；99不能早於PH3；PH3工段 0～7天皆可，超過7天（週日不算）才警示；99晚於客需可保存但會警示。<br>
-    Công đoạn trước = ngày trả lời muộn nhất trong 93～96 (không theo thứ tự công đoạn); PH3 không được sớm hơn ngày cuối cùng này.
-  </div>
-  <div id="replyMsg" class="msg"></div>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button>
-    <button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button>
-  </div>
+  <h3 style="margin:0;font-size:15px">② PH3 評估 / Đánh giá PH3</h3>
+  <div class="compact-note">收到信件 → 匯入 → 系統比對以前回覆 → 處理最新一批 → 回覆完成 → 下載 Excel 寄回<br>Nhận email → Nhập Excel → So lịch sử → Xử lý lần mới nhất → Hoàn tất → Tải Excel gửi lại</div>
+  <div class="stepbox"><h4><span class="stepno">1</span>先選這次要處理的資料 / Chọn dữ liệu cần xử lý</h4><div class="compact-grid">
+    <label>我要處理 / Tôi muốn xử lý<select id="workScope"><option value="latest">最新一批 / Lần nhập mới nhất</option><option value="today_unreplied">今天尚未回覆 / Hôm nay chưa trả lời</option><option value="all">全部資料 / Tất cả dữ liệu</option></select></label>
+    <label>匯入批次 / Lần nhập<select id="batchSelect"><option value="">自動選最新 / Tự chọn mới nhất</option></select></label>
+    <label>狀態 / Trạng thái<select id="fStatus"><option value="">全部 / Tất cả</option><option value="need">待回覆 / Chờ trả lời</option><option value="changed">有異動 / Có thay đổi</option><option value="had">以前回覆過 / Đã từng trả lời</option><option value="late99">99晚於客需 / 99 trễ hơn KH</option><option value="over7">PH3超過前站7天 / PH3 >7 ngày</option></select></label>
+    <div id="batchInfo" class="msg" style="color:#174f86;align-self:center"></div>
+  </div></div>
+  <div class="stepbox"><h4><span class="stepno">2</span>需要時再縮小範圍 / Lọc thêm khi cần</h4><div class="compact-grid">
+    <label class="fullsearch">搜尋所有欄位 / Tìm tất cả cột<input id="searchAll" placeholder="輸入任何客戶、訂單、料號、日期、數量、狀態… / Nhập bất kỳ nội dung nào..."></label>
+    <label>客戶 / KH<input id="fCustomer" placeholder="客戶 / KH"></label><label>訂單號碼 / Mã đơn<input id="fOrder" placeholder="訂單號碼 / Mã đơn"></label><label>料號 / Mã SP<input id="fItem" placeholder="料號 / Mã SP"></label>
+    <label>前工段日期 / Ngày công đoạn trước<select id="fPrevDate"><option value="">全部日期 / Tất cả ngày</option></select></label>
+  </div></div>
+  <div class="stepbox"><h4><span class="stepno">3</span>批量回覆或 Excel 回覆 / Trả lời hàng loạt hoặc bằng Excel</h4><div class="row">
+    <div class="grow" style="max-width:260px"><label>PH3 加幾天（週日不算） / PH3 cộng mấy ngày (không tính CN)<input id="addDays" type="number" min="0" max="60" step="1" value="7"></label></div>
+    <button id="calcReplyBtn" class="btn primary">依目前資料批量計算 / Tính hàng loạt</button><button id="downloadBtn" class="btn outline">⬇ 下載目前 Excel / Tải Excel hiện tại</button><label class="btn outline" for="refillFile" style="cursor:pointer">⬆ 回填修改後 Excel / Nhập lại Excel đã sửa</label><input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
+  </div><div id="batchExplain" class="batch-hint">輸入天數後，會依「目前畫面每一筆資料自己的最後前工段日」批量計算，不是全部套同一個固定日期。<br>Sau khi nhập số ngày, hệ thống tính theo ngày công đoạn trước cuối cùng của từng dòng đang hiển thị, không dùng một ngày cố định cho tất cả.</div></div>
+  <div class="row" style="margin-top:7px"><div id="filterCount" class="msg grow" style="color:#174f86"></div><div class="freeze-label"><label>凍結前幾欄 / Cố định bao nhiêu cột<select id="freezeCols"><option value="0">0</option><option value="4">4</option><option value="5" selected>5</option><option value="8">8</option><option value="12">12</option><option value="15">15</option></select></label></div></div>
+  <div class="compact-note">規則 / Quy tắc：PH3不能早於前工段；99不能早於PH3；PH3超過前工段7天（週日不算）紅色警示；99晚於客需可保存但紅色警示。</div><div id="replyMsg" class="msg"></div>
+  <div class="tabs"><button class="tab active" data-tab="current">目前資料 / Dữ liệu hiện tại</button><button class="tab" data-tab="history">異動歷史 / Lịch sử thay đổi</button></div>
   <div class="tablewrap"><table id="grid"></table></div>
-</section>
-
-</div>
-</div>
-<script src="./app.js?v=20260818-13"></script>
-</body>
-</html>
+</section></div></div>
+<script src="./app.js?v=20260819-1"></script>
+<script src="./enhancement.js?v=20260819-1"></script>
+</body></html>
