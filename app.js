@@ -205,6 +205,7 @@ if($('actualMethod')){
 let machineMode='PC';
 let machineStroke=1;
 const MACHINE_STROKE_SECONDS={1:5,2:12,3:17};
+const MACHINE_PULL_LENGTH_COMPENSATION=80; // 機台長度補償值 / Giá trị bù chiều dài
 function machineTimeText(hours, hoursPerDay){
   if(!(hours>=0) || !Number.isFinite(hours)) return '—';
   const totalMin=Math.round(hours*60);
@@ -227,7 +228,6 @@ function setMachineMode(mode){
   $('machineModePc').classList.toggle('active',mode==='PC');
   $('machineModeY').classList.toggle('active',mode==='Y');
   $('machinePcPatternField').classList.toggle('hidden',mode!=='PC');
-  $('machineYLengthField').classList.toggle('hidden',mode!=='Y');
   $('machinePcGuide').classList.toggle('hidden',mode!=='PC');
   if($('machineOrderLabelZh')) $('machineOrderLabelZh').textContent=`訂單數量（${mode}）`;
   if($('machineOrderLabelVi')) $('machineOrderLabelVi').textContent=`Số lượng đơn hàng（${mode}）`;
@@ -255,9 +255,9 @@ function calcMachinePrint(){
     if(patterns>0&&strips>0){perFrame=patterns*strips;perHour=perFrame*fph;}
     $('machineFormulaNote').textContent=patterns>0&&strips>0&&fph>0?`${fmt(patterns,0)} 圖案/hình × ${fmt(strips,0)} 條/dây = ${fmt(perFrame,0)} PC/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,0)} PC/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
   }else{
-    const mm=Number($('machineFrameLength').value);
+    const mm=Math.max(0,(pullLength-MACHINE_PULL_LENGTH_COMPENSATION)/10);
     if(mm>0&&strips>0){perFrame=mm*strips/914.4;perHour=perFrame*fph;}
-    $('machineFormulaNote').textContent=mm>0&&strips>0&&fph>0?`${fmt(mm,0)} MM × ${fmt(strips,0)} 條/dây ÷ 914.4 = ${fmt(perFrame,2)} Y/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,2)} Y/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
+    $('machineFormulaNote').textContent=mm>0&&strips>0&&fph>0?`設定 ${fmt(pullLength,0)} → 預估 ${fmt(mm,0)} MM；${fmt(mm,0)} MM × ${fmt(strips,0)} 條/dây ÷ 914.4 = ${fmt(perFrame,2)} Y/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,2)} Y/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
   }
   $('machinePullTime').textContent=pullSec>0?`${fmt(pullSec,2)} 秒 / giây`:'—';
   $('machinePrintTime').textContent=printSec>0?`${fmt(printSec,0)} 秒 / giây`:'—';
@@ -274,7 +274,7 @@ if($('machineModePc')){
   $('machineModePc').addEventListener('click',()=>setMachineMode('PC'));
   $('machineModeY').addEventListener('click',()=>setMachineMode('Y'));
   document.querySelectorAll('.machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setMachineStroke(Number(btn.dataset.stroke))));
-  ['machineOrderQty','machinePatternsPerRow','machineFrameLength','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  ['machineOrderQty','machinePatternsPerRow','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
   setMachineStroke(1);
   setMachineMode('PC');
 }

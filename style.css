@@ -24,3 +24,31 @@
 /* V17 機印實際產能：依拉帶長度/速度 + 刮印秒數自動計算 */
 .machine-section-title{font-size:11px;font-weight:900;color:#17365d;margin:8px 0 4px;padding-left:2px}.machine-stroke-field{grid-column:1/-1}.machine-stroke{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:4px}.machine-stroke-btn{border:1px solid #aabfd2;border-radius:8px;background:#f7fbff;color:#17365d;font-size:14px;font-weight:900;min-height:42px;line-height:1.05}.machine-stroke-btn small{font-size:9px;font-weight:700;color:#64748b}.machine-stroke-btn.active{background:#17365d;color:#fff;border-color:#17365d}.machine-stroke-btn.active small{color:#dbeafe}.machine-speed-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}.machine-speed-strip>div{border:1px solid #cbd5e1;border-radius:9px;padding:6px 3px;text-align:center;background:#f8fafc}.machine-speed-strip span{display:block;font-size:8.5px;line-height:1.15;color:#64748b;font-weight:800}.machine-speed-strip b{display:block;font-size:13px;margin-top:3px;color:#17365d;white-space:nowrap}.machine-result small{display:block;font-size:9px;color:#3f6b3f;font-weight:800;margin-top:1px}.machine-calibration-note{margin-top:5px;font-size:8.5px;line-height:1.2;color:#7c6a32;text-align:center}
 @media(max-width:640px){.machine-section-title{font-size:10px;margin:6px 0 3px}.machine-stroke-btn{min-height:38px;font-size:12px}.machine-speed-strip{gap:3px;margin-top:6px}.machine-speed-strip>div{padding:5px 2px}.machine-speed-strip span{font-size:7.5px}.machine-speed-strip b{font-size:11px}.machine-calibration-note{font-size:7.5px}}
+\n/* V18 機印：PC 保留每行圖案數；Y 由拉帶長度設定值換算，手機一頁優先 */
+.machine-field-hint{display:block;margin-top:2px;font-size:8px;line-height:1.1;color:#64748b;text-align:center}
+@media(max-width:640px){
+  .machine-card{padding:6px 7px}
+  .machine-card .compact-back{padding:4px 8px;margin-bottom:2px;font-size:11px}
+  .machine-card h1{font-size:18px;margin:1px 0}
+  .machine-subtitle{font-size:10px;margin:0 0 4px}
+  .machine-mode{gap:4px;margin-bottom:4px}
+  .machine-mode-btn{min-height:32px;font-size:15px;border-radius:8px}
+  .machine-guide{padding:3px 5px;margin-bottom:4px;border-radius:8px}
+  .guide-title{font-size:9px;margin-bottom:1px}.guide-line{font-size:9px;gap:3px}.guide-dots{font-size:10px}.guide-strip{font-size:8px;margin-top:0}
+  .machine-section-title{font-size:9px;margin:4px 0 2px}
+  .machine-inputs{gap:4px}
+  .machine-field{padding:4px;border-radius:8px}
+  .machine-field .zh{font-size:11px;line-height:1.05}.machine-field .vi{font-size:8px;margin:1px 0 2px;line-height:1.05}
+  .machine-field input{min-height:31px;font-size:14px;padding:3px}
+  .machine-stroke{gap:3px;margin-top:2px}.machine-stroke-btn{min-height:32px;font-size:11px;border-radius:7px}.machine-stroke-btn small{font-size:7px}
+  .machine-field-hint{font-size:7px;margin-top:1px}
+  .machine-speed-strip{gap:3px;margin-top:4px}.machine-speed-strip>div{padding:3px 1px;border-radius:7px}.machine-speed-strip span{font-size:6.8px}.machine-speed-strip b{font-size:9.5px;margin-top:1px}
+  .machine-results{gap:4px;margin-top:4px}.machine-result{padding:4px 2px;border-radius:8px}.machine-result span{font-size:7.5px}.machine-result b{font-size:15px;margin-top:1px}.machine-result small{font-size:7px}.machine-result.time b{font-size:14px}
+  .machine-note{font-size:7.5px;margin-top:3px;line-height:1.1;min-height:8px}
+  .machine-calibration-note{font-size:6.8px;margin-top:2px;line-height:1.05}
+}
+@media(max-width:390px){
+  .machine-card{padding:5px}
+  .machine-guide .guide-title{display:none}
+  .machine-card h1{font-size:17px}
+}
