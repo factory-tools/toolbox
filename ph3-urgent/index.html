@@ -55,7 +55,7 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
 .cell-mode{width:100%;min-width:0;height:29px;padding:3px 5px;margin:0;border:1px solid #aebdca;border-radius:6px;background:#fff;font-size:11px}
 .mode-prev{margin-top:3px;padding:2px 4px;border-radius:5px;background:#ffe6bd;color:#8b5100;font-size:10px;font-weight:800;white-space:normal;line-height:1.15}
 .workflow-guide{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;padding:5px 7px;border:1px dashed #9db9de;border-radius:7px;background:#f8fbff;font-size:10px;color:#475569;line-height:1.3}
-.workflow-guide b{color:#17365d}.workflow-step{font-weight:800;color:#174f86}.workflow-status{margin-left:auto;font-size:10px;color:#334155;white-space:normal}
+.workflow-guide b{color:#17365d}.workflow-step{font-weight:800;color:#174f86}.workflow-status{margin-left:auto;font-size:10px;color:#334155;white-space:normal;display:flex;gap:4px;flex-wrap:wrap;align-items:center}.wf-label{font-weight:900;color:#17365d}.wf-chip{display:inline-block;padding:2px 6px;border:1px solid #bfd0df;border-radius:999px;background:#fff;font-weight:800}.wf-new{background:#eaf2ff}.wf-repeat{background:#fff2cc}.wf-warn{background:#ffe4d6;border-color:#f2b28f}.wf-done{background:#e2f0d9;border-color:#a7c990}.mode-cell-wrap{display:flex;gap:4px;align-items:center}.row-select{display:inline-flex;align-items:center;gap:2px;font-size:9px;white-space:nowrap;color:#5b6570}.row-select input{margin:0}.bulk-mode-bar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 0}.bulk-mode-count{font-size:10px;font-weight:900;color:#174f86;min-width:105px}
 .split-download{border-color:#7030a0!important;color:#7030a0!important}
 @media(max-height:800px){.tablewrap{max-height:70vh;min-height:360px}}
 
@@ -279,11 +279,11 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
   <div class="import-compact">
     <div class="section-mini-title">① 生管匯入 / Nhập dữ liệu kế hoạch</div>
     <div class="import-line">
-      <label class="import-file"><span>Excel（固定 A～W 23欄） / Excel A～W</span><input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls"></label>
+      <label class="import-file"><span>Excel（A～P必須，Q可選，R～W可空白） / A～P bắt buộc, Q tùy chọn, R～W có thể trống</span><input id="files" type="file" multiple accept=".xlsx,.xlsm,.xls"></label>
       <button id="downloadTemplateBtn" class="btn outline compact-btn">⬇ 下載空白匯入範本 / Tải mẫu Excel trống</button>
       <button id="importBtn" class="btn green compact-btn">⬆ 匯入共用資料 / Nhập dữ liệu chung</button>
     </div>
-    <div class="import-foot"><span><b>必填 / Bắt buộc：KH 客戶、Mã đơn 訂單號碼、NET 筆</b>｜同筆再次匯入會自動標示「再次追問」；有改資料會另外警示 / Nhập lại cùng đơn sẽ tự báo “Hỏi lại”; có thay đổi sẽ cảnh báo.</span><span id="importMsg" class="msg"></span></div>
+    <div class="import-foot"><span><b>匯入規則 / Quy tắc nhập：A～P 要有欄名；Q 可有可無；R～W 不要求。每筆只有 C 客戶＋D 訂單號＋E NET 不可空白。</b><br>同筆再次匯入會標示「再次追問」；有改資料會另外警示 / A～P cần có tiêu đề; Q tùy chọn; R～W không bắt buộc. Mỗi dòng chỉ bắt buộc C+D+E.</span><span id="importMsg" class="msg"></span></div>
     <div id="importDetail"></div>
   </div>
   <div class="stats compact-stats">
@@ -330,10 +330,20 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
       <input id="refillFile" type="file" multiple accept=".xlsx,.xlsm,.xls" style="display:none">
       <div id="saveGuard" class="ribbon-status"></div>
     </div>
+    <div class="bulk-mode-bar">
+      <button type="button" class="btn outline compact-btn" id="selectVisibleBtn">☑ 選取目前顯示 / Chọn các dòng đang hiện</button>
+      <span id="bulkModeCount" class="bulk-mode-count">已選 0 筆 / Đã chọn 0 dòng</span>
+      <span>批量改生產方式 / Phân công hàng loạt：</span>
+      <button type="button" class="btn outline compact-btn" id="bulkMachineBtn">機印 / In máy</button>
+      <button type="button" class="btn outline compact-btn" id="bulkHandBtn">手印 / In tay</button>
+      <button type="button" class="btn outline compact-btn" id="bulkGcnBtn">外發 GCN / Gia công GCN</button>
+      <span class="muted">勾選「生產方式」欄左側的「選 / Chọn」後可一起修改；修改後仍要按儲存 / Sau khi đổi vẫn phải bấm Lưu.</span>
+    </div>
+
     <div class="workflow-guide">
       <b>只照這 5 步 / Chỉ làm 5 bước：</b>
       <span class="workflow-step">① 看「新單／再次追問」 / Xem trạng thái</span><span>→</span>
-      <span class="workflow-step">② 看 MSK＋印刷色，再選機印／手印／GCN / Xem MSK + màu in &amp; chọn</span><span>→</span>
+      <span class="workflow-step">② 在「生產方式」旁看 MSK網版＋印刷色，再選機印／手印／GCN / Xem MSK + màu in ngay cạnh hình thức sản xuất</span><span>→</span>
       <span class="workflow-step">③ 儲存＋分開下載 / Lưu &amp; tải riêng</span><span>→</span>
       <span class="workflow-step">④ 誰先回就先匯誰 / Ai trả trước nhập trước</span><span>→</span>
       <span class="workflow-step">⑤ 完成後下載 MAIL / Xong thì tải MAIL</span>

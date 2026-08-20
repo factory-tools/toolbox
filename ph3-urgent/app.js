@@ -1,10 +1,10 @@
-// PH3 V27：沿用 V26 正常版，只新增印刷色解析、細分 MSK 印刷類型與更簡潔提示；原有功能不重做。
+// PH3 V28：沿用 V27 正常版，只修匯入 A～P/Q/R～W 規則、調整 MSK/印刷色位置、增加批量生產方式與清楚狀態；其他功能不動。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
 const COLNAMES=["col_a","col_b","customer","order_no","net","order_date","item_no","color","width","model","unit","qty","progress_ref","product_name","order_note","summary","customer_required","weaving_date","dyeing_date","sizing_date","aglet_date","ph3_date","warehouse99_date"];
 const PROD_MODE_HEADER="生產方式 / Hình thức sản xuất";
-const MSK_HEADER="MSK 網版 / Khuôn MSK";
+const MSK_HEADER="MSK網版";
 const PRINT_COLOR_HEADER="印刷色 / Màu in";
 const PROD_MODES=["機印 / In máy","手印 / In tay","GCN"];
 const MSK_MODE_RULES={TD:"手印 / In tay",TT:"手印 / In tay",TK:"手印 / In tay",MPW:"手印 / In tay",MD:"機印 / In máy",MT:"機印 / In máy",MY:"機印 / In máy",MP:"機印 / In máy",MK:"機印 / In máy"};
@@ -27,6 +27,7 @@ let lastReplyMap=new Map();
 const dirtyKeys=new Set();
 const dirtyDateKeys=new Set();
 const dirtyModeKeys=new Set();
+const selectedKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
 function updateActionState(){
@@ -198,17 +199,24 @@ function validateImportRows(fileName,a){
   const problems=[];
   if(!a.length){problems.push(`${fileName}：Excel 是空白 / Excel trống`);return problems}
   const hdr=a[0]||[];
-  for(let i=0;i<HEADERS.length;i++){
+  // 生管第一次匯入規則：A～P 必須有；Q 可有可無；R～W 完全不要求，不可因缺少或標題空白而擋住匯入。
+  for(let i=0;i<16;i++){
     const got=String(hdr[i]??"").trim(), exp=String(HEADERS[i]).trim();
     const gotClean=got.replace(/\s*\*\s*$/g,"").trim();
-    if(gotClean!==exp)problems.push(`${fileName}｜第 ${importColumnLetter(i+1)} 欄：標題「${got||"空白"}」應為「${exp}」 / Cột ${importColumnLetter(i+1)} sai tiêu đề`);
+    if(gotClean!==exp)problems.push(`${fileName}｜第 ${importColumnLetter(i+1)} 欄：標題「${got||"空白"}」應為「${exp}」 / Cột ${importColumnLetter(i+1)} sai tiêu đề, cần là “${exp}”`);
+  }
+  // Q 若有提供標題才檢查；整欄沒有也可直接匯入。
+  if(String(hdr[16]??"").trim()){
+    const got=String(hdr[16]??"").trim().replace(/\s*\*\s*$/g,"").trim(), exp=String(HEADERS[16]).trim();
+    if(got!==exp)problems.push(`${fileName}｜第 Q 欄：標題「${hdr[16]}」應為「${exp}」 / Cột Q nếu có thì tiêu đề phải là “${exp}”`);
   }
   a.slice(1).forEach((r,ri)=>{
     if(!r.some(v=>v!==""&&v!=null))return;
     [2,3,4].forEach(i=>{if(String(r[i]??"").trim()==="")problems.push(`${fileName}｜Excel 第 ${ri+2} 列 ${importColumnLetter(i+1)} 欄「${HEADERS[i]}」不可空白，請補資料 / Dòng ${ri+2} cột ${importColumnLetter(i+1)} không được trống`)});
+    // 只驗證實際有值的日期欄；R～W 沒有欄位或空白都不阻擋。
     [5,16,17,18,19,20,21,22].forEach(i=>{
       const v=r[i]; if(v===""||v==null)return;
-      if(!excelDate(v))problems.push(`${fileName}｜Excel 第 ${ri+2} 列 ${importColumnLetter(i+1)} 欄「${HEADERS[i]}」日期無法辨識：${v}，請改成 yyyy/mm/dd / Ngày không hợp lệ`);
+      if(!excelDate(v))problems.push(`${fileName}｜Excel 第 ${ri+2} 列 ${importColumnLetter(i+1)} 欄「${HEADERS[i]}」日期無法辨識：${v}，請改成 yyyy/mm/dd / Dòng ${ri+2} cột ${importColumnLetter(i+1)}: ngày không hợp lệ, dùng yyyy/mm/dd`);
     });
   });
   return problems;
@@ -408,13 +416,13 @@ async function loadHistory(){
   if(error)throw error; histories=data||[];render();
 }
 const WEB_COLUMNS=[
-  // C＋D＋E 是訂單唯一鍵；MSK 與印刷色緊接在唯一鍵後，讓現場不用橫向捲到 P 欄後才看得到。
   ...HEADERS.slice(0,5).map((h,i)=>({kind:"data",idx:i,label:h,width:[38,42,58,76,38][i]||72})),
-  {kind:"msk",label:MSK_HEADER,width:132},
-  {kind:"printColor",label:PRINT_COLOR_HEADER,width:104},
   ...HEADERS.slice(5,16).map((h,j)=>({kind:"data",idx:j+5,label:h,width:[78,74,50,46,74,42,58,54,158,108,116][j]||72})),
   ...HEADERS.slice(16,21).map((h,j)=>({kind:"data",idx:j+16,label:h,width:[82,84,84,84,84][j]||72})),
-  {kind:"mode",label:PROD_MODE_HEADER,width:118},
+  // 生產方式右側固定接 MSK網版、印刷色，方便分配時直接一起看。
+  {kind:"mode",label:PROD_MODE_HEADER,width:138},
+  {kind:"msk",label:MSK_HEADER,width:132},
+  {kind:"printColor",label:PRINT_COLOR_HEADER,width:104},
   {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
   {kind:"data",idx:21,label:HEADERS[21],width:106},
   {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:96},
@@ -482,7 +490,8 @@ function render(){
     if(c.kind==="days")cls+=" h-days";
     if(c.kind==="status")cls+=" h-status";
     if(c.kind==="lastReply")cls+=" h-lastreply";
-    h+=`<th data-display-col="${di}" class="${cls}" title="${esc(c.label)}">${esc(c.label)}</th>`;
+    const tip=c.kind==="msk"?"MSK網版 / Khuôn MSK":c.label;
+    h+=`<th data-display-col="${di}" class="${cls}" title="${esc(tip)}">${esc(c.label)}</th>`;
   });
   h+="</tr></thead><tbody>";
 
@@ -509,19 +518,19 @@ function render(){
       }else if(c.kind==="msk"){
         cls="progress c-msk";
         const codes=mskCodes(o), code=codes[0]||"", printType=mskPrintType(o), same=mskSameCount(o);
-        if(!code)content='<span class="muted">—</span>';
+        if(!code)content='<span class="muted">未解析 / Chưa nhận diện</span>';
         else content=`<b>${esc(codes.join(" / "))}</b>`+
           (printType?`<div class="msk-suggest">${esc(printType)}</div>`:`<div class="msk-suggest">待確認 / Cần xác nhận</div>`)+
           (same>1?`<button type="button" class="msk-same" data-msk="${esc(code)}">同 MSK ${same} 筆 / Cùng MSK ${same}</button>`:``);
       }else if(c.kind==="printColor"){
         cls="progress c-printcolor";
         const color=printColorText(o);
-        content=color?`<b>${esc(color)}</b>`:'<span class="muted">—</span>';
+        content=color?`<b>${esc(color)}</b>`:'<span class="muted">未解析 / Chưa nhận diện</span>';
       }else if(c.kind==="mode"){
         cls="progress c-mode";
         if(dirtyKeys.has(o.unique_key))cls+=" draftcell";
         const cur=productionModeLabel(o.production_mode), old=productionModeLabel(o.previous_production_mode);
-        content=`<select class="cell-mode" data-key="${esc(o.unique_key)}"><option value="">請選擇 / Chọn</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(m)}</option>`).join("")}</select>`+
+        content=`<div class="mode-cell-wrap"><label class="row-select" title="選取此訂單做批量分配 / Chọn đơn này để phân công hàng loạt"><input type="checkbox" class="row-pick" data-key="${esc(o.unique_key)}" ${selectedKeys.has(o.unique_key)?"checked":""}><span>選 / Chọn</span></label><select class="cell-mode" data-key="${esc(o.unique_key)}"><option value="">請選擇 / Chọn hình thức</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(m)}</option>`).join("")}</select></div>`+
           (old&&old!==cur?`<div class="mode-prev">原 / Trước: ${esc(productionModeShort(old))}</div>`:"");
       }else if(c.kind==="prevStage"){
         cls="progress c-prevstage";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
@@ -558,6 +567,9 @@ function render(){
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
   grid.querySelectorAll(".cell-mode").forEach(inp=>inp.addEventListener("change",saveDirectMode));
+  grid.querySelectorAll(".row-pick").forEach(inp=>inp.addEventListener("change",e=>{
+    const key=e.target.dataset.key;if(e.target.checked)selectedKeys.add(key);else selectedKeys.delete(key);updateBulkModeState();
+  }));
   grid.querySelectorAll(".msk-same").forEach(btn=>btn.addEventListener("click",()=>{if($("fAllSearch")){ $("fAllSearch").value=btn.dataset.msk||""; render(); }}));
   updateWorkflowStatus();
   applyFrozenColumns();
@@ -670,6 +682,24 @@ async function importFiles(){
     console.error(e);
     $("importMsg").innerHTML=`<span class="bad">匯入失敗 / Nhập thất bại：${esc(e.message||e)}</span>`;
   }
+}
+
+function updateBulkModeState(){
+  const el=$("bulkModeCount");if(el)el.textContent=`已選 ${selectedKeys.size} 筆 / Đã chọn ${selectedKeys.size} dòng`;
+}
+function selectVisibleRows(){
+  const data=filtered();
+  const allSelected=data.length>0&&data.every(o=>selectedKeys.has(o.unique_key));
+  data.forEach(o=>{if(allSelected)selectedKeys.delete(o.unique_key);else selectedKeys.add(o.unique_key)});
+  render();updateBulkModeState();
+}
+function bulkAssignMode(mode){
+  const keys=[...selectedKeys];
+  if(!keys.length){$("replyMsg").innerHTML='<span class="warn">請先勾選訂單 / Hãy chọn đơn hàng trước</span>';return}
+  let n=0;
+  keys.forEach(key=>{const o=rows.find(x=>x.unique_key===key);if(!o)return;applyProductionModeDraft(o,mode);n++});
+  $("replyMsg").innerHTML=`<span class="warn">已批量指定 ${n} 筆為「${esc(productionModeShort(mode))}」，尚未儲存，請按「儲存目前修改」 / Đã phân công ${n} dòng, chưa lưu; hãy bấm “Lưu thay đổi”</span>`;
+  render();updateActionState();updateBulkModeState();
 }
 
 function saveDirectMode(e){
@@ -1138,21 +1168,28 @@ function updateWorkflowStatus(){
   const pending=m=>data.filter(o=>productionModeLabel(o.production_mode)===m&&o.needs_reply).length;
   const un=data.filter(o=>!productionModeLabel(o.production_mode)).length;
   const fresh=data.filter(o=>chaseCount(o)===1).length, repeat=data.filter(o=>chaseCount(o)>1).length;
-  const parts=PROD_MODES.map(m=>`${productionModeShort(m)} ${count(m)}（待回 ${pending(m)}）`);
-  el.innerHTML=`<b>目前 / Hiện tại：</b>新單 ${fresh}｜再次追問 ${repeat}｜未分配 ${un}｜${parts.join("｜")}`;
+  const machine=count(PROD_MODES[0]), hand=count(PROD_MODES[1]), gcn=count(PROD_MODES[2]);
+  const need=data.filter(o=>o.needs_reply).length, done=data.filter(o=>o.ever_replied&&!o.needs_reply).length;
+  el.innerHTML=`<span class="wf-label">目前狀況 / Tình trạng hiện tại</span>`+
+    `<span class="wf-chip">總數 ${data.length} / Tổng</span>`+
+    `<span class="wf-chip wf-new">新單 ${fresh} / Mới</span>`+
+    `<span class="wf-chip wf-repeat">再次追問 ${repeat} / Hỏi lại</span>`+
+    `<span class="wf-chip wf-warn">未分配 ${un} / Chưa phân công</span>`+
+    `<span class="wf-chip">機印 ${machine}</span><span class="wf-chip">手印 ${hand}</span><span class="wf-chip">GCN ${gcn}</span>`+
+    `<span class="wf-chip wf-warn">待回覆 ${need} / Chờ trả lời</span><span class="wf-chip wf-done">已完成 ${done} / Hoàn tất</span>`;
 }
-function responseHeaders(){return [...HEADERS.slice(0,16),MSK_HEADER,PRINT_COLOR_HEADER,...HEADERS.slice(16,21),PROD_MODE_HEADER,HEADERS[21],HEADERS[22]]}
+function responseHeaders(){return [...HEADERS.slice(0,21),PROD_MODE_HEADER,MSK_HEADER,PRINT_COLOR_HEADER,HEADERS[21],HEADERS[22]]}
 async function buildResponsibilityWorkbook(mode,data){
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("PH3交期回覆");const headers=responseHeaders();ws.addRow(headers);
   const meta=wb.addWorksheet("__PH3_META");meta.addRow(["TYPE","RESPONSIBILITY"]);meta.addRow(["MODE",mode]);meta.state="veryHidden";
   const dateObj=s=>{if(!s)return "";const p=parseYMD(String(s).slice(0,10));return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s};
   data.forEach(o=>{
     const arr=dbToArray(o);const vals=[];
-    for(let i=0;i<=15;i++)vals.push([5].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
+    for(let i=0;i<=20;i++)vals.push([5,16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
+    vals.push(mode);
     vals.push(primaryMsk(o));
     vals.push(printColorText(o));
-    for(let i=16;i<=20;i++)vals.push([16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
-    vals.push(mode);vals.push(o.ph3_date?dateObj(o.ph3_date):"");vals.push(o.warehouse99_date?dateObj(o.warehouse99_date):"");
+    vals.push(o.ph3_date?dateObj(o.ph3_date):"");vals.push(o.warehouse99_date?dateObj(o.warehouse99_date):"");
     ws.addRow(vals);
   });
   ws.views=[{state:"frozen",xSplit:5,ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:headers.length}};
@@ -1309,7 +1346,7 @@ async function refillExcel(){
 $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});$("logoutBtn").onclick=logout;if($("createAccountsBtn"))$("createAccountsBtn").onclick=createAccountsBulk;$("refreshBtn").onclick=async()=>{
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
   dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();issueKeys.clear();await loadAll()
-};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;if($("downloadSplitBtn"))$("downloadSplitBtn").onclick=downloadSplitFiles;
+};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;if($("downloadSplitBtn"))$("downloadSplitBtn").onclick=downloadSplitFiles;if($("selectVisibleBtn"))$("selectVisibleBtn").onclick=selectVisibleRows;if($("bulkMachineBtn"))$("bulkMachineBtn").onclick=()=>bulkAssignMode(PROD_MODES[0]);if($("bulkHandBtn"))$("bulkHandBtn").onclick=()=>bulkAssignMode(PROD_MODES[1]);if($("bulkGcnBtn"))$("bulkGcnBtn").onclick=()=>bulkAssignMode(PROD_MODES[2]);updateBulkModeState();
 ["fAllSearch","fCustomer","fOrder","fItem"].forEach(id=>$(id)?.addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
