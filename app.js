@@ -292,25 +292,60 @@ if($('machineModePc')){
   setMachineMode('PC');
 }
 
-// V20 報價標準產能 / Năng suất chuẩn báo giá
-const QUOTE_CAPACITY_DEFAULTS={
-  WATER:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}],
-  SILICONE:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}]
-};
-const QUOTE_SETTINGS_KEY='factoryToolbox_quoteCapacity_settings_v1';
-const QUOTE_HISTORY_KEY='factoryToolbox_quoteCapacity_history_v1';
-let quoteUnit='PC',quoteSettingsInk='WATER';
-function cloneQuoteDefaults(){return JSON.parse(JSON.stringify(QUOTE_CAPACITY_DEFAULTS));}
-function loadQuoteSettings(){
-  try{const x=JSON.parse(localStorage.getItem(QUOTE_SETTINGS_KEY)||'null');if(x&&Array.isArray(x.WATER)&&Array.isArray(x.SILICONE))return x;}catch(e){}
-  return cloneQuoteDefaults();
-}
-function loadQuoteHistory(){try{const x=JSON.parse(localStorage.getItem(QUOTE_HISTORY_KEY)||'[]');return Array.isArray(x)?x:[];}catch(e){return [];}}
-let quoteCapacitySettings=loadQuoteSettings();
+// V21 報價標準產能 / Năng suất chuẩn báo giá
+// 標準參數由「報價標準參數表 Excel」維護，再由程式更新；網頁僅檢視，不直接修改。
+const QUOTE_STANDARD_HISTORY=[
+  {
+    version:'2026/08/20',
+    note:'初始標準 / Tiêu chuẩn ban đầu',
+    layers:{
+      WATER:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}],
+      SILICONE:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}]
+    },
+    strips:{
+      HAND:[{width:8,strips:30},{width:10,strips:26},{width:12,strips:22},{width:15,strips:18},{width:16,strips:14},{width:18,strips:15},{width:20,strips:14},{width:25,strips:12},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
+      K3:[{width:8,strips:30},{width:10,strips:26},{width:12,strips:22},{width:15,strips:18},{width:16,strips:14},{width:18,strips:15},{width:20,strips:14},{width:25,strips:12},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}]
+    },
+    tableLength:{HAND:25,K3:32},
+    sides:2
+  }
+];
+const QUOTE_STANDARD=QUOTE_STANDARD_HISTORY[0];
+let quoteUnit='PC';
+let quoteStandardsMode='current';
+let quoteStripsAuto=true;
 function quoteInkName(v){return v==='SILICONE'?'SILICONE':'水性 / Mực nước';}
 function quoteMethodName(v){return v==='K3'?'K3':'手印 / In tay';}
-function quoteNowText(d=new Date()){const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
-function quoteFindRule(ink,layers){return (quoteCapacitySettings[ink]||[]).find(r=>layers>=Number(r.min)&&layers<=Number(r.max));}
+function quoteFindRule(ink,layers,std=QUOTE_STANDARD){return (std.layers[ink]||[]).find(r=>layers>=Number(r.min)&&layers<=Number(r.max));}
+function quoteEscape(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function quoteEstimateStrips(method,width,std=QUOTE_STANDARD){
+  const rows=(std.strips[method]||[]).slice().sort((a,b)=>a.width-b.width);
+  if(!(width>0)||!rows.length)return null;
+  const exact=rows.find(r=>Math.abs(Number(r.width)-width)<1e-9);
+  if(exact)return {strips:Number(exact.strips),estimated:false};
+  if(rows.length===1)return {strips:Math.max(1,Math.floor(Number(rows[0].strips)*Number(rows[0].width)/width)),estimated:true};
+  let a,b;
+  if(width<rows[0].width){a=rows[0];b=rows[1];}
+  else if(width>rows[rows.length-1].width){a=rows[rows.length-2];b=rows[rows.length-1];}
+  else{
+    for(let i=0;i<rows.length-1;i++)if(width>rows[i].width&&width<rows[i+1].width){a=rows[i];b=rows[i+1];break;}
+  }
+  if(!a||!b)return null;
+  const raw=Number(a.strips)+(width-Number(a.width))*(Number(b.strips)-Number(a.strips))/(Number(b.width)-Number(a.width));
+  return {strips:Math.max(1,Math.floor(raw)),estimated:true};
+}
+function quoteApplyStripSuggestion(force=false){
+  if(!$('quoteStrips'))return;
+  const method=$('quoteMethod').value,width=Number($('quoteWidth').value),r=quoteEstimateStrips(method,width);
+  if(r&&(force||quoteStripsAuto||!Number($('quoteStrips').value))){
+    $('quoteStrips').value=r.strips;quoteStripsAuto=true;
+    $('quoteStripsHint').textContent=r.estimated?'自動估算單邊條數（可修改） / Số sợi 1 bên ước tính tự động (có thể sửa)':'標準單邊條數（可修改本次報價） / Số sợi 1 bên theo tiêu chuẩn (có thể sửa cho lần này)';
+  }else if(!r){
+    if(force)$('quoteStrips').value='';
+    $('quoteStripsHint').textContent=method==='K3'?'K3 尚無排帶標準，請輸入單邊條數 / K3 chưa có tiêu chuẩn xếp sợi, vui lòng nhập số sợi 1 bên':'目前沒有可用標準，請輸入單邊條數 / Chưa có tiêu chuẩn, vui lòng nhập số sợi 1 bên';
+  }
+  calcQuoteCapacity();
+}
 function quoteSetUnit(unit){
   quoteUnit=unit;
   if(!$('quoteUnitPc'))return;
@@ -320,31 +355,27 @@ function quoteSetUnit(unit){
 }
 function updateQuoteTableLength(){
   const m=$('quoteMethod').value;
-  $('quoteTableLength').value=m==='K3'?32:25;
-  $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 32Y，可修改 / K3 mặc định 32Y, có thể sửa':'手印預設 25Y，可修改 / In tay mặc định 25Y, có thể sửa';
-  calcQuoteCapacity();
-}
-function quoteLatestStamp(){
-  const hist=loadQuoteHistory();
-  if(hist.length)return hist[0].time;
-  return '預設值 / Mặc định';
+  $('quoteTableLength').value=QUOTE_STANDARD.tableLength[m]|| (m==='K3'?32:25);
+  $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 32Y，可修改本次報價 / K3 mặc định 32Y, có thể sửa cho lần này':'手印預設 25Y，可修改本次報價 / In tay mặc định 25Y, có thể sửa cho lần này';
+  quoteApplyStripSuggestion(true);
 }
 function calcQuoteCapacity(){
   if(!$('quoteCapacity8'))return;
-  const method=$('quoteMethod').value,ink=$('quoteInk').value,width=Number($('quoteWidth').value),strips=Number($('quoteStrips').value),pcLen=Number($('quotePcLength').value),layerRaw=$('quoteLayers').value.trim(),layers=layerRaw===''?NaN:Number(layerRaw),tableY=Number($('quoteTableLength').value);
-  const inkLabel=ink==='SILICONE'?'SILICONE':'水性 / Mực nước';
+  const method=$('quoteMethod').value,ink=$('quoteInk').value,width=Number($('quoteWidth').value),oneSide=Number($('quoteStrips').value),pcLen=Number($('quotePcLength').value),layerRaw=$('quoteLayers').value.trim(),layers=layerRaw===''?NaN:Number(layerRaw),tableY=Number($('quoteTableLength').value),sides=Number(QUOTE_STANDARD.sides)||2;
+  const inkLabel=quoteInkName(ink);
   $('quoteWhatYouAreQuoting').textContent=`目前：${quoteMethodName(method)}｜${inkLabel}｜${quoteUnit}${width>0?'｜'+fmt(width,2)+' mm':''} / Hiện tại: ${quoteMethodName(method)}｜${inkLabel}｜${quoteUnit}${width>0?'｜'+fmt(width,2)+' mm':''}`;
-  $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${quoteLatestStamp()}`;
+  $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${QUOTE_STANDARD.version}`;
   const rule=Number.isFinite(layers)?quoteFindRule(ink,layers):null;
-  const perTableY=(strips>0&&tableY>0)?strips*tableY:0;
+  const totalStrips=(oneSide>0)?oneSide*sides:0;
+  const perTableY=(totalStrips>0&&tableY>0)?totalStrips*tableY:0;
   const perStripPc=(pcLen>0&&tableY>0)?Math.floor(tableY*914.4/pcLen):0;
-  const perTablePc=(perStripPc>0&&strips>0)?perStripPc*strips:0;
+  const perTablePc=(perStripPc>0&&totalStrips>0)?perStripPc*totalStrips:0;
+  $('quoteTotalStrips').textContent=totalStrips>0?`${fmt(totalStrips,0)} 條 / sợi（${fmt(oneSide,0)} × ${sides}邊）`:'—';
   $('quotePerTable').textContent=perTableY>0?(quoteUnit==='PC'?(pcLen>0?`${fmt(perTablePc,0)} PC（${fmt(perTableY,2)} Y）`:`${fmt(perTableY,2)} Y`):`${fmt(perTableY,2)} Y`):'—';
   $('quoteTables12').textContent=rule?`${fmt(rule.tables12,2)} 桌 / bàn`:'—';
   const tables8=rule?Number(rule.tables12)*8/12:0;
   $('quoteTables8').textContent=tables8>0?`${fmt(tables8,2)} 桌 / bàn`:'—';
-  const capY=perTableY*tables8;
-  const capPc=perTablePc*tables8;
+  const capY=perTableY*tables8,capPc=perTablePc*tables8;
   if(quoteUnit==='PC'){
     $('quoteCapacity8').textContent=(capPc>0&&pcLen>0)?`${fmt(capPc,0)} PC`:'—';
     $('quoteCapacity8Alt').textContent=capY>0?`≈ ${fmt(capY,2)} Y / 8H`:'—';
@@ -352,72 +383,44 @@ function calcQuoteCapacity(){
     $('quoteCapacity8').textContent=capY>0?`${fmt(capY,2)} Y`:'—';
     $('quoteCapacity8Alt').textContent=capY>0?'Y 報價不需輸入 PC 長度 / Báo giá Y không cần chiều dài PC':'—';
   }
-  if(!(strips>0)||!(tableY>0))$('quoteFormula').textContent='請輸入實際排帶條數 / Vui lòng nhập số sợi xếp thực tế.';
-  else if(!rule)$('quoteFormula').textContent=`目前 ${inkLabel} 的產能表沒有涵蓋 ${fmt(layers,0)} 層，請到設定新增區間。 / Bảng năng suất ${inkLabel} hiện chưa có khoảng ${fmt(layers,0)} lớp; vui lòng thêm trong cài đặt.`;
+  if(!(oneSide>0)||!(tableY>0))$('quoteFormula').textContent='請輸入「單邊排帶條數」 / Vui lòng nhập「Tổng số sợi 1 bên bàn」.';
+  else if(!rule)$('quoteFormula').textContent=`目前 ${inkLabel} 標準沒有涵蓋 ${Number.isFinite(layers)?fmt(layers,0):'—'} 層。 / Tiêu chuẩn ${inkLabel} hiện chưa bao gồm ${Number.isFinite(layers)?fmt(layers,0):'—'} lớp.`;
   else if(quoteUnit==='PC'&&!(pcLen>0))$('quoteFormula').textContent='報 PC 必須輸入每 PC 長度（mm） / Báo giá PC phải nhập chiều dài mỗi PC (mm).';
-  else $('quoteFormula').textContent=`每桌 ${fmt(tableY,2)}Y × ${fmt(strips,0)}條 = ${fmt(perTableY,2)}Y；${fmt(layers,0)}層 → ${fmt(rule.tables12,2)}桌/12H → ${fmt(tables8,2)}桌/8H。 / Mỗi bàn ${fmt(tableY,2)}Y × ${fmt(strips,0)} sợi = ${fmt(perTableY,2)}Y; ${fmt(layers,0)} lớp → ${fmt(rule.tables12,2)} bàn/12H → ${fmt(tables8,2)} bàn/8H.`;
+  else $('quoteFormula').textContent=`單邊 ${fmt(oneSide,0)}條 × ${sides}邊 × 桌長 ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/桌；${fmt(layers,0)}層 → ${fmt(rule.tables12,2)}桌/12H → ${fmt(tables8,2)}桌/8H。 / ${fmt(oneSide,0)} sợi/1 bên × ${sides} bên × ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/bàn; ${fmt(layers,0)} lớp → ${fmt(rule.tables12,2)} bàn/12H → ${fmt(tables8,2)} bàn/8H.`;
 }
-function renderQuoteSettingsTable(){
-  if(!$('quoteSettingsTableWrap'))return;
-  const rows=quoteCapacitySettings[quoteSettingsInk]||[];
-  $('quoteSettingsTableWrap').innerHTML=`<table class="quote-settings-table"><thead><tr><th>最低層數<br>Min lớp</th><th>最高層數<br>Max lớp</th><th>1人12H桌數<br>Bàn/người/12H</th><th></th></tr></thead><tbody>${rows.map((r,i)=>`<tr data-i="${i}"><td><input class="q-min" type="number" min="0" step="1" value="${r.min}"></td><td><input class="q-max" type="number" min="0" step="1" value="${r.max}"></td><td><input class="q-t12" type="number" min="0" step="0.01" value="${r.tables12}"></td><td><button class="delete-range" type="button" title="刪除 / Xóa">×</button></td></tr>`).join('')}</tbody></table>`;
-  $('quoteSettingsTableWrap').querySelectorAll('.delete-range').forEach(btn=>btn.addEventListener('click',()=>{const tr=btn.closest('tr');readQuoteSettingsTable();quoteCapacitySettings[quoteSettingsInk].splice(Number(tr.dataset.i),1);renderQuoteSettingsTable();}));
-}
-function readQuoteSettingsTable(){
-  if(!$('quoteSettingsTableWrap'))return;
-  const rows=[...$('quoteSettingsTableWrap').querySelectorAll('tbody tr')].map(tr=>({min:Number(tr.querySelector('.q-min').value),max:Number(tr.querySelector('.q-max').value),tables12:Number(tr.querySelector('.q-t12').value)})).filter(r=>Number.isFinite(r.min)&&Number.isFinite(r.max)&&Number.isFinite(r.tables12));
-  quoteCapacitySettings[quoteSettingsInk]=rows;
-}
-function quoteSettingsSnapshot(){readQuoteSettingsTable();return JSON.parse(JSON.stringify(quoteCapacitySettings));}
-function quoteChanges(oldS,newS){
-  const changes=[];
-  ['WATER','SILICONE'].forEach(ink=>{
-    const oldRows=oldS[ink]||[],newRows=newS[ink]||[],n=Math.max(oldRows.length,newRows.length);
-    for(let i=0;i<n;i++){
-      const a=oldRows[i],b=newRows[i];
-      if(!a&&b){changes.push(`${quoteInkName(ink)}：新增 / Thêm ${b.min}–${b.max}層 = ${b.tables12}桌/12H`);continue;}
-      if(a&&!b){changes.push(`${quoteInkName(ink)}：刪除 / Xóa ${a.min}–${a.max}層 = ${a.tables12}桌/12H`);continue;}
-      if(a&&b&&(a.min!==b.min||a.max!==b.max||a.tables12!==b.tables12))changes.push(`${quoteInkName(ink)}：${a.min}–${a.max}層 ${a.tables12}桌 → ${b.min}–${b.max}層 ${b.tables12}桌 / bàn`);
-    }
-  });
-  return changes;
-}
-function saveQuoteSettings(){
-  const oldSaved=loadQuoteSettings();
-  const snap=quoteSettingsSnapshot();
-  // Basic validation: each range must be valid and positive/zero table value allowed only if explicitly intended.
-  for(const ink of ['WATER','SILICONE']){
-    for(const r of snap[ink]){if(!(r.min>=0)||!(r.max>=r.min)||!(r.tables12>0)){alert('層數區間或桌數有錯誤 / Khoảng lớp hoặc số bàn không hợp lệ');return;}}
+function quoteLayerTable(std){
+  const water=std.layers.WATER||[],sil=std.layers.SILICONE||[],n=Math.max(water.length,sil.length),rows=[];
+  for(let i=0;i<n;i++){
+    const w=water[i],s=sil[i];
+    const min=w?w.min:(s?s.min:'—'),max=w?w.max:(s?s.max:'—');
+    rows.push(`<tr><td>${min}</td><td>${max}</td><td>${w?fmt(w.tables12,2):'—'}</td><td>${s?fmt(s.tables12,2):'—'}</td></tr>`);
   }
-  const changes=quoteChanges(oldSaved,snap);
-  localStorage.setItem(QUOTE_SETTINGS_KEY,JSON.stringify(snap));quoteCapacitySettings=snap;
-  if(changes.length){const hist=loadQuoteHistory();hist.unshift({time:quoteNowText(),changes,snapshot:snap});localStorage.setItem(QUOTE_HISTORY_KEY,JSON.stringify(hist.slice(0,100)));}
-  renderQuoteHistory();renderQuoteSettingsTable();calcQuoteCapacity();
-  alert(changes.length?'已儲存，並記錄修改時間 / Đã lưu và ghi lại thời gian thay đổi':'設定沒有變更 / Cài đặt không thay đổi');
+  return `<div class="quote-standard-section"><b>層數產能 / Năng suất theo số lớp</b><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>最低層數<br>Số lớp nhỏ nhất</th><th>最高層數<br>Số lớp lớn nhất</th><th>水性 1人12H桌數<br>Mực nước: Bàn/người/12H</th><th>SILICONE 1人12H桌數<br>Bàn/người/12H</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
 }
-function resetQuoteSettings(){
-  if(!confirm('確定恢復預設產能？這次變更也會留下修改紀錄。\nXác nhận khôi phục năng suất mặc định? Thay đổi này cũng sẽ được ghi vào lịch sử.'))return;
-  const oldSaved=loadQuoteSettings(),snap=cloneQuoteDefaults(),changes=quoteChanges(oldSaved,snap);
-  quoteCapacitySettings=snap;localStorage.setItem(QUOTE_SETTINGS_KEY,JSON.stringify(snap));
-  if(changes.length){const hist=loadQuoteHistory();hist.unshift({time:quoteNowText(),changes:['恢復預設產能 / Khôi phục năng suất mặc định',...changes],snapshot:snap});localStorage.setItem(QUOTE_HISTORY_KEY,JSON.stringify(hist.slice(0,100)));}
-  renderQuoteSettingsTable();renderQuoteHistory();calcQuoteCapacity();
+function quoteStripTable(title,rows){
+  const body=rows.length?rows.map(r=>`<tr><td>${fmt(r.width,2)}</td><td>${fmt(r.strips,0)}</td></tr>`).join(''):`<tr><td colspan="2">尚未建立標準 / Chưa có tiêu chuẩn</td></tr>`;
+  return `<div class="quote-standard-section"><b>${title}</b><table class="quote-settings-table"><thead><tr><th>帶寬 mm<br>Quy cách dây (mm)</th><th>單邊排帶條數<br>Tổng số sợi 1 bên bàn</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
-function renderQuoteHistory(){
-  if(!$('quoteHistoryList'))return;
-  const hist=loadQuoteHistory();
-  if(!hist.length){$('quoteHistoryList').innerHTML='<div class="quote-history-empty">尚無修改紀錄 / Chưa có lịch sử thay đổi</div>';return;}
-  $('quoteHistoryList').innerHTML=hist.map(h=>`<details class="quote-history-item"><summary>${h.time}</summary><div class="changes">${(h.changes||[]).map(c=>`<div>${String(c).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('')}</div></details>`).join('');
+function quoteSnapshotHtml(std,showHeader=true){
+  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('K3',std.strips.K3||[])}</div><div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　8H：<b>12H × 8/12</b></div></div>`;
 }
-function openQuoteSettings(){quoteCapacitySettings=loadQuoteSettings();quoteSettingsInk='WATER';document.querySelectorAll('.quote-ink-tab').forEach(b=>b.classList.toggle('active',b.dataset.quoteInkTab==='WATER'));renderQuoteSettingsTable();renderQuoteHistory();$('quoteSettingsPanel').classList.remove('hidden');}
-function closeQuoteSettings(){$('quoteSettingsPanel').classList.add('hidden');quoteCapacitySettings=loadQuoteSettings();calcQuoteCapacity();}
+function renderQuoteStandards(){
+  if(!$('quoteStandardsContent'))return;
+  if(quoteStandardsMode==='current')$('quoteStandardsContent').innerHTML=quoteSnapshotHtml(QUOTE_STANDARD,true);
+  else $('quoteStandardsContent').innerHTML=QUOTE_STANDARD_HISTORY.map((std,i)=>`<details class="quote-history-item" ${i===0?'open':''}><summary>${quoteEscape(std.version)}　${quoteEscape(std.note)}</summary><div class="quote-history-snapshot">${quoteSnapshotHtml(std,false)}</div></details>`).join('');
+  $('quoteCurrentTab').classList.toggle('active',quoteStandardsMode==='current');$('quoteHistoryTab').classList.toggle('active',quoteStandardsMode==='history');
+}
+function openQuoteStandards(){quoteStandardsMode='current';renderQuoteStandards();$('quoteStandardsPanel').classList.remove('hidden');}
+function closeQuoteStandards(){$('quoteStandardsPanel').classList.add('hidden');}
 if($('quoteUnitPc')){
   $('quoteUnitPc').addEventListener('click',()=>quoteSetUnit('PC'));$('quoteUnitY').addEventListener('click',()=>quoteSetUnit('Y'));
   $('quoteMethod').addEventListener('change',updateQuoteTableLength);
-  ['quoteInk','quoteWidth','quoteStrips','quotePcLength','quoteLayers','quoteTableLength'].forEach(id=>$(id).addEventListener('input',calcQuoteCapacity));
-  $('quoteSettingsBtn').addEventListener('click',openQuoteSettings);$('quoteSettingsClose').addEventListener('click',closeQuoteSettings);
-  $('quoteSettingsPanel').addEventListener('click',e=>{if(e.target===$('quoteSettingsPanel'))closeQuoteSettings();});
-  document.querySelectorAll('.quote-ink-tab').forEach(btn=>btn.addEventListener('click',()=>{readQuoteSettingsTable();quoteSettingsInk=btn.dataset.quoteInkTab;document.querySelectorAll('.quote-ink-tab').forEach(b=>b.classList.toggle('active',b===btn));renderQuoteSettingsTable();}));
-  $('quoteAddRange').addEventListener('click',()=>{readQuoteSettingsTable();quoteCapacitySettings[quoteSettingsInk].push({min:0,max:0,tables12:1});renderQuoteSettingsTable();});
-  $('quoteSaveSettings').addEventListener('click',saveQuoteSettings);$('quoteResetSettings').addEventListener('click',resetQuoteSettings);
-  quoteSetUnit('PC');updateQuoteTableLength();renderQuoteHistory();
+  $('quoteWidth').addEventListener('input',()=>{quoteStripsAuto=true;quoteApplyStripSuggestion(true);});
+  $('quoteStrips').addEventListener('input',()=>{quoteStripsAuto=false;calcQuoteCapacity();});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength'].forEach(id=>$(id).addEventListener('input',calcQuoteCapacity));
+  $('quoteStandardsBtn').addEventListener('click',openQuoteStandards);$('quoteStandardsClose').addEventListener('click',closeQuoteStandards);
+  $('quoteStandardsPanel').addEventListener('click',e=>{if(e.target===$('quoteStandardsPanel'))closeQuoteStandards();});
+  $('quoteCurrentTab').addEventListener('click',()=>{quoteStandardsMode='current';renderQuoteStandards();});
+  $('quoteHistoryTab').addEventListener('click',()=>{quoteStandardsMode='history';renderQuoteStandards();});
+  quoteSetUnit('PC');updateQuoteTableLength();renderQuoteStandards();
 }
