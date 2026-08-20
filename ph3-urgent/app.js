@@ -408,11 +408,11 @@ async function loadHistory(){
   if(error)throw error; histories=data||[];render();
 }
 const WEB_COLUMNS=[
-  ...HEADERS.slice(0,16).map((h,i)=>({kind:"data",idx:i,label:h,width:[
-    38,42,58,76,38,78,74,50,46,74,42,58,54,158,108,116
-  ][i]||72})),
+  // C＋D＋E 是訂單唯一鍵；MSK 與印刷色緊接在唯一鍵後，讓現場不用橫向捲到 P 欄後才看得到。
+  ...HEADERS.slice(0,5).map((h,i)=>({kind:"data",idx:i,label:h,width:[38,42,58,76,38][i]||72})),
   {kind:"msk",label:MSK_HEADER,width:132},
   {kind:"printColor",label:PRINT_COLOR_HEADER,width:104},
+  ...HEADERS.slice(5,16).map((h,j)=>({kind:"data",idx:j+5,label:h,width:[78,74,50,46,74,42,58,54,158,108,116][j]||72})),
   ...HEADERS.slice(16,21).map((h,j)=>({kind:"data",idx:j+16,label:h,width:[82,84,84,84,84][j]||72})),
   {kind:"mode",label:PROD_MODE_HEADER,width:118},
   {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
