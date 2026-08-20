@@ -1,4 +1,4 @@
-// PH3 V28：沿用 V27 正常版，只修匯入 A～P/Q/R～W 規則、調整 MSK/印刷色位置、增加批量生產方式與清楚狀態；其他功能不動。
+// PH3 V29：沿用 V28 正常版，只優化 PH3 評估版面、生產方式篩選/批量操作、客需日期異動顯示；其他功能不動。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
@@ -24,6 +24,7 @@ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY || cfg.SUPABASE_URL.includ
 const sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
 let rows=[], histories=[], batches=[], tab="current", currentProfile=null;
 let lastReplyMap=new Map();
+let customerRequiredChangeMap=new Map();
 const dirtyKeys=new Set();
 const dirtyDateKeys=new Set();
 const dirtyModeKeys=new Set();
@@ -54,7 +55,9 @@ function syncDirtyKey(key){
 }
 function markDateDirty(key){dirtyDateKeys.add(key);dirtyKeys.add(key)}
 function productionModeLabel(v){return PROD_MODES.includes(String(v||""))?String(v):""}
-function productionModeShort(v){return ({"機印 / In máy":"機印 / In máy","手印 / In tay":"手印 / In tay","GCN":"GCN"})[String(v||"")]||"—"}
+function productionModeShort(v){return ({"機印 / In máy":"機印 / In máy","手印 / In tay":"手印 / In tay","GCN":"外發GCN"})[String(v||"")]||"—"}
+function productionModeOptionText(v){return String(v||"")==="GCN"?"外發GCN":String(v||"")}
+function shortDate(v){const x=fmt(v);if(!x)return "—";const m=x.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?`${Number(m[2])}/${Number(m[3])}`:x}
 
 function mskCodes(o){
   const text=[o.product_name,o.order_note,o.summary].map(v=>String(v||"")).join(" ").toUpperCase();
@@ -355,6 +358,7 @@ function filtered(){
         d=$("fOrder").value.trim().toLowerCase(),
         g=$("fItem").value.trim().toLowerCase(),
         st=$("fStatus").value,
+        modeFilter=$("fMode")?.value||"",
         prevDate=$("fPrevDate").value,
         scope=$("workScope").value,
         batchId=selectedBatchId(),
@@ -372,6 +376,8 @@ function filtered(){
     if(g&&!String(o.item_no??"").toLowerCase().includes(g))return false;
     const prev=latestUpstream(o).date;
     if(prevDate && prev!==prevDate)return false;
+    if(modeFilter==="unassigned"&&productionModeLabel(o.production_mode))return false;
+    if(modeFilter&&modeFilter!=="unassigned"&&productionModeLabel(o.production_mode)!==modeFilter)return false;
     if(st==="need"&&!o.needs_reply)return false;
     if(st==="changed"&&!(o.changed_fields||[]).length)return false;
     if(st==="had"&&!o.ever_replied)return false;
@@ -403,6 +409,14 @@ async function loadAll(){
   if(replyHistoryErr)console.warn(replyHistoryErr);
   lastReplyMap=new Map();
   (replyHistory||[]).forEach(h=>{if(!lastReplyMap.has(h.unique_key))lastReplyMap.set(h.unique_key,h)});
+  // 不改資料庫：直接從既有異動歷史抓「客人要求日」最近一次舊值→新值。
+  const {data:reqHistory,error:reqHistoryErr}=await sb.from("ph3_order_history")
+    .select("unique_key,field_name,old_value,new_value,changed_at")
+    .eq("field_name","customer_required")
+    .order("changed_at",{ascending:false}).limit(50000);
+  if(reqHistoryErr)console.warn(reqHistoryErr);
+  customerRequiredChangeMap=new Map();
+  (reqHistory||[]).forEach(h=>{if(!customerRequiredChangeMap.has(h.unique_key))customerRequiredChangeMap.set(h.unique_key,h)});
   $("sAll").textContent=rows.length;
   $("sNeed").textContent=rows.filter(x=>x.needs_reply).length;
   $("sHad").textContent=rows.filter(x=>x.ever_replied).length;
@@ -420,7 +434,7 @@ const WEB_COLUMNS=[
   ...HEADERS.slice(5,16).map((h,j)=>({kind:"data",idx:j+5,label:h,width:[78,74,50,46,74,42,58,54,158,108,116][j]||72})),
   ...HEADERS.slice(16,21).map((h,j)=>({kind:"data",idx:j+16,label:h,width:[82,84,84,84,84][j]||72})),
   // 生產方式右側固定接 MSK網版、印刷色，方便分配時直接一起看。
-  {kind:"mode",label:PROD_MODE_HEADER,width:138},
+  {kind:"mode",label:PROD_MODE_HEADER,width:164},
   {kind:"msk",label:MSK_HEADER,width:132},
   {kind:"printColor",label:PRINT_COLOR_HEADER,width:104},
   {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
@@ -513,6 +527,13 @@ function render(){
           content=`<input class="cell-date" type="date" data-key="${esc(o.unique_key)}" data-col="${i}" value="${esc(val)}">`;
         }else{
           content=esc(fmt(arr[i]));
+          if(i===16 && isChanged){
+            const hc=customerRequiredChangeMap.get(o.unique_key);
+            if(hc){
+              const oldD=shortDate(hc.old_value), newD=shortDate(hc.new_value||arr[i]);
+              content+=`<div class="change-detail" title="客人要求日異動：${esc(fmt(hc.old_value)||"—")} → ${esc(fmt(hc.new_value||arr[i])||"—")} / Ngày KH yêu cầu thay đổi">原 ${esc(oldD)} → 現 ${esc(newD)}<br><span>Trước ${esc(oldD)} → Nay ${esc(newD)}</span></div>`;
+            }
+          }
           if(i===0 && issue)content=`<span class="issue-marker" title="${esc(issueText)}">⚠</span>`+content;
         }
       }else if(c.kind==="msk"){
@@ -530,7 +551,7 @@ function render(){
         cls="progress c-mode";
         if(dirtyKeys.has(o.unique_key))cls+=" draftcell";
         const cur=productionModeLabel(o.production_mode), old=productionModeLabel(o.previous_production_mode);
-        content=`<div class="mode-cell-wrap"><label class="row-select" title="選取此訂單做批量分配 / Chọn đơn này để phân công hàng loạt"><input type="checkbox" class="row-pick" data-key="${esc(o.unique_key)}" ${selectedKeys.has(o.unique_key)?"checked":""}><span>選 / Chọn</span></label><select class="cell-mode" data-key="${esc(o.unique_key)}"><option value="">請選擇 / Chọn hình thức</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(m)}</option>`).join("")}</select></div>`+
+        content=`<div class="mode-cell-wrap"><label class="row-select" title="勾選此訂單做批量分配 / Chọn đơn này để phân công hàng loạt"><input type="checkbox" class="row-pick" data-key="${esc(o.unique_key)}" ${selectedKeys.has(o.unique_key)?"checked":""}><span class="sr-only">選 / Chọn</span></label><select class="cell-mode" title="選擇生產方式 / Chọn hình thức sản xuất" data-key="${esc(o.unique_key)}"><option value="">未分配 / Chưa phân công</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(productionModeOptionText(m))}</option>`).join("")}</select></div>`+
           (old&&old!==cur?`<div class="mode-prev">原 / Trước: ${esc(productionModeShort(old))}</div>`:"");
       }else if(c.kind==="prevStage"){
         cls="progress c-prevstage";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
@@ -549,7 +570,11 @@ function render(){
         let status=`<span class="badge ${chase.cls}">${esc(chase.label)}</span> `+(o.needs_reply?'<span class="badge b-red">待回覆 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>');
         if(!o.production_mode)status+=' <span class="badge b-orange">未分配 / Chưa phân công</span>';
         if(o.previous_production_mode&&o.production_mode&&o.previous_production_mode!==o.production_mode)status+=` <span class="badge b-orange">原 ${esc(productionModeShort(o.previous_production_mode))} → ${esc(productionModeShort(o.production_mode))}</span>`;
-        if((o.changed_fields||[]).length)status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
+        if((o.changed_fields||[]).length){
+          const reqChange=ch.has("customer_required")?customerRequiredChangeMap.get(o.unique_key):null;
+          if(reqChange)status+=` <span class="badge b-orange" title="客人要求日 / Ngày KH yêu cầu">客需 ${esc(shortDate(reqChange.old_value))}→${esc(shortDate(reqChange.new_value||o.customer_required))}</span>`;
+          else status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
+        }
         if(ph3BeforeUpstream(o))status+=' <span class="badge b-red">PH3早於前站 / PH3 sớm hơn công đoạn trước</span>';
         if(warehouseBeforePh3(o))status+=' <span class="badge b-red">99早於PH3 / 99 sớm hơn PH3</span>';
         if(late99)status+=' <span class="badge b-red">99晚於客需 / 99 trễ hơn KH</span>';
@@ -1171,12 +1196,17 @@ function updateWorkflowStatus(){
   const machine=count(PROD_MODES[0]), hand=count(PROD_MODES[1]), gcn=count(PROD_MODES[2]);
   const need=data.filter(o=>o.needs_reply).length, done=data.filter(o=>o.ever_replied&&!o.needs_reply).length;
   el.innerHTML=`<span class="wf-label">目前狀況 / Tình trạng hiện tại</span>`+
-    `<span class="wf-chip">總數 ${data.length} / Tổng</span>`+
-    `<span class="wf-chip wf-new">新單 ${fresh} / Mới</span>`+
-    `<span class="wf-chip wf-repeat">再次追問 ${repeat} / Hỏi lại</span>`+
-    `<span class="wf-chip wf-warn">未分配 ${un} / Chưa phân công</span>`+
-    `<span class="wf-chip">機印 ${machine}</span><span class="wf-chip">手印 ${hand}</span><span class="wf-chip">GCN ${gcn}</span>`+
-    `<span class="wf-chip wf-warn">待回覆 ${need} / Chờ trả lời</span><span class="wf-chip wf-done">已完成 ${done} / Hoàn tất</span>`;
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="">總數 ${data.length} / Tổng</button>`+
+    `<button type="button" class="wf-chip wf-new wf-click" data-filter-status="new">新單 ${fresh} / Mới</button>`+
+    `<button type="button" class="wf-chip wf-repeat wf-click" data-filter-status="repeat">再次追問 ${repeat} / Hỏi lại</button>`+
+    `<button type="button" class="wf-chip wf-warn wf-click" data-filter-mode="unassigned">未分配 ${un} / Chưa phân công</button>`+
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="${esc(PROD_MODES[0])}">機印 ${machine}</button>`+
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="${esc(PROD_MODES[1])}">手印 ${hand}</button>`+
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="GCN">外發GCN ${gcn}</button>`+
+    `<button type="button" class="wf-chip wf-warn wf-click" data-filter-status="need">待回覆 ${need} / Chờ trả lời</button>`+
+    `<span class="wf-chip wf-done">已完成 ${done} / Hoàn tất</span>`;
+  el.querySelectorAll("[data-filter-mode]").forEach(btn=>btn.addEventListener("click",()=>{if($("fMode"))$("fMode").value=btn.dataset.filterMode||"";render()}));
+  el.querySelectorAll("[data-filter-status]").forEach(btn=>btn.addEventListener("click",()=>{$("fStatus").value=btn.dataset.filterStatus||"";render()}));
 }
 function responseHeaders(){return [...HEADERS.slice(0,21),PROD_MODE_HEADER,MSK_HEADER,PRINT_COLOR_HEADER,HEADERS[21],HEADERS[22]]}
 async function buildResponsibilityWorkbook(mode,data){
@@ -1348,7 +1378,7 @@ $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.ke
   dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();issueKeys.clear();await loadAll()
 };$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;if($("downloadSplitBtn"))$("downloadSplitBtn").onclick=downloadSplitFiles;if($("selectVisibleBtn"))$("selectVisibleBtn").onclick=selectVisibleRows;if($("bulkMachineBtn"))$("bulkMachineBtn").onclick=()=>bulkAssignMode(PROD_MODES[0]);if($("bulkHandBtn"))$("bulkHandBtn").onclick=()=>bulkAssignMode(PROD_MODES[1]);if($("bulkGcnBtn"))$("bulkGcnBtn").onclick=()=>bulkAssignMode(PROD_MODES[2]);updateBulkModeState();
 ["fAllSearch","fCustomer","fOrder","fItem"].forEach(id=>$(id)?.addEventListener("input",render));
-["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
+["fStatus","fMode","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
 $("refillFile").addEventListener("change",refillExcel);
 $("freezeCols").addEventListener("change",applyFrozenColumns);

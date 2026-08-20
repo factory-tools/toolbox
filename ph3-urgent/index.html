@@ -232,6 +232,23 @@ body{overflow-x:hidden}
  .ribbon-more-panel{grid-template-columns:1fr 1fr}
 }
 
+
+/* V29 — PH3 評估分區、減少常駐文字、保留警示可見 */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.ribbon-title-row{border-bottom:1px solid #e1e8f0;padding-bottom:4px}
+.ribbon-flow{display:none!important}
+.ribbon-zone{border:1px solid #d8e2ec;border-radius:8px;background:#fff;padding:5px 7px;margin-top:5px}
+.ribbon-zone-title{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:900;color:#17365d;margin-bottom:4px}
+.help-dot{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;border:1px solid #9db9c9;background:#f7fbff;color:#174f86;font-weight:900;cursor:help;font-size:10px}
+.ribbon-controls{grid-template-columns:minmax(150px,.78fr) minmax(190px,1fr) minmax(145px,.72fr) minmax(155px,.78fr) minmax(290px,1.45fr) max-content!important}
+.bulk-mode-bar{padding:0!important;gap:6px}.bulk-mode-bar .bulk-instruction{display:none}
+.workflow-guide{padding:5px 7px;margin-top:5px;background:#f6f9fc;justify-content:flex-start}.workflow-guide .workflow-steps-long{display:none}.workflow-status{margin-left:0!important}
+.wf-chip{border:1px solid #bfd0df;font-family:inherit;line-height:1.25;color:#334155}.wf-click{cursor:pointer}.wf-click:hover{outline:2px solid #8ab0d7;outline-offset:1px}
+.mode-cell-wrap{gap:5px}.row-select{flex:0 0 16px;width:16px}.row-select input{width:15px;height:15px}.cell-mode{flex:1 1 auto;width:auto!important;min-width:128px!important;font-size:11px!important;padding:3px 5px!important}
+.change-detail{margin-top:3px;padding-top:3px;border-top:1px dashed #d98b8b;font-size:9px;line-height:1.15;color:#8b0000;font-weight:900;white-space:normal}.change-detail span{font-size:8px;font-weight:700}
+.compact-help-only{font-size:10px;color:#64748b;cursor:help}
+@media(max-width:1450px){.ribbon-controls{grid-template-columns:minmax(130px,.7fr) minmax(170px,.9fr) minmax(130px,.68fr) minmax(140px,.72fr) minmax(240px,1.35fr) max-content!important}}
+
 </style>
 </head>
 <body>
@@ -283,7 +300,7 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
       <button id="downloadTemplateBtn" class="btn outline compact-btn">⬇ 下載空白匯入範本 / Tải mẫu Excel trống</button>
       <button id="importBtn" class="btn green compact-btn">⬆ 匯入共用資料 / Nhập dữ liệu chung</button>
     </div>
-    <div class="import-foot"><span><b>匯入規則 / Quy tắc nhập：A～P 要有欄名；Q 可有可無；R～W 不要求。每筆只有 C 客戶＋D 訂單號＋E NET 不可空白。</b><br>同筆再次匯入會標示「再次追問」；有改資料會另外警示 / A～P cần có tiêu đề; Q tùy chọn; R～W không bắt buộc. Mỗi dòng chỉ bắt buộc C+D+E.</span><span id="importMsg" class="msg"></span></div>
+    <div class="import-foot"><span class="compact-help-only" title="A～P 要有欄名；Q 可有可無；R～W 不要求。每筆只有 C 客戶＋D 訂單號＋E NET 不可空白。再次匯入同一筆會標示再次追問，有異動會警示 / A～P cần tiêu đề; Q tùy chọn; R～W không bắt buộc. Mỗi dòng chỉ bắt buộc C+D+E. Nhập lại sẽ đánh dấu hỏi lại và cảnh báo thay đổi.">ⓘ 匯入規則 / Quy tắc nhập</span><span id="importMsg" class="msg"></span></div>
     <div id="importDetail"></div>
   </div>
   <div class="stats compact-stats">
@@ -297,10 +314,11 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
 <section class="panel ph3-workspace" id="ph3Workspace">
   <div class="ph3-ribbon" id="ph3Ribbon">
     <div class="ribbon-title-row">
-      <div class="ribbon-title"><b>② PH3 評估 / Đánh giá PH3</b><span class="ribbon-flow">匯入 → 看提示 → 分配 → 收到哪份先回填 → 下載MAIL / Nhập → Xem gợi ý → Phân công → Nhập file nhận được → Tải MAIL</span></div>
+      <div class="ribbon-title"><b>② PH3 評估 / Đánh giá PH3</b><span class="help-dot" title="操作順序：看新單/再次追問 → 分配生產方式 → 儲存 → 分開下載 → 回填收到的 Excel → 完成後下載 MAIL / Thứ tự: xem trạng thái → phân công → lưu → tải riêng → nhập lại Excel → tải MAIL">?</span></div>
       <div id="batchInfo" class="ribbon-batch"></div>
     </div>
 
+    <div class="ribbon-zone"><div class="ribbon-zone-title">🔎 篩選 / Bộ lọc <span class="help-dot" title="可直接選『未分配』，或點下方目前狀況的未分配、機印、手印、外發GCN快速篩選 / Có thể chọn Chưa phân công hoặc bấm trạng thái bên dưới để lọc nhanh">?</span></div>
     <div class="ribbon-controls">
       <label class="r-field scope"><span>範圍 / Phạm vi</span>
         <select id="workScope">
@@ -315,10 +333,14 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
           <option value="">全部 / Tất cả</option><option value="new">🆕 新追單 / Mới</option><option value="repeat">🔁 再次追問 / Hỏi lại</option><option value="repeat_changed">🔴 再次追問＋有異動 / Hỏi lại + thay đổi</option><option value="need">待回覆 / Chờ trả lời</option><option value="had">以前回覆過 / Đã từng trả lời</option><option value="changed">有異動 / Có thay đổi</option><option value="issue">⚠ 只看異常 / Chỉ xem lỗi</option><option value="late99">99晚於客需 / 99 trễ hơn KH</option><option value="over7">PH3超過前站7天 / PH3 &gt;7 ngày</option>
         </select>
       </label>
+      <label class="r-field mode-filter"><span>生產方式 / Hình thức SX</span>
+        <select id="fMode"><option value="">全部 / Tất cả</option><option value="unassigned">未分配 / Chưa phân công</option><option value="機印 / In máy">機印 / In máy</option><option value="手印 / In tay">手印 / In tay</option><option value="GCN">外發GCN</option></select>
+      </label>
       <label class="r-field r-search"><span>搜尋全部 / Tìm tất cả</span><input id="fAllSearch" placeholder="客戶、訂單、料號、日期、數量、狀態、回覆人…"></label>
       <button type="button" class="btn ribbon-more" id="moreFilterBtn" aria-expanded="false" aria-controls="moreFilters">＋ 更多篩選 / Lọc thêm</button>
-    </div>
+    </div></div>
 
+    <div class="ribbon-zone"><div class="ribbon-zone-title">🛠 操作 / Thao tác <span class="help-dot" title="修改交期或生產方式後，先按『儲存目前修改』再下載 / Sau khi sửa ngày hoặc hình thức, hãy Lưu trước khi tải">?</span></div>
     <div class="ribbon-actions">
       <label class="r-field r-days"><span>PH3 +天 / +ngày</span><input id="addDays" type="number" min="0" max="60" step="1" value="7" inputmode="numeric"></label>
       <button id="calcReplyBtn" class="btn primary ribbon-action">＋ 批量加天 / Cộng ngày</button>
@@ -336,17 +358,18 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
       <span>批量改生產方式 / Phân công hàng loạt：</span>
       <button type="button" class="btn outline compact-btn" id="bulkMachineBtn">機印 / In máy</button>
       <button type="button" class="btn outline compact-btn" id="bulkHandBtn">手印 / In tay</button>
-      <button type="button" class="btn outline compact-btn" id="bulkGcnBtn">外發 GCN / Gia công GCN</button>
-      <span class="muted">勾選「生產方式」欄左側的「選 / Chọn」後可一起修改；修改後仍要按儲存 / Sau khi đổi vẫn phải bấm Lưu.</span>
-    </div>
+      <button type="button" class="btn outline compact-btn" id="bulkGcnBtn">外發GCN</button>
+      <span class="compact-help-only" title="勾選生產方式欄左側方框，可一次指定多筆；修改後仍要按儲存 / Đánh dấu ô bên trái cột hình thức để phân công nhiều dòng; sau đó vẫn phải bấm Lưu">ⓘ 批量說明 / Hướng dẫn</span>
+    </div></div>
 
     <div class="workflow-guide">
-      <b>只照這 5 步 / Chỉ làm 5 bước：</b>
+      <span class="help-dot" title="只照 5 步：①看新單/再次追問 ②看 MSK+印刷色並分配 ③儲存+分開下載 ④誰先回先匯誰 ⑤完成下載 MAIL / 5 bước: xem trạng thái → phân công → lưu+tải → nhập file nhận được → tải MAIL">?</span>
+      <span class="workflow-steps-long"><b>只照這 5 步 / Chỉ làm 5 bước：</b>
       <span class="workflow-step">① 看「新單／再次追問」 / Xem trạng thái</span><span>→</span>
       <span class="workflow-step">② 在「生產方式」旁看 MSK網版＋印刷色，再選機印／手印／GCN / Xem MSK + màu in ngay cạnh hình thức sản xuất</span><span>→</span>
       <span class="workflow-step">③ 儲存＋分開下載 / Lưu &amp; tải riêng</span><span>→</span>
       <span class="workflow-step">④ 誰先回就先匯誰 / Ai trả trước nhập trước</span><span>→</span>
-      <span class="workflow-step">⑤ 完成後下載 MAIL / Xong thì tải MAIL</span>
+      <span class="workflow-step">⑤ 完成後下載 MAIL / Xong thì tải MAIL</span></span>
       <span id="workflowStatus" class="workflow-status"></span>
     </div>
 
@@ -393,6 +416,6 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
   });
 })();
 </script>
-<script src="./app.js?v=20260819-22"></script>
+<script src="./app.js?v=20260820-29"></script>
 </body>
 </html>
