@@ -291,3 +291,133 @@ if($('machineModePc')){
   setMachineStroke(1);
   setMachineMode('PC');
 }
+
+// V20 報價標準產能 / Năng suất chuẩn báo giá
+const QUOTE_CAPACITY_DEFAULTS={
+  WATER:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}],
+  SILICONE:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}]
+};
+const QUOTE_SETTINGS_KEY='factoryToolbox_quoteCapacity_settings_v1';
+const QUOTE_HISTORY_KEY='factoryToolbox_quoteCapacity_history_v1';
+let quoteUnit='PC',quoteSettingsInk='WATER';
+function cloneQuoteDefaults(){return JSON.parse(JSON.stringify(QUOTE_CAPACITY_DEFAULTS));}
+function loadQuoteSettings(){
+  try{const x=JSON.parse(localStorage.getItem(QUOTE_SETTINGS_KEY)||'null');if(x&&Array.isArray(x.WATER)&&Array.isArray(x.SILICONE))return x;}catch(e){}
+  return cloneQuoteDefaults();
+}
+function loadQuoteHistory(){try{const x=JSON.parse(localStorage.getItem(QUOTE_HISTORY_KEY)||'[]');return Array.isArray(x)?x:[];}catch(e){return [];}}
+let quoteCapacitySettings=loadQuoteSettings();
+function quoteInkName(v){return v==='SILICONE'?'SILICONE':'水性 / Mực nước';}
+function quoteMethodName(v){return v==='K3'?'K3':'手印 / In tay';}
+function quoteNowText(d=new Date()){const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;}
+function quoteFindRule(ink,layers){return (quoteCapacitySettings[ink]||[]).find(r=>layers>=Number(r.min)&&layers<=Number(r.max));}
+function quoteSetUnit(unit){
+  quoteUnit=unit;
+  if(!$('quoteUnitPc'))return;
+  $('quoteUnitPc').classList.toggle('active',unit==='PC');$('quoteUnitY').classList.toggle('active',unit==='Y');
+  $('quotePcLengthField').classList.toggle('hidden',unit!=='PC');
+  calcQuoteCapacity();
+}
+function updateQuoteTableLength(){
+  const m=$('quoteMethod').value;
+  $('quoteTableLength').value=m==='K3'?32:25;
+  $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 32Y，可修改 / K3 mặc định 32Y, có thể sửa':'手印預設 25Y，可修改 / In tay mặc định 25Y, có thể sửa';
+  calcQuoteCapacity();
+}
+function quoteLatestStamp(){
+  const hist=loadQuoteHistory();
+  if(hist.length)return hist[0].time;
+  return '預設值 / Mặc định';
+}
+function calcQuoteCapacity(){
+  if(!$('quoteCapacity8'))return;
+  const method=$('quoteMethod').value,ink=$('quoteInk').value,width=Number($('quoteWidth').value),strips=Number($('quoteStrips').value),pcLen=Number($('quotePcLength').value),layerRaw=$('quoteLayers').value.trim(),layers=layerRaw===''?NaN:Number(layerRaw),tableY=Number($('quoteTableLength').value);
+  const inkLabel=ink==='SILICONE'?'SILICONE':'水性 / Mực nước';
+  $('quoteWhatYouAreQuoting').textContent=`目前：${quoteMethodName(method)}｜${inkLabel}｜${quoteUnit}${width>0?'｜'+fmt(width,2)+' mm':''} / Hiện tại: ${quoteMethodName(method)}｜${inkLabel}｜${quoteUnit}${width>0?'｜'+fmt(width,2)+' mm':''}`;
+  $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${quoteLatestStamp()}`;
+  const rule=Number.isFinite(layers)?quoteFindRule(ink,layers):null;
+  const perTableY=(strips>0&&tableY>0)?strips*tableY:0;
+  const perStripPc=(pcLen>0&&tableY>0)?Math.floor(tableY*914.4/pcLen):0;
+  const perTablePc=(perStripPc>0&&strips>0)?perStripPc*strips:0;
+  $('quotePerTable').textContent=perTableY>0?(quoteUnit==='PC'?(pcLen>0?`${fmt(perTablePc,0)} PC（${fmt(perTableY,2)} Y）`:`${fmt(perTableY,2)} Y`):`${fmt(perTableY,2)} Y`):'—';
+  $('quoteTables12').textContent=rule?`${fmt(rule.tables12,2)} 桌 / bàn`:'—';
+  const tables8=rule?Number(rule.tables12)*8/12:0;
+  $('quoteTables8').textContent=tables8>0?`${fmt(tables8,2)} 桌 / bàn`:'—';
+  const capY=perTableY*tables8;
+  const capPc=perTablePc*tables8;
+  if(quoteUnit==='PC'){
+    $('quoteCapacity8').textContent=(capPc>0&&pcLen>0)?`${fmt(capPc,0)} PC`:'—';
+    $('quoteCapacity8Alt').textContent=capY>0?`≈ ${fmt(capY,2)} Y / 8H`:'—';
+  }else{
+    $('quoteCapacity8').textContent=capY>0?`${fmt(capY,2)} Y`:'—';
+    $('quoteCapacity8Alt').textContent=capY>0?'Y 報價不需輸入 PC 長度 / Báo giá Y không cần chiều dài PC':'—';
+  }
+  if(!(strips>0)||!(tableY>0))$('quoteFormula').textContent='請輸入實際排帶條數 / Vui lòng nhập số sợi xếp thực tế.';
+  else if(!rule)$('quoteFormula').textContent=`目前 ${inkLabel} 的產能表沒有涵蓋 ${fmt(layers,0)} 層，請到設定新增區間。 / Bảng năng suất ${inkLabel} hiện chưa có khoảng ${fmt(layers,0)} lớp; vui lòng thêm trong cài đặt.`;
+  else if(quoteUnit==='PC'&&!(pcLen>0))$('quoteFormula').textContent='報 PC 必須輸入每 PC 長度（mm） / Báo giá PC phải nhập chiều dài mỗi PC (mm).';
+  else $('quoteFormula').textContent=`每桌 ${fmt(tableY,2)}Y × ${fmt(strips,0)}條 = ${fmt(perTableY,2)}Y；${fmt(layers,0)}層 → ${fmt(rule.tables12,2)}桌/12H → ${fmt(tables8,2)}桌/8H。 / Mỗi bàn ${fmt(tableY,2)}Y × ${fmt(strips,0)} sợi = ${fmt(perTableY,2)}Y; ${fmt(layers,0)} lớp → ${fmt(rule.tables12,2)} bàn/12H → ${fmt(tables8,2)} bàn/8H.`;
+}
+function renderQuoteSettingsTable(){
+  if(!$('quoteSettingsTableWrap'))return;
+  const rows=quoteCapacitySettings[quoteSettingsInk]||[];
+  $('quoteSettingsTableWrap').innerHTML=`<table class="quote-settings-table"><thead><tr><th>最低層數<br>Min lớp</th><th>最高層數<br>Max lớp</th><th>1人12H桌數<br>Bàn/người/12H</th><th></th></tr></thead><tbody>${rows.map((r,i)=>`<tr data-i="${i}"><td><input class="q-min" type="number" min="0" step="1" value="${r.min}"></td><td><input class="q-max" type="number" min="0" step="1" value="${r.max}"></td><td><input class="q-t12" type="number" min="0" step="0.01" value="${r.tables12}"></td><td><button class="delete-range" type="button" title="刪除 / Xóa">×</button></td></tr>`).join('')}</tbody></table>`;
+  $('quoteSettingsTableWrap').querySelectorAll('.delete-range').forEach(btn=>btn.addEventListener('click',()=>{const tr=btn.closest('tr');readQuoteSettingsTable();quoteCapacitySettings[quoteSettingsInk].splice(Number(tr.dataset.i),1);renderQuoteSettingsTable();}));
+}
+function readQuoteSettingsTable(){
+  if(!$('quoteSettingsTableWrap'))return;
+  const rows=[...$('quoteSettingsTableWrap').querySelectorAll('tbody tr')].map(tr=>({min:Number(tr.querySelector('.q-min').value),max:Number(tr.querySelector('.q-max').value),tables12:Number(tr.querySelector('.q-t12').value)})).filter(r=>Number.isFinite(r.min)&&Number.isFinite(r.max)&&Number.isFinite(r.tables12));
+  quoteCapacitySettings[quoteSettingsInk]=rows;
+}
+function quoteSettingsSnapshot(){readQuoteSettingsTable();return JSON.parse(JSON.stringify(quoteCapacitySettings));}
+function quoteChanges(oldS,newS){
+  const changes=[];
+  ['WATER','SILICONE'].forEach(ink=>{
+    const oldRows=oldS[ink]||[],newRows=newS[ink]||[],n=Math.max(oldRows.length,newRows.length);
+    for(let i=0;i<n;i++){
+      const a=oldRows[i],b=newRows[i];
+      if(!a&&b){changes.push(`${quoteInkName(ink)}：新增 / Thêm ${b.min}–${b.max}層 = ${b.tables12}桌/12H`);continue;}
+      if(a&&!b){changes.push(`${quoteInkName(ink)}：刪除 / Xóa ${a.min}–${a.max}層 = ${a.tables12}桌/12H`);continue;}
+      if(a&&b&&(a.min!==b.min||a.max!==b.max||a.tables12!==b.tables12))changes.push(`${quoteInkName(ink)}：${a.min}–${a.max}層 ${a.tables12}桌 → ${b.min}–${b.max}層 ${b.tables12}桌 / bàn`);
+    }
+  });
+  return changes;
+}
+function saveQuoteSettings(){
+  const oldSaved=loadQuoteSettings();
+  const snap=quoteSettingsSnapshot();
+  // Basic validation: each range must be valid and positive/zero table value allowed only if explicitly intended.
+  for(const ink of ['WATER','SILICONE']){
+    for(const r of snap[ink]){if(!(r.min>=0)||!(r.max>=r.min)||!(r.tables12>0)){alert('層數區間或桌數有錯誤 / Khoảng lớp hoặc số bàn không hợp lệ');return;}}
+  }
+  const changes=quoteChanges(oldSaved,snap);
+  localStorage.setItem(QUOTE_SETTINGS_KEY,JSON.stringify(snap));quoteCapacitySettings=snap;
+  if(changes.length){const hist=loadQuoteHistory();hist.unshift({time:quoteNowText(),changes,snapshot:snap});localStorage.setItem(QUOTE_HISTORY_KEY,JSON.stringify(hist.slice(0,100)));}
+  renderQuoteHistory();renderQuoteSettingsTable();calcQuoteCapacity();
+  alert(changes.length?'已儲存，並記錄修改時間 / Đã lưu và ghi lại thời gian thay đổi':'設定沒有變更 / Cài đặt không thay đổi');
+}
+function resetQuoteSettings(){
+  if(!confirm('確定恢復預設產能？這次變更也會留下修改紀錄。\nXác nhận khôi phục năng suất mặc định? Thay đổi này cũng sẽ được ghi vào lịch sử.'))return;
+  const oldSaved=loadQuoteSettings(),snap=cloneQuoteDefaults(),changes=quoteChanges(oldSaved,snap);
+  quoteCapacitySettings=snap;localStorage.setItem(QUOTE_SETTINGS_KEY,JSON.stringify(snap));
+  if(changes.length){const hist=loadQuoteHistory();hist.unshift({time:quoteNowText(),changes:['恢復預設產能 / Khôi phục năng suất mặc định',...changes],snapshot:snap});localStorage.setItem(QUOTE_HISTORY_KEY,JSON.stringify(hist.slice(0,100)));}
+  renderQuoteSettingsTable();renderQuoteHistory();calcQuoteCapacity();
+}
+function renderQuoteHistory(){
+  if(!$('quoteHistoryList'))return;
+  const hist=loadQuoteHistory();
+  if(!hist.length){$('quoteHistoryList').innerHTML='<div class="quote-history-empty">尚無修改紀錄 / Chưa có lịch sử thay đổi</div>';return;}
+  $('quoteHistoryList').innerHTML=hist.map(h=>`<details class="quote-history-item"><summary>${h.time}</summary><div class="changes">${(h.changes||[]).map(c=>`<div>${String(c).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`).join('')}</div></details>`).join('');
+}
+function openQuoteSettings(){quoteCapacitySettings=loadQuoteSettings();quoteSettingsInk='WATER';document.querySelectorAll('.quote-ink-tab').forEach(b=>b.classList.toggle('active',b.dataset.quoteInkTab==='WATER'));renderQuoteSettingsTable();renderQuoteHistory();$('quoteSettingsPanel').classList.remove('hidden');}
+function closeQuoteSettings(){$('quoteSettingsPanel').classList.add('hidden');quoteCapacitySettings=loadQuoteSettings();calcQuoteCapacity();}
+if($('quoteUnitPc')){
+  $('quoteUnitPc').addEventListener('click',()=>quoteSetUnit('PC'));$('quoteUnitY').addEventListener('click',()=>quoteSetUnit('Y'));
+  $('quoteMethod').addEventListener('change',updateQuoteTableLength);
+  ['quoteInk','quoteWidth','quoteStrips','quotePcLength','quoteLayers','quoteTableLength'].forEach(id=>$(id).addEventListener('input',calcQuoteCapacity));
+  $('quoteSettingsBtn').addEventListener('click',openQuoteSettings);$('quoteSettingsClose').addEventListener('click',closeQuoteSettings);
+  $('quoteSettingsPanel').addEventListener('click',e=>{if(e.target===$('quoteSettingsPanel'))closeQuoteSettings();});
+  document.querySelectorAll('.quote-ink-tab').forEach(btn=>btn.addEventListener('click',()=>{readQuoteSettingsTable();quoteSettingsInk=btn.dataset.quoteInkTab;document.querySelectorAll('.quote-ink-tab').forEach(b=>b.classList.toggle('active',b===btn));renderQuoteSettingsTable();}));
+  $('quoteAddRange').addEventListener('click',()=>{readQuoteSettingsTable();quoteCapacitySettings[quoteSettingsInk].push({min:0,max:0,tables12:1});renderQuoteSettingsTable();});
+  $('quoteSaveSettings').addEventListener('click',saveQuoteSettings);$('quoteResetSettings').addEventListener('click',resetQuoteSettings);
+  quoteSetUnit('PC');updateQuoteTableLength();renderQuoteHistory();
+}
