@@ -198,7 +198,7 @@ body{overflow-x:hidden}
 .compact-stats{display:grid!important;grid-template-columns:repeat(4,minmax(95px,1fr));gap:5px;align-items:stretch}.compact-stats .stat{padding:6px 7px;border-radius:8px;min-width:0;display:flex;flex-direction:column;justify-content:center}.compact-stats .stat small{font-size:10px;white-space:normal;line-height:1.15;min-height:23px}.compact-stats .stat b{font-size:22px;line-height:1.05}.compact-stats .stat-need b,.compact-stats .stat-need small{color:var(--need-brown)!important}.compact-stats .stat-changed b,.compact-stats .stat-changed small{color:var(--change-red)!important}
 
 /* PH3 主工作區盡量吃滿可用畫面 */
-.ph3-workspace{height:calc(100vh - 8px);min-height:610px;margin-top:6px!important}
+.ph3-workspace{height:auto;min-height:0;margin-top:6px!important;overflow:visible}
 .ph3-ribbon{padding:5px 7px;background:#f7f9fc}
 .ribbon-title-row{min-height:20px;margin-bottom:3px}.ribbon-title b{font-size:14px}.ribbon-flow{font-size:9px}.ribbon-batch{font-size:10px;max-width:30%}
 
@@ -218,7 +218,7 @@ body{overflow-x:hidden}
 .data-toolbar{flex:0 0 34px;height:34px;padding:2px 6px}.data-toolbar .tab{height:27px;padding:3px 8px;font-size:10px}.data-count{font-size:10px}.freeze-compact{font-size:10px}.freeze-compact select{height:27px;font-size:10px}.rules-pop summary{padding:4px 7px;font-size:10px}
 
 /* 表格最大化，標題列固定 */
-.ph3-tablewrap{flex:1 1 auto;min-height:0;overflow:auto}.ph3-tablewrap table{font-size:11px}.ph3-tablewrap th{height:36px;min-height:36px;padding:3px 5px;position:sticky;top:0;z-index:14}.ph3-tablewrap td{padding:4px 5px}.ph3-tablewrap .sticky-head{z-index:20!important}
+.ph3-tablewrap{flex:0 0 auto;min-height:720px;max-height:none;height:auto;overflow-x:auto;overflow-y:visible}.ph3-tablewrap table{font-size:11px}.ph3-tablewrap th{height:36px;min-height:36px;padding:3px 5px;position:sticky;top:0;z-index:14}.ph3-tablewrap td{padding:4px 5px}.ph3-tablewrap .sticky-head{z-index:20!important}
 
 @media(max-width:1450px){
  .import-stats-panel{grid-template-columns:minmax(560px,1.3fr) minmax(440px,1fr)}
