@@ -205,7 +205,6 @@ if($('actualMethod')){
 let machineMode='PC';
 let machineStroke=1;
 const MACHINE_STROKE_SECONDS={1:5,2:12,3:17};
-const MACHINE_PULL_LENGTH_COMPENSATION=80; // 機台長度補償值 / Giá trị bù chiều dài
 function machineTimeText(hours, hoursPerDay){
   if(!(hours>=0) || !Number.isFinite(hours)) return '—';
   const totalMin=Math.round(hours*60);
@@ -222,15 +221,28 @@ function estimatedPullSeconds(lengthSetting,speedSetting){
   if(!(lengthSetting>0) || !(speedSetting>0)) return 0;
   return Math.max(0,0.2780031561*(lengthSetting/speedSetting)+0.1900992076);
 }
+function updateMachineSuggestedPullLength(){
+  if(machineMode!=='PC') return;
+  const productLength=Number($('machineProductLength').value);
+  const patterns=Number($('machinePatternsPerRow').value);
+  if(productLength>0&&patterns>0){
+    $('machinePullLength').value=fmt(productLength*patterns*10,0).replace(/,/g,'');
+  }
+}
 function setMachineMode(mode){
   machineMode=mode;
   if(!$('machineModePc'))return;
   $('machineModePc').classList.toggle('active',mode==='PC');
   $('machineModeY').classList.toggle('active',mode==='Y');
   $('machinePcPatternField').classList.toggle('hidden',mode!=='PC');
+  $('machinePcLengthField').classList.toggle('hidden',mode!=='PC');
   $('machinePcGuide').classList.toggle('hidden',mode!=='PC');
   if($('machineOrderLabelZh')) $('machineOrderLabelZh').textContent=`訂單數量（${mode}）`;
   if($('machineOrderLabelVi')) $('machineOrderLabelVi').textContent=`Số lượng đơn hàng（${mode}）`;
+  if($('machinePullLengthLabelZh')) $('machinePullLengthLabelZh').textContent=mode==='PC'?'建議拉帶長度設定值（可微調）':'拉帶長度設定值';
+  if($('machinePullLengthLabelVi')) $('machinePullLengthLabelVi').textContent=mode==='PC'?'Giá trị chiều dài kéo dây đề nghị（có thể chỉnh）':'Giá trị cài đặt chiều dài kéo dây';
+  if($('machinePullLengthHint')) $('machinePullLengthHint').textContent=mode==='PC'?'PC：單個長度 × 每行圖案數 × 10，自動帶入後可微調 / PC: chiều dài × số hình × 10, có thể chỉnh lại':'設定值約 ÷10 = 實際 MM，可依機台微調 / Giá trị ÷10 ≈ MM thực tế, có thể chỉnh theo máy';
+  if(mode==='PC') updateMachineSuggestedPullLength();
   calcMachinePrint();
 }
 function setMachineStroke(stroke){
@@ -255,7 +267,7 @@ function calcMachinePrint(){
     if(patterns>0&&strips>0){perFrame=patterns*strips;perHour=perFrame*fph;}
     $('machineFormulaNote').textContent=patterns>0&&strips>0&&fph>0?`${fmt(patterns,0)} 圖案/hình × ${fmt(strips,0)} 條/dây = ${fmt(perFrame,0)} PC/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,0)} PC/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
   }else{
-    const mm=Math.max(0,(pullLength-MACHINE_PULL_LENGTH_COMPENSATION)/10);
+    const mm=Math.max(0,pullLength/10);
     if(mm>0&&strips>0){perFrame=mm*strips/914.4;perHour=perFrame*fph;}
     $('machineFormulaNote').textContent=mm>0&&strips>0&&fph>0?`設定 ${fmt(pullLength,0)} → 預估 ${fmt(mm,0)} MM；${fmt(mm,0)} MM × ${fmt(strips,0)} 條/dây ÷ 914.4 = ${fmt(perFrame,2)} Y/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,2)} Y/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
   }
@@ -274,7 +286,8 @@ if($('machineModePc')){
   $('machineModePc').addEventListener('click',()=>setMachineMode('PC'));
   $('machineModeY').addEventListener('click',()=>setMachineMode('Y'));
   document.querySelectorAll('.machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setMachineStroke(Number(btn.dataset.stroke))));
-  ['machineOrderQty','machinePatternsPerRow','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  ['machineOrderQty','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  ['machineProductLength','machinePatternsPerRow'].forEach(id=>$(id).addEventListener('input',()=>{updateMachineSuggestedPullLength();calcMachinePrint();}));
   setMachineStroke(1);
   setMachineMode('PC');
 }
