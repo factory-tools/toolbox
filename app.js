@@ -201,8 +201,10 @@ if($('actualMethod')){
   calcActualTable();
 }
 
-// 機印產能試算 / Tính sản lượng in máy
+// 機印實際產能試算 / Tính năng suất thực tế máy in
 let machineMode='PC';
+let machineStroke=1;
+const MACHINE_STROKE_SECONDS={1:5,2:12,3:17};
 function machineTimeText(hours, hoursPerDay){
   if(!(hours>=0) || !Number.isFinite(hours)) return '—';
   const totalMin=Math.round(hours*60);
@@ -214,6 +216,10 @@ function machineTimeText(hours, hoursPerDay){
   const remainMin=Math.round(remainHours*60);
   const rh=Math.floor(remainMin/60), rm=remainMin%60;
   return `約 ${days} 工作日 ${rh} 小時 ${rm} 分鐘 / Khoảng ${days} ngày làm việc ${rh} giờ ${rm} phút`;
+}
+function estimatedPullSeconds(lengthSetting,speedSetting){
+  if(!(lengthSetting>0) || !(speedSetting>0)) return 0;
+  return Math.max(0,0.2780031561*(lengthSetting/speedSetting)+0.1900992076);
 }
 function setMachineMode(mode){
   machineMode=mode;
@@ -227,21 +233,39 @@ function setMachineMode(mode){
   if($('machineOrderLabelVi')) $('machineOrderLabelVi').textContent=`Số lượng đơn hàng（${mode}）`;
   calcMachinePrint();
 }
+function setMachineStroke(stroke){
+  machineStroke=stroke;
+  document.querySelectorAll('.machine-stroke-btn').forEach(btn=>btn.classList.toggle('active',Number(btn.dataset.stroke)===stroke));
+  calcMachinePrint();
+}
 function calcMachinePrint(){
   if(!$('machinePerHour'))return;
-  const order=Number($('machineOrderQty').value), strips=Number($('machineStrips').value), fph=Number($('machineFramesPerHour').value), hpd=Number($('machineHoursPerDay').value);
+  const order=Number($('machineOrderQty').value);
+  const strips=Number($('machineStrips').value);
+  const pullLength=Number($('machinePullLength').value);
+  const pullSpeed=Number($('machinePullSpeed').value);
+  const hpd=Number($('machineHoursPerDay').value);
+  const pullSec=estimatedPullSeconds(pullLength,pullSpeed);
+  const printSec=MACHINE_STROKE_SECONDS[machineStroke]||0;
+  const cycleSec=pullSec+printSec;
+  const fph=cycleSec>0?3600/cycleSec:0;
   let perFrame=0, perHour=0, unit=machineMode;
   if(machineMode==='PC'){
     const patterns=Number($('machinePatternsPerRow').value);
-    if(patterns>0&&strips>0){perFrame=patterns*strips;perHour=perFrame*(fph>0?fph:0);}
-    $('machineFormulaNote').textContent=patterns>0&&strips>0&&fph>0?`${fmt(patterns,0)} 圖案/hình × ${fmt(strips,0)} 條/dây × ${fmt(fph,0)} 框/giờ = ${fmt(perHour,0)} PC/小時`:'每行圖案數 × 同時印條數 × 框/小時 / Số hình mỗi hàng × số dây × khung/giờ';
+    if(patterns>0&&strips>0){perFrame=patterns*strips;perHour=perFrame*fph;}
+    $('machineFormulaNote').textContent=patterns>0&&strips>0&&fph>0?`${fmt(patterns,0)} 圖案/hình × ${fmt(strips,0)} 條/dây = ${fmt(perFrame,0)} PC/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,0)} PC/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
   }else{
     const mm=Number($('machineFrameLength').value);
-    if(mm>0&&strips>0){perFrame=mm*strips/914.4;perHour=perFrame*(fph>0?fph:0);}
-    $('machineFormulaNote').textContent=mm>0&&strips>0&&fph>0?`${fmt(mm,0)} MM × ${fmt(strips,0)} 條/dây × ${fmt(fph,0)} 框/giờ ÷ 914.4 = ${fmt(perHour,2)} Y/小時`:'每框實際印刷長度 × 同時印條數 × 框/小時 ÷ 914.4 / Chiều dài × số dây × khung/giờ ÷ 914.4';
+    if(mm>0&&strips>0){perFrame=mm*strips/914.4;perHour=perFrame*fph;}
+    $('machineFormulaNote').textContent=mm>0&&strips>0&&fph>0?`${fmt(mm,0)} MM × ${fmt(strips,0)} 條/dây ÷ 914.4 = ${fmt(perFrame,2)} Y/框；${fmt(fph,0)} 框/小時 → ${fmt(perHour,2)} Y/H`:'請輸入網框與機台參數 / Vui lòng nhập thông số khung và máy';
   }
+  $('machinePullTime').textContent=pullSec>0?`${fmt(pullSec,2)} 秒 / giây`:'—';
+  $('machinePrintTime').textContent=printSec>0?`${fmt(printSec,0)} 秒 / giây`:'—';
+  $('machineCycleTime').textContent=cycleSec>0?`${fmt(cycleSec,2)} 秒 / giây`:'—';
+  $('machineFramesHour').textContent=fph>0?`${fmt(fph,0)} 框/H`:'—';
   $('machinePerFrame').textContent=perFrame>0?fmt(perFrame,machineMode==='PC'?0:2)+' '+unit:'—';
   $('machinePerHour').textContent=perHour>0?fmt(perHour,machineMode==='PC'?0:2)+' '+unit+'/H':'—';
+  $('machinePerHourHint').textContent=strips>0?`${fmt(strips,0)}條合計 / Tổng ${fmt(strips,0)} dây`:'整機合計 / Tổng máy';
   const perDay=perHour*(hpd>0?hpd:0);
   $('machinePerDay').textContent=perDay>0?fmt(perDay,machineMode==='PC'?0:2)+' '+unit:'—';
   $('machineOrderTime').textContent=(order>0&&perHour>0)?machineTimeText(order/perHour,hpd):'—';
@@ -249,6 +273,8 @@ function calcMachinePrint(){
 if($('machineModePc')){
   $('machineModePc').addEventListener('click',()=>setMachineMode('PC'));
   $('machineModeY').addEventListener('click',()=>setMachineMode('Y'));
-  ['machineOrderQty','machinePatternsPerRow','machineFrameLength','machineStrips','machineFramesPerHour','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  document.querySelectorAll('.machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setMachineStroke(Number(btn.dataset.stroke))));
+  ['machineOrderQty','machinePatternsPerRow','machineFrameLength','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  setMachineStroke(1);
   setMachineMode('PC');
 }
