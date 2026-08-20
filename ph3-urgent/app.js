@@ -1,10 +1,20 @@
-// PH3 V25：以使用者提供的最後正常 V24 檔為唯一母版，只新增生產方式分流與三份回填流程；保留原有正常功能。
+// PH3 V27：沿用 V26 正常版，只新增印刷色解析、細分 MSK 印刷類型與更簡潔提示；原有功能不重做。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
 const COLNAMES=["col_a","col_b","customer","order_no","net","order_date","item_no","color","width","model","unit","qty","progress_ref","product_name","order_note","summary","customer_required","weaving_date","dyeing_date","sizing_date","aglet_date","ph3_date","warehouse99_date"];
 const PROD_MODE_HEADER="生產方式 / Hình thức sản xuất";
+const MSK_HEADER="MSK 網版 / Khuôn MSK";
+const PRINT_COLOR_HEADER="印刷色 / Màu in";
 const PROD_MODES=["機印 / In máy","手印 / In tay","GCN"];
+const MSK_MODE_RULES={TD:"手印 / In tay",TT:"手印 / In tay",TK:"手印 / In tay",MPW:"手印 / In tay",MD:"機印 / In máy",MT:"機印 / In máy",MY:"機印 / In máy",MP:"機印 / In máy",MK:"機印 / In máy"};
+const MSK_TYPE_RULES={
+  TD:"手印 / In tay",MD:"機印 / In máy",
+  TT:"手印－轉印 / In tay - In chuyển",MT:"機印－轉印 / In máy - In chuyển",
+  MY:"機印－移印 / In máy - In chạm",MP:"機印－噴印 / In máy - Phun silicon",
+  TK:"手印－膠片束頭 / In tay - Đầu keo",MK:"機印－膠片束頭 / In máy - Đầu keo",
+  MPW:"手印 / In tay"
+};
 const KEYCOLS=[2,3,4], PROGRESS_START=17;
 const $=id=>document.getElementById(id);
 const cfg=window.PH3_CONFIG||{};
@@ -44,6 +54,59 @@ function syncDirtyKey(key){
 function markDateDirty(key){dirtyDateKeys.add(key);dirtyKeys.add(key)}
 function productionModeLabel(v){return PROD_MODES.includes(String(v||""))?String(v):""}
 function productionModeShort(v){return ({"機印 / In máy":"機印 / In máy","手印 / In tay":"手印 / In tay","GCN":"GCN"})[String(v||"")]||"—"}
+
+function mskCodes(o){
+  const text=[o.product_name,o.order_note,o.summary].map(v=>String(v||"")).join(" ").toUpperCase();
+  const out=[];
+  const re=/(?:^|\s|[，,;；])MSK\s*[:：-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,})/g;
+  let m;
+  while((m=re.exec(text))){
+    const code=String(m[1]||"").replace(/[.,，;；:：)）]+$/g,"");
+    if(code&&!out.includes(code))out.push(code);
+  }
+  return out;
+}
+function primaryMsk(o){return mskCodes(o)[0]||""}
+function mskSuggestedModeFromCode(code){
+  const c=String(code||"").toUpperCase();
+  const prefix=Object.keys(MSK_MODE_RULES).find(k=>c.startsWith(k));
+  return prefix?MSK_MODE_RULES[prefix]:"";
+}
+function mskSuggestedMode(o){return mskSuggestedModeFromCode(primaryMsk(o))}
+function mskPrintTypeFromCode(code){
+  const c=String(code||"").toUpperCase();
+  const prefix=Object.keys(MSK_TYPE_RULES).sort((a,b)=>b.length-a.length).find(k=>c.startsWith(k));
+  return prefix?MSK_TYPE_RULES[prefix]:"";
+}
+function mskPrintType(o){return mskPrintTypeFromCode(primaryMsk(o))}
+function printColors(o){
+  // 三欄一起看：生管品名＋訂單備注＋摘要。只抓「MAU/MÀU 後的色名或色號」，不計算顏色數量。
+  const text=[o.product_name,o.order_note,o.summary].map(v=>String(v||"")).join(" ").toUpperCase();
+  const out=[];
+  const stop=new Set(["IN","LOGO","MSK","MAT","MẶT","CHAM","CHẠM","CHUYEN","CHUYỂN","BONG","BÓNG","PHUN","SILICON","TRUC","TRỰC","TIEP","TIẾP","MAU","MÀU","COLOR","COLOUR"]);
+  const re=/(?:\b\d+\s*)?M(?:A|À)U\s*[:：=-]?\s*([A-Z0-9][A-Z0-9.\-\/]{1,30})/g;
+  let m;
+  while((m=re.exec(text))){
+    let token=String(m[1]||"").replace(/^[,;，；]+|[,;，；:：)）]+$/g,"");
+    if(!token||/^\d+$/.test(token)||stop.has(token))continue;
+    if(!out.includes(token))out.push(token);
+  }
+  return out;
+}
+function printColorText(o){return printColors(o).join(" / ")}
+function chaseCount(o){const n=Number(o.chase_count||1);return Number.isFinite(n)&&n>0?n:1}
+function chaseState(o){
+  const repeated=chaseCount(o)>1;
+  const changed=(o.changed_fields||[]).length>0;
+  if(!repeated)return {key:"new",label:"新追單 / Mới",cls:"b-blue"};
+  if(changed)return {key:"repeat_changed",label:"再次追問＋有異動 / Hỏi lại + thay đổi",cls:"b-red"};
+  if(o.ever_replied)return {key:"repeat_replied",label:"再次追問＋已回過 / Hỏi lại + đã trả lời",cls:"b-orange"};
+  return {key:"repeat",label:"再次追問 / Hỏi lại",cls:"b-orange"};
+}
+function mskSameCount(o){
+  const code=primaryMsk(o);if(!code)return 0;
+  return rows.reduce((n,x)=>n+(primaryMsk(x)===code?1:0),0);
+}
 function applyProductionModeDraft(o,newMode){
   newMode=productionModeLabel(newMode);
   if(!o._modeEditSnapshot){
@@ -115,7 +178,7 @@ function statusText(o){
 function searchableText(o){
   const arr=dbToArray(o).map(v=>fmt(v));
   const p=latestUpstream(o);
-  return [...arr,productionModeShort(o.production_mode),productionModeShort(o.previous_production_mode),p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
+  return [...arr,primaryMsk(o),mskPrintType(o),printColorText(o),mskSuggestedMode(o),chaseState(o).label,productionModeShort(o.production_mode),productionModeShort(o.previous_production_mode),p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
 }
 function autoFitWorksheet(ws,{min=7,max=42,padding=2}={}){
   ws.columns.forEach(col=>{
@@ -304,6 +367,9 @@ function filtered(){
     if(st==="need"&&!o.needs_reply)return false;
     if(st==="changed"&&!(o.changed_fields||[]).length)return false;
     if(st==="had"&&!o.ever_replied)return false;
+    if(st==="new"&&chaseCount(o)!==1)return false;
+    if(st==="repeat"&&chaseCount(o)<=1)return false;
+    if(st==="repeat_changed"&&!(chaseCount(o)>1&&(o.changed_fields||[]).length))return false;
     if(st==="late99"&&!is99Late(o))return false;
     if(st==="over7"&&!(ph3Days(o)>7))return false;
     if(st==="issue"&&!hasIssue(o))return false;
@@ -342,9 +408,12 @@ async function loadHistory(){
   if(error)throw error; histories=data||[];render();
 }
 const WEB_COLUMNS=[
-  ...HEADERS.slice(0,21).map((h,i)=>({kind:"data",idx:i,label:h,width:[
-    38,42,58,76,38,78,74,50,46,74,42,58,54,158,108,116,82,84,84,84,84
+  ...HEADERS.slice(0,16).map((h,i)=>({kind:"data",idx:i,label:h,width:[
+    38,42,58,76,38,78,74,50,46,74,42,58,54,158,108,116
   ][i]||72})),
+  {kind:"msk",label:MSK_HEADER,width:132},
+  {kind:"printColor",label:PRINT_COLOR_HEADER,width:104},
+  ...HEADERS.slice(16,21).map((h,j)=>({kind:"data",idx:j+16,label:h,width:[82,84,84,84,84][j]||72})),
   {kind:"mode",label:PROD_MODE_HEADER,width:118},
   {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
   {kind:"data",idx:21,label:HEADERS[21],width:106},
@@ -406,7 +475,7 @@ function render(){
     let cls="fixed";
     if(c.kind==="data" && c.idx>=17)cls="progress";
     if(c.kind==="data" && KEYCOLS.includes(c.idx))cls="key";
-    if(["mode","prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
+    if(["msk","printColor","mode","prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
     if(c.kind==="prevStage")cls+=" h-prevstage";
     if(c.kind==="prevPh3")cls+=" h-prevph3";
     if(c.kind==="prev99")cls+=" h-prev99";
@@ -437,6 +506,17 @@ function render(){
           content=esc(fmt(arr[i]));
           if(i===0 && issue)content=`<span class="issue-marker" title="${esc(issueText)}">⚠</span>`+content;
         }
+      }else if(c.kind==="msk"){
+        cls="progress c-msk";
+        const codes=mskCodes(o), code=codes[0]||"", printType=mskPrintType(o), same=mskSameCount(o);
+        if(!code)content='<span class="muted">—</span>';
+        else content=`<b>${esc(codes.join(" / "))}</b>`+
+          (printType?`<div class="msk-suggest">${esc(printType)}</div>`:`<div class="msk-suggest">待確認 / Cần xác nhận</div>`)+
+          (same>1?`<button type="button" class="msk-same" data-msk="${esc(code)}">同 MSK ${same} 筆 / Cùng MSK ${same}</button>`:``);
+      }else if(c.kind==="printColor"){
+        cls="progress c-printcolor";
+        const color=printColorText(o);
+        content=color?`<b>${esc(color)}</b>`:'<span class="muted">—</span>';
       }else if(c.kind==="mode"){
         cls="progress c-mode";
         if(dirtyKeys.has(o.unique_key))cls+=" draftcell";
@@ -456,7 +536,8 @@ function render(){
         else content=`<span class="badge b-green">${days}天 / ${days} ngày</span>`;
       }else if(c.kind==="status"){
         cls="progress c-status";
-        let status=o.needs_reply?'<span class="badge b-red">待重回 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>';
+        const chase=chaseState(o);
+        let status=`<span class="badge ${chase.cls}">${esc(chase.label)}</span> `+(o.needs_reply?'<span class="badge b-red">待回覆 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>');
         if(!o.production_mode)status+=' <span class="badge b-orange">未分配 / Chưa phân công</span>';
         if(o.previous_production_mode&&o.production_mode&&o.previous_production_mode!==o.production_mode)status+=` <span class="badge b-orange">原 ${esc(productionModeShort(o.previous_production_mode))} → ${esc(productionModeShort(o.production_mode))}</span>`;
         if((o.changed_fields||[]).length)status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
@@ -477,6 +558,7 @@ function render(){
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
   grid.querySelectorAll(".cell-mode").forEach(inp=>inp.addEventListener("change",saveDirectMode));
+  grid.querySelectorAll(".msk-same").forEach(btn=>btn.addEventListener("click",()=>{if($("fAllSearch")){ $("fAllSearch").value=btn.dataset.msk||""; render(); }}));
   updateWorkflowStatus();
   applyFrozenColumns();
   updateActionState();
@@ -745,12 +827,12 @@ function excelHeaderColorByOriginalIndex(i){
 }
 function excelDerivedColor(kind){
   // 所有系統提示/參考欄統一藍色，與 93~96 的黃色工段欄清楚區隔。
-  return ["prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FF4472C4":null;
+  return ["printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FF4472C4":null;
 }
 function excelDerivedBodyColor(kind){
   // 生產方式可編輯欄用淡黃；系統提示/參考欄維持淡藍。
   if(kind==="mode")return "FFFFF2CC";
-  return ["prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
+  return ["printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
 }
 
 async function downloadBlankTemplate(){
@@ -895,7 +977,9 @@ async function downloadCurrent(){
         if(c.kind==="data"){
           const v=arr[c.idx];
           values.push([5,16,17,18,19,20,21,22].includes(c.idx)&&v?dateObj(v):(v??""));
-        }else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
+        }else if(c.kind==="msk")values.push(primaryMsk(o));
+        else if(c.kind==="printColor")values.push(printColorText(o));
+        else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
         else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
         else if(c.kind==="prevPh3")values.push(prevPh3(o)?dateObj(prevPh3(o)):"");
         else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
@@ -915,22 +999,24 @@ async function downloadCurrent(){
       const colStatus=WEB_COLUMNS.findIndex(c=>c.kind==="status")+1;
 
       const L=n=>ws.getColumn(n).letter;
-      const R="R",S="S",T="T",U="U",Q="Q";
+      const origCol=idx=>WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===idx)+1;
+      const c93=L(origCol(17)), c96=L(origCol(20)), cReq=L(origCol(16));
+      const upstreamRange=`${c93}${rn}:${c96}${rn}`;
       const ph=L(colPh3), w=L(col99), days=L(colDays);
 
-      // 前工段＝R:U (93~96) 已回覆日期中的最晚日期，不依工段欄位順序。
+      // 前工段＝93~96 已回覆日期中的最晚日期；使用實際欄位位置，避免新增 MSK 欄後公式位移。
       r.getCell(colPrevStage).value={formula:
-        `IF(MAX(R${rn}:U${rn})=0,"—",CHOOSE(MATCH(MAX(R${rn}:U${rn}),R${rn}:U${rn},0),"織造/93 ","染色/94 ","上漿/95 ","束頭/96 ")&TEXT(MAX(R${rn}:U${rn}),"yyyy/mm/dd"))`
+        `IF(MAX(${upstreamRange})=0,"—",CHOOSE(MATCH(MAX(${upstreamRange}),${upstreamRange},0),"織造/93 ","染色/94 ","上漿/95 ","束頭/96 ")&TEXT(MAX(${upstreamRange}),"yyyy/mm/dd"))`
       };
       r.getCell(colDays).value={formula:
-        `IF(${ph}${rn}="","",IF(MAX(R${rn}:U${rn})=0,"",IF(${ph}${rn}<MAX(R${rn}:U${rn}),-1,NETWORKDAYS.INTL(MAX(R${rn}:U${rn})+1,${ph}${rn},11))))`
+        `IF(${ph}${rn}="","",IF(MAX(${upstreamRange})=0,"",IF(${ph}${rn}<MAX(${upstreamRange}),-1,NETWORKDAYS.INTL(MAX(${upstreamRange})+1,${ph}${rn},11))))`
       };
       r.getCell(colStatus).value={formula:
         `IF(${ph}${rn}="","待回覆 / Chờ trả lời",`+
-        `IF(MAX(R${rn}:U${rn})>0,IF(${ph}${rn}<MAX(R${rn}:U${rn}),"PH3早於前站 / PH3 sớm hơn công đoạn trước；",""),"")&`+
+        `IF(MAX(${upstreamRange})>0,IF(${ph}${rn}<MAX(${upstreamRange}),"PH3早於前站 / PH3 sớm hơn công đoạn trước；",""),"")&`+
         `IF(AND(${days}${rn}<>"",${days}${rn}>7),"PH3超7天 / PH3 >7 ngày；","")&`+
         `IF(AND(${w}${rn}<>"",${ph}${rn}<>"",${w}${rn}<${ph}${rn}),"99早於PH3 / 99 sớm hơn PH3；","")&`+
-        `IF(AND(${w}${rn}<>"",Q${rn}<>"",${w}${rn}>Q${rn}),"99晚於客需 / 99 trễ hơn KH；","")&"已回覆 / Đã trả lời")`
+        `IF(AND(${w}${rn}<>"",${cReq}${rn}<>"",${w}${rn}>${cReq}${rn}),"99晚於客需 / 99 trễ hơn KH；","")&"已回覆 / Đã trả lời")`
       };
 
       // 提示/參考欄統一使用淡藍色，與黃色工段欄清楚區隔。
@@ -943,16 +1029,18 @@ async function downloadCurrent(){
       const changes=new Set(o.changed_fields||[]);
       [16,17,18,19,20].forEach(i=>{
         if(changes.has(COLNAMES[i])){
-          // Original A-U are still same letters/positions before derived columns.
-          r.getCell(i+1).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}};
-          r.getCell(i+1).font={color:{argb:"FF7F0000"},bold:true};
+          const ci=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===i)+1;
+          if(ci>0){
+            r.getCell(ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}};
+            r.getCell(ci).font={color:{argb:"FF7F0000"},bold:true};
+          }
         }
       });
 
       // Date validations same as web.
       r.getCell(colPh3).dataValidation={
         type:"custom",allowBlank:true,
-        formulae:[`OR(${ph}${rn}="",MAX(R${rn}:U${rn})=0,${ph}${rn}>=MAX(R${rn}:U${rn}))`],
+        formulae:[`OR(${ph}${rn}="",MAX(${upstreamRange})=0,${ph}${rn}>=MAX(${upstreamRange}))`],
         showErrorMessage:true,errorStyle:"stop",
         errorTitle:"PH3日期錯誤 / Lỗi ngày PH3",
         error:"PH3完工日不能早於前工段日期 / Ngày PH3 không được sớm hơn công đoạn trước"
@@ -1013,16 +1101,20 @@ async function downloadCurrent(){
 
     const colPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
     const col99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
+    const col93=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===17)+1;
+    const col96=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===20)+1;
+    const colReq=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===16)+1;
     const ph=ws.getColumn(colPh3).letter, w=ws.getColumn(col99).letter;
+    const c93=ws.getColumn(col93).letter,c96=ws.getColumn(col96).letter,cReq=ws.getColumn(colReq).letter;
     const last=ws.rowCount;
     if(last>=2){
       ws.addConditionalFormatting({ref:`${ph}2:${ph}${last}`,rules:[
-        {type:"expression",formulae:[`AND(${ph}2<>"",MAX(R2:U2)>0,${ph}2<MAX(R2:U2))`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}},
-        {type:"expression",formulae:[`AND(${ph}2<>"",MAX(R2:U2)>0,${ph}2>=MAX(R2:U2),NETWORKDAYS.INTL(MAX(R2:U2)+1,${ph}2,11)>7)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}
+        {type:"expression",formulae:[`AND(${ph}2<>"",MAX(${c93}2:${c96}2)>0,${ph}2<MAX(${c93}2:${c96}2))`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}},
+        {type:"expression",formulae:[`AND(${ph}2<>"",MAX(${c93}2:${c96}2)>0,${ph}2>=MAX(${c93}2:${c96}2),NETWORKDAYS.INTL(MAX(${c93}2:${c96}2)+1,${ph}2,11)>7)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}
       ]});
       ws.addConditionalFormatting({ref:`${w}2:${w}${last}`,rules:[
         {type:"expression",formulae:[`AND(${w}2<>"",${ph}2<>"",${w}2<${ph}2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}},
-        {type:"expression",formulae:[`AND(${w}2<>"",Q2<>"",${w}2>Q2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}
+        {type:"expression",formulae:[`AND(${w}2<>"",${cReq}2<>"",${w}2>${cReq}2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}
       ]});
     }
 
@@ -1045,31 +1137,45 @@ function updateWorkflowStatus(){
   const count=m=>data.filter(o=>productionModeLabel(o.production_mode)===m).length;
   const pending=m=>data.filter(o=>productionModeLabel(o.production_mode)===m&&o.needs_reply).length;
   const un=data.filter(o=>!productionModeLabel(o.production_mode)).length;
+  const fresh=data.filter(o=>chaseCount(o)===1).length, repeat=data.filter(o=>chaseCount(o)>1).length;
   const parts=PROD_MODES.map(m=>`${productionModeShort(m)} ${count(m)}（待回 ${pending(m)}）`);
-  el.innerHTML=`<b>流程檢查 / Kiểm tra：</b>未分配 ${un} / Chưa phân công ${un}｜${parts.join("｜")}`;
+  el.innerHTML=`<b>目前 / Hiện tại：</b>新單 ${fresh}｜再次追問 ${repeat}｜未分配 ${un}｜${parts.join("｜")}`;
 }
-function responseHeaders(){return [...HEADERS.slice(0,21),PROD_MODE_HEADER,HEADERS[21],HEADERS[22]]}
+function responseHeaders(){return [...HEADERS.slice(0,16),MSK_HEADER,PRINT_COLOR_HEADER,...HEADERS.slice(16,21),PROD_MODE_HEADER,HEADERS[21],HEADERS[22]]}
 async function buildResponsibilityWorkbook(mode,data){
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("PH3交期回覆");const headers=responseHeaders();ws.addRow(headers);
   const meta=wb.addWorksheet("__PH3_META");meta.addRow(["TYPE","RESPONSIBILITY"]);meta.addRow(["MODE",mode]);meta.state="veryHidden";
   const dateObj=s=>{if(!s)return "";const p=parseYMD(String(s).slice(0,10));return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s};
   data.forEach(o=>{
     const arr=dbToArray(o);const vals=[];
-    for(let i=0;i<=20;i++)vals.push([5,16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
+    for(let i=0;i<=15;i++)vals.push([5].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
+    vals.push(primaryMsk(o));
+    vals.push(printColorText(o));
+    for(let i=16;i<=20;i++)vals.push([16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
     vals.push(mode);vals.push(o.ph3_date?dateObj(o.ph3_date):"");vals.push(o.warehouse99_date?dateObj(o.warehouse99_date):"");
     ws.addRow(vals);
   });
   ws.views=[{state:"frozen",xSplit:5,ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:headers.length}};
-  ws.getRow(1).height=40;ws.getRow(1).eachCell((c,i)=>{c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:i===22?"FF7030A0":(i>=23?"FF2F75B5":excelHeaderColorByOriginalIndex(i))}}});
-  const modeCol=22,ph3Col=23,w99Col=24;ws.getCell(1,modeCol).note="此檔已分配的生產方式，請勿修改 / Hình thức đã phân công, không sửa.";
+  const modeCol=headers.indexOf(PROD_MODE_HEADER)+1, ph3Col=headers.indexOf(HEADERS[21])+1, w99Col=headers.indexOf(HEADERS[22])+1;
+  const colorCol=headers.indexOf(PRINT_COLOR_HEADER)+1;
+  ws.getRow(1).height=40;ws.getRow(1).eachCell((c,i)=>{
+    c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
+    const fill=(i===modeCol)?"FF7030A0":((i===ph3Col||i===w99Col)?"FF2F75B5":((i===colorCol)?"FF4472C4":"FF548235"));
+    c.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}};
+  });
+  ws.getCell(1,modeCol).note="此檔已分配的生產方式，請勿修改 / Hình thức đã phân công, không sửa.";
+  ws.getCell(1,colorCol).note="系統從生管品名＋訂單備注＋摘要自動抓取；如無法辨識顯示空白 / Hệ thống tự lấy từ 3 cột thông tin.";
   [ph3Col,w99Col].forEach(ci=>{ws.getCell(1,ci).note="★ 請回填日期 yyyy/mm/dd / Hãy nhập ngày yyyy/mm/dd"});
+  const dateHeaders=[HEADERS[5],HEADERS[16],HEADERS[17],HEADERS[18],HEADERS[19],HEADERS[20],HEADERS[21],HEADERS[22]];
+  const dateCols=dateHeaders.map(h=>headers.indexOf(h)+1).filter(x=>x>0);
   for(let r=2;r<=Math.max(2,ws.rowCount);r++){
     ws.getRow(r).height=22;
     ws.getCell(r,modeCol).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFE4DFEC"}};
+    ws.getCell(r,colorCol).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFEAF2FF"}};
     [ph3Col,w99Col].forEach(ci=>{ws.getCell(r,ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};ws.getCell(r,ci).numFmt="yyyy/m/d"});
-    [6,17,18,19,20,21].forEach(ci=>ws.getCell(r,ci).numFmt="yyyy/m/d");
+    dateCols.forEach(ci=>ws.getCell(r,ci).numFmt="yyyy/m/d");
   }
-  const widths=[7,10,12,18,8,13,14,12,9,15,8,12,22,30,22,24,14,14,14,14,14,18,14,14];widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+  autoFitWorksheet(ws,{min:7,max:30,padding:2});
   return wb;
 }
 async function triggerWorkbookDownload(wb,name){
