@@ -51,6 +51,12 @@ tr.issue-row td:first-child{border-left:5px solid #f0a000!important}
 #grid{font-size:12px}
 .search-all{min-width:360px;flex:2}
 .import-help{margin-top:7px;padding:8px 10px;border:1px solid #efb4b4;background:#fff6f6;border-radius:8px;font-size:12px;line-height:1.55;max-height:180px;overflow:auto}
+
+.cell-mode{width:100%;min-width:0;height:29px;padding:3px 5px;margin:0;border:1px solid #aebdca;border-radius:6px;background:#fff;font-size:11px}
+.mode-prev{margin-top:3px;padding:2px 4px;border-radius:5px;background:#ffe6bd;color:#8b5100;font-size:10px;font-weight:800;white-space:normal;line-height:1.15}
+.workflow-guide{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;padding:5px 7px;border:1px dashed #9db9de;border-radius:7px;background:#f8fbff;font-size:10px;color:#475569;line-height:1.3}
+.workflow-guide b{color:#17365d}.workflow-step{font-weight:800;color:#174f86}.workflow-status{margin-left:auto;font-size:10px;color:#334155;white-space:normal}
+.split-download{border-color:#7030a0!important;color:#7030a0!important}
 @media(max-height:800px){.tablewrap{max-height:70vh;min-height:360px}}
 @media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.app{padding:8px}}
 
@@ -316,10 +322,20 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
       <button id="calcReplyBtn" class="btn primary ribbon-action">＋ 批量加天 / Cộng ngày</button>
       <button id="saveReplyBtn" class="btn green ribbon-action">✓ 儲存目前修改 / Lưu thay đổi</button>
       <button id="downloadBtn" class="btn outline ribbon-action">⬇ 下載目前 Excel / Tải Excel</button>
+      <button id="downloadSplitBtn" class="btn outline ribbon-action split-download">③ 下載機印＋手印＋GCN / Tải 3 file</button>
       <button id="downloadMailBtn" class="btn outline ribbon-action">✉ 下載可回覆 MAIL 格式 / Excel trả lời MAIL</button>
       <label class="btn outline ribbon-action ribbon-upload" for="refillFile">⬆ 回填修改後 Excel / Nhập lại Excel</label>
-      <input id="refillFile" type="file" accept=".xlsx,.xlsm,.xls" style="display:none">
+      <input id="refillFile" type="file" multiple accept=".xlsx,.xlsm,.xls" style="display:none">
       <div id="saveGuard" class="ribbon-status"></div>
+    </div>
+    <div class="workflow-guide">
+      <b>操作流程 / Quy trình：</b>
+      <span class="workflow-step">① 選生產方式 / Chọn hình thức</span><span>→</span>
+      <span class="workflow-step">② 儲存 / Lưu</span><span>→</span>
+      <span class="workflow-step">③ 下載三份 / Tải 3 file</span><span>→</span>
+      <span class="workflow-step">④ 一次回填1～3份 / Nhập lại 1～3 file</span><span>→</span>
+      <span class="workflow-step">⑤ 儲存＋下載MAIL / Lưu + tải MAIL</span>
+      <span id="workflowStatus" class="workflow-status"></span>
     </div>
 
     <div id="moreFilters" class="ribbon-more-panel" hidden>

@@ -1,8 +1,10 @@
-// PH3 V16：以 V15 為母版微調，保留原有登入/匯入/批次/儲存/MAIL Excel 核心流程
+// PH3 V25：以使用者提供的最後正常 V24 檔為唯一母版，只新增生產方式分流與三份回填流程；保留原有正常功能。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
 const COLNAMES=["col_a","col_b","customer","order_no","net","order_date","item_no","color","width","model","unit","qty","progress_ref","product_name","order_note","summary","customer_required","weaving_date","dyeing_date","sizing_date","aglet_date","ph3_date","warehouse99_date"];
+const PROD_MODE_HEADER="生產方式 / Hình thức sản xuất";
+const PROD_MODES=["機印 / In máy","手印 / In tay","GCN"];
 const KEYCOLS=[2,3,4], PROGRESS_START=17;
 const $=id=>document.getElementById(id);
 const cfg=window.PH3_CONFIG||{};
@@ -13,14 +15,17 @@ const sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
 let rows=[], histories=[], batches=[], tab="current", currentProfile=null;
 let lastReplyMap=new Map();
 const dirtyKeys=new Set();
+const dirtyDateKeys=new Set();
+const dirtyModeKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
 function updateActionState(){
   const n=dirtyKeys.size;
-  const save=$("saveReplyBtn"), dl=$("downloadBtn"), mail=$("downloadMailBtn"), guard=$("saveGuard");
+  const save=$("saveReplyBtn"), dl=$("downloadBtn"), mail=$("downloadMailBtn"), split=$("downloadSplitBtn"), guard=$("saveGuard");
   if(save)save.disabled=n===0;
   if(dl)dl.disabled=n>0;
   if(mail)mail.disabled=n>0;
+  if(split)split.disabled=n>0;
   if(guard){
     guard.innerHTML=n>0
       ? `<span class="bad">⚠ 尚有 ${n} 筆未儲存：請先按「儲存目前修改」，儲存成功後才能下載 / Còn ${n} dòng chưa lưu: phải lưu trước khi tải Excel</span>`
@@ -32,6 +37,40 @@ function blockIfUnsaved(actionText){
   $("replyMsg").innerHTML=`<span class="bad">⚠ 尚有 ${dirtyKeys.size} 筆未儲存，請先按「儲存目前修改」，再${actionText} / Còn dữ liệu chưa lưu, hãy lưu trước</span>`;
   updateActionState();
   return true;
+}
+function syncDirtyKey(key){
+  if(dirtyDateKeys.has(key)||dirtyModeKeys.has(key))dirtyKeys.add(key); else dirtyKeys.delete(key);
+}
+function markDateDirty(key){dirtyDateKeys.add(key);dirtyKeys.add(key)}
+function productionModeLabel(v){return PROD_MODES.includes(String(v||""))?String(v):""}
+function productionModeShort(v){return ({"機印 / In máy":"機印 / In máy","手印 / In tay":"手印 / In tay","GCN":"GCN"})[String(v||"")]||"—"}
+function applyProductionModeDraft(o,newMode){
+  newMode=productionModeLabel(newMode);
+  if(!o._modeEditSnapshot){
+    o._modeEditSnapshot={
+      mode:o.production_mode||"",prevMode:o.previous_production_mode||"",
+      ph3:o.ph3_date||null,w99:o.warehouse99_date||null,
+      prevPh3:o.prev_ph3_date||null,prev99:o.prev_99_date||null,
+      needs:o.needs_reply,wasDateDirty:dirtyDateKeys.has(o.unique_key)
+    };
+  }
+  const snap=o._modeEditSnapshot, saved=snap.mode||"";
+  if(newMode===saved){
+    o.production_mode=snap.mode||null;o.previous_production_mode=snap.prevMode||null;
+    o.ph3_date=snap.ph3;o.warehouse99_date=snap.w99;o.prev_ph3_date=snap.prevPh3;o.prev_99_date=snap.prev99;o.needs_reply=snap.needs;
+    dirtyModeKeys.delete(o.unique_key);
+    if(snap.wasDateDirty)dirtyDateKeys.add(o.unique_key);else dirtyDateKeys.delete(o.unique_key);
+    delete o._modeEditSnapshot;syncDirtyKey(o.unique_key);return;
+  }
+  o.production_mode=newMode||null;
+  dirtyModeKeys.add(o.unique_key);dirtyKeys.add(o.unique_key);
+  if(saved && newMode!==saved){
+    o.previous_production_mode=saved;
+    if(o.ph3_date)o.prev_ph3_date=o.ph3_date;
+    if(o.warehouse99_date)o.prev_99_date=o.warehouse99_date;
+    o.ph3_date=null;o.warehouse99_date=null;o.needs_reply=true;
+    dirtyDateKeys.delete(o.unique_key);syncDirtyKey(o.unique_key);
+  }
 }
 
 function fmt(v){if(!v)return"";if(v instanceof Date)return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;if(/^\d{4}-\d{2}-\d{2}/.test(String(v)))return String(v).slice(0,10).replaceAll("-","/");return String(v)}
@@ -66,6 +105,7 @@ function lastReplyUser(o){
 function statusText(o){
   const parts=[];
   if(o.needs_reply)parts.push("待回覆 / Cần trả lời"); else if(o.ever_replied)parts.push("已回覆 / Đã trả lời");
+  if(o.previous_production_mode&&o.production_mode&&o.previous_production_mode!==o.production_mode)parts.push(`原${productionModeShort(o.previous_production_mode)} → ${productionModeShort(o.production_mode)}`);
   if(is99Late(o))parts.push("99晚於客需 / 99 trễ hơn KH");
   if(ph3Days(o)>7)parts.push("PH3超過7天 / PH3 >7 ngày");
   if(ph3BeforeUpstream(o))parts.push("PH3早於前工段 / PH3 sớm hơn công đoạn trước");
@@ -75,7 +115,7 @@ function statusText(o){
 function searchableText(o){
   const arr=dbToArray(o).map(v=>fmt(v));
   const p=latestUpstream(o);
-  return [...arr,p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
+  return [...arr,productionModeShort(o.production_mode),productionModeShort(o.previous_production_mode),p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
 }
 function autoFitWorksheet(ws,{min=7,max=42,padding=2}={}){
   ws.columns.forEach(col=>{
@@ -305,6 +345,7 @@ const WEB_COLUMNS=[
   ...HEADERS.slice(0,21).map((h,i)=>({kind:"data",idx:i,label:h,width:[
     38,42,58,76,38,78,74,50,46,74,42,58,54,158,108,116,82,84,84,84,84
   ][i]||72})),
+  {kind:"mode",label:PROD_MODE_HEADER,width:118},
   {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
   {kind:"data",idx:21,label:HEADERS[21],width:106},
   {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:96},
@@ -345,7 +386,7 @@ function applyFrozenColumns(){
 function render(){
   const grid=$("grid");
   if(tab==="history"){
-    const fieldLabel=f=>({ph3_date:"PH3",warehouse99_date:"99"}[f]||f||"");
+    const fieldLabel=f=>({ph3_date:"PH3",warehouse99_date:"99",production_mode:"生產方式 / Hình thức sản xuất"}[f]||f||"");
     grid.innerHTML=`<thead><tr><th class="fixed">修改人 / Người sửa</th><th class="fixed">修改時間 / Thời gian</th><th class="fixed">客戶+訂單號碼+筆數 / KH+Mã đơn+NET</th><th class="fixed">修改內容 / Nội dung sửa</th><th class="fixed">來源 / Nguồn</th></tr></thead><tbody>`+
       histories.map(h=>{
         const who=(h.employee_no||h.employee_name)?`${h.employee_no||""} ${h.employee_name||""}`.trim():"系統匯入 / Hệ thống";
@@ -365,7 +406,7 @@ function render(){
     let cls="fixed";
     if(c.kind==="data" && c.idx>=17)cls="progress";
     if(c.kind==="data" && KEYCOLS.includes(c.idx))cls="key";
-    if(["prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
+    if(["mode","prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
     if(c.kind==="prevStage")cls+=" h-prevstage";
     if(c.kind==="prevPh3")cls+=" h-prevph3";
     if(c.kind==="prev99")cls+=" h-prev99";
@@ -396,6 +437,12 @@ function render(){
           content=esc(fmt(arr[i]));
           if(i===0 && issue)content=`<span class="issue-marker" title="${esc(issueText)}">⚠</span>`+content;
         }
+      }else if(c.kind==="mode"){
+        cls="progress c-mode";
+        if(dirtyKeys.has(o.unique_key))cls+=" draftcell";
+        const cur=productionModeLabel(o.production_mode), old=productionModeLabel(o.previous_production_mode);
+        content=`<select class="cell-mode" data-key="${esc(o.unique_key)}"><option value="">請選擇 / Chọn</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(m)}</option>`).join("")}</select>`+
+          (old&&old!==cur?`<div class="mode-prev">原 / Trước: ${esc(productionModeShort(old))}</div>`:"");
       }else if(c.kind==="prevStage"){
         cls="progress c-prevstage";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
       }else if(c.kind==="prevPh3"){
@@ -410,6 +457,8 @@ function render(){
       }else if(c.kind==="status"){
         cls="progress c-status";
         let status=o.needs_reply?'<span class="badge b-red">待重回 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>';
+        if(!o.production_mode)status+=' <span class="badge b-orange">未分配 / Chưa phân công</span>';
+        if(o.previous_production_mode&&o.production_mode&&o.previous_production_mode!==o.production_mode)status+=` <span class="badge b-orange">原 ${esc(productionModeShort(o.previous_production_mode))} → ${esc(productionModeShort(o.production_mode))}</span>`;
         if((o.changed_fields||[]).length)status+=' <span class="badge b-orange">有異動 / Có thay đổi</span>';
         if(ph3BeforeUpstream(o))status+=' <span class="badge b-red">PH3早於前站 / PH3 sớm hơn công đoạn trước</span>';
         if(warehouseBeforePh3(o))status+=' <span class="badge b-red">99早於PH3 / 99 sớm hơn PH3</span>';
@@ -427,6 +476,8 @@ function render(){
   }
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
+  grid.querySelectorAll(".cell-mode").forEach(inp=>inp.addEventListener("change",saveDirectMode));
+  updateWorkflowStatus();
   applyFrozenColumns();
   updateActionState();
 }
@@ -539,6 +590,13 @@ async function importFiles(){
   }
 }
 
+function saveDirectMode(e){
+  const key=e.target.dataset.key, o=rows.find(x=>x.unique_key===key);if(!o)return;
+  applyProductionModeDraft(o,e.target.value);
+  $("replyMsg").innerHTML='<span class="warn">生產方式已暫存於畫面；若從原單位改到新單位，原交期會保留在「上次回覆」並要求新單位重新回覆 / Đã tạm lưu hình thức sản xuất; nếu đổi bộ phận, ngày cũ được giữ ở lần trước và phải trả lời lại.</span>';
+  render();
+}
+
 async function saveDirectCell(e){
   const key=e.target.dataset.key, col=Number(e.target.dataset.col);
   const o=rows.find(x=>x.unique_key===key); if(!o)return;
@@ -573,7 +631,7 @@ async function saveDirectCell(e){
   o.ph3_date=ph3||null;
   o.warehouse99_date=w99||null;
   issueKeys.delete(key);
-  dirtyKeys.add(key);
+  markDateDirty(key);
   if($("fStatus").value==="issue" && filtered().length===0){
     $("fStatus").value="";
     $("replyMsg").innerHTML='<span class="ok">異常已修正，已自動返回全部資料 / Đã sửa lỗi, tự động trở về tất cả dữ liệu</span>';
@@ -602,7 +660,7 @@ async function calcBulkReply(){
     const ph3=addDaysExcludeSunday(prev,add);
     o.ph3_date=ph3;
     o.warehouse99_date=calendarAdd(ph3,3);
-    dirtyKeys.add(o.unique_key);
+    markDateDirty(o.unique_key);
   }
   $("replyMsg").innerHTML=`<span class="warn">已計算 ${data.length} 筆但尚未儲存：PH3=前站+${add}天（週日不算），99=PH3+3天 / Đã tính ${data.length} dòng nhưng chưa lưu</span>`;
   render();
@@ -615,39 +673,51 @@ async function saveDraftReplies(){
   }
 
   const payload=[];
+  const modePayload=[];
   const invalid=[];
-  for(const key of dirtyKeys){
+  for(const key of dirtyDateKeys){
     const o=rows.find(x=>x.unique_key===key);
     if(!o)continue;
     const ph3=String(o.ph3_date||"").slice(0,10)||null;
     const w99=String(o.warehouse99_date||"").slice(0,10)||null;
     const prev=latestUpstream(o).date;
-
     if(ph3 && prev && ph3<prev){invalid.push(`${key}: PH3 < 前站`);issueKeys.set(key,"PH3早於前工段 / PH3 sớm hơn công đoạn trước");continue}
     if(w99 && ph3 && w99<ph3){invalid.push(`${key}: 99 < PH3`);issueKeys.set(key,"99早於PH3 / 99 sớm hơn PH3");continue}
     payload.push({unique_key:key,ph3_date:ph3,warehouse99_date:w99});
   }
+  for(const key of dirtyModeKeys){
+    const o=rows.find(x=>x.unique_key===key);if(!o)continue;
+    const mode=productionModeLabel(o.production_mode);
+    if(!mode){invalid.push(`${key}: 未選擇生產方式 / Chưa chọn hình thức sản xuất`);continue}
+    modePayload.push({unique_key:key,production_mode:mode});
+  }
 
   if(invalid.length){
-    $("replyMsg").innerHTML=`<span class="bad">⚠ 有 ${invalid.length} 筆日期不合法，已在表格標示；狀態可選「只看異常」 / Có ${invalid.length} dòng lỗi, đã đánh dấu trong bảng</span>`;
-    render();
-    const firstKey=invalid[0].split(":")[0];
-    requestAnimationFrame(()=>document.getElementById(rowDomId(firstKey))?.scrollIntoView({behavior:"smooth",block:"center"}));
-    return;
+    $("replyMsg").innerHTML=`<span class="bad">⚠ 有 ${invalid.length} 筆資料不合法，請先修正 / Có ${invalid.length} dòng lỗi, hãy sửa trước</span>`;
+    render();return;
   }
 
   $("replyMsg").textContent="儲存中… / Đang lưu…";
-  const {data,error}=await sb.rpc("ph3_import_replies",{p_rows:payload});
-  if(error){
-    $("replyMsg").innerHTML=`<span class="bad">${esc(error.message)}</span>`;
-    return;
+  try{
+    let modeUpdated=0,dateUpdated=0,late99=0,over7=0;
+    if(modePayload.length){
+      const {data,error}=await sb.rpc("ph3_update_production_modes",{p_rows:modePayload});
+      if(error)throw new Error(`生產方式儲存失敗 / Lưu hình thức sản xuất thất bại：${error.message}`);
+      modeUpdated=Number(data?.updated||modePayload.length);
+    }
+    if(payload.length){
+      const {data,error}=await sb.rpc("ph3_import_replies",{p_rows:payload});
+      if(error)throw error;
+      dateUpdated=Number(data?.updated||payload.length);late99=Number(data?.late99||0);over7=Number(data?.over7||0);
+    }
+    dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();
+    $("replyMsg").innerHTML=`<span class="ok">已儲存：生產方式 ${modeUpdated} 筆、交期 ${dateUpdated} 筆 / Đã lưu: hình thức ${modeUpdated}, ngày giao ${dateUpdated}</span>`+
+      (late99?` <span class="warn">；99晚於客需 ${late99} 筆 / ${late99} dòng 99 trễ hơn KH</span>`:"")+
+      (over7?` <span class="warn">；PH3超過7天 ${over7} 筆 / PH3 >7 ngày: ${over7}</span>`:"");
+    await loadAll();
+  }catch(error){
+    $("replyMsg").innerHTML=`<span class="bad">${esc(error.message||error)}</span>`;
   }
-
-  dirtyKeys.clear();
-  $("replyMsg").innerHTML=`<span class="ok">已儲存 ${data.updated} 筆 / Đã lưu ${data.updated} dòng</span>`+
-    (data.late99?` <span class="warn">；99晚於客需 ${data.late99} 筆 / ${data.late99} dòng 99 trễ hơn KH</span>`:"")+
-    (data.over7?` <span class="warn">；PH3超過7天 ${data.over7} 筆 / PH3 >7 ngày: ${data.over7}</span>`:"");
-  await loadAll();
 }
 
 function exportData(){
@@ -678,7 +748,8 @@ function excelDerivedColor(kind){
   return ["prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FF4472C4":null;
 }
 function excelDerivedBodyColor(kind){
-  // 提示/參考資料格統一淡藍色。
+  // 生產方式可編輯欄用淡黃；系統提示/參考欄維持淡藍。
+  if(kind==="mode")return "FFFFF2CC";
   return ["prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
 }
 
@@ -824,7 +895,8 @@ async function downloadCurrent(){
         if(c.kind==="data"){
           const v=arr[c.idx];
           values.push([5,16,17,18,19,20,21,22].includes(c.idx)&&v?dateObj(v):(v??""));
-        }else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
+        }else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
+        else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
         else if(c.kind==="prevPh3")values.push(prevPh3(o)?dateObj(prevPh3(o)):"");
         else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
         else if(c.kind==="days")values.push("");
@@ -920,6 +992,16 @@ async function downloadCurrent(){
         cell.border={left:{style:"medium",color:{argb:"FF2F75B5"}},right:{style:"medium",color:{argb:"FF2F75B5"}}};
       }
     });
+    const editColMode=WEB_COLUMNS.findIndex(c=>c.kind==="mode")+1;
+    if(editColMode>0){
+      const head=ws.getCell(1,editColMode);head.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FF7030A0"}};
+      head.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
+      head.note="★ 可修改：機印 / In máy、手印 / In tay、GCN。若由原單位改到新單位，原交期會失效並要求重新回覆。";
+      for(let rr=2;rr<=ws.rowCount;rr++){
+        const cell=ws.getCell(rr,editColMode);cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
+        cell.dataValidation={type:"list",allowBlank:true,formulae:['"機印 / In máy,手印 / In tay,GCN"'],showErrorMessage:true,errorTitle:"請選擇清單 / Chọn từ danh sách",error:"只能選機印 / In máy、手印 / In tay、GCN"};
+      }
+    }
     WEB_COLUMNS.forEach((c,i)=>ws.getColumn(i+1).width=Math.max(7,Math.min(24,Math.round(c.width/9.4))));
     for(let r=2;r<=ws.rowCount;r++){
       ws.getRow(r).height=22;
@@ -953,6 +1035,61 @@ async function downloadCurrent(){
   }catch(err){
     console.error(err);$("replyMsg").innerHTML=`<span class="bad">下載失敗 / Tải thất bại：${esc(err.message||err)}</span>`;
   }
+}
+
+
+function workflowScopeData(){return exportData()}
+function updateWorkflowStatus(){
+  const el=$("workflowStatus");if(!el||tab==="history")return;
+  let data=[];try{data=workflowScopeData()}catch(e){return}
+  const count=m=>data.filter(o=>productionModeLabel(o.production_mode)===m).length;
+  const pending=m=>data.filter(o=>productionModeLabel(o.production_mode)===m&&o.needs_reply).length;
+  const un=data.filter(o=>!productionModeLabel(o.production_mode)).length;
+  const parts=PROD_MODES.map(m=>`${productionModeShort(m)} ${count(m)}（待回 ${pending(m)}）`);
+  el.innerHTML=`<b>流程檢查 / Kiểm tra：</b>未分配 ${un} / Chưa phân công ${un}｜${parts.join("｜")}`;
+}
+function responseHeaders(){return [...HEADERS.slice(0,21),PROD_MODE_HEADER,HEADERS[21],HEADERS[22]]}
+async function buildResponsibilityWorkbook(mode,data){
+  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("PH3交期回覆");const headers=responseHeaders();ws.addRow(headers);
+  const meta=wb.addWorksheet("__PH3_META");meta.addRow(["TYPE","RESPONSIBILITY"]);meta.addRow(["MODE",mode]);meta.state="veryHidden";
+  const dateObj=s=>{if(!s)return "";const p=parseYMD(String(s).slice(0,10));return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s};
+  data.forEach(o=>{
+    const arr=dbToArray(o);const vals=[];
+    for(let i=0;i<=20;i++)vals.push([5,16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
+    vals.push(mode);vals.push(o.ph3_date?dateObj(o.ph3_date):"");vals.push(o.warehouse99_date?dateObj(o.warehouse99_date):"");
+    ws.addRow(vals);
+  });
+  ws.views=[{state:"frozen",xSplit:5,ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:headers.length}};
+  ws.getRow(1).height=40;ws.getRow(1).eachCell((c,i)=>{c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};c.fill={type:"pattern",pattern:"solid",fgColor:{argb:i===22?"FF7030A0":(i>=23?"FF2F75B5":excelHeaderColorByOriginalIndex(i))}}});
+  const modeCol=22,ph3Col=23,w99Col=24;ws.getCell(1,modeCol).note="此檔已分配的生產方式，請勿修改 / Hình thức đã phân công, không sửa.";
+  [ph3Col,w99Col].forEach(ci=>{ws.getCell(1,ci).note="★ 請回填日期 yyyy/mm/dd / Hãy nhập ngày yyyy/mm/dd"});
+  for(let r=2;r<=Math.max(2,ws.rowCount);r++){
+    ws.getRow(r).height=22;
+    ws.getCell(r,modeCol).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFE4DFEC"}};
+    [ph3Col,w99Col].forEach(ci=>{ws.getCell(r,ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};ws.getCell(r,ci).numFmt="yyyy/m/d"});
+    [6,17,18,19,20,21].forEach(ci=>ws.getCell(r,ci).numFmt="yyyy/m/d");
+  }
+  const widths=[7,10,12,18,8,13,14,12,9,15,8,12,22,30,22,24,14,14,14,14,14,18,14,14];widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+  return wb;
+}
+async function triggerWorkbookDownload(wb,name){
+  const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+async function downloadSplitFiles(){
+  if(blockIfUnsaved("下載三份交期檔 / tải 3 file"))return;
+  try{
+    const data=exportData();if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
+    const unassigned=data.filter(o=>!productionModeLabel(o.production_mode));
+    if(unassigned.length){$("replyMsg").innerHTML=`<span class="bad">⚠ 還有 ${unassigned.length} 筆未選生產方式，請先完成機印／手印／GCN 分配並儲存，再下載三份交期檔 / Còn ${unassigned.length} dòng chưa phân công.</span>`;return}
+    const stamp=todayYMD().replaceAll("-","");
+    const names={"機印 / In máy":`PH3_機印_In máy_${stamp}.xlsx`,"手印 / In tay":`PH3_手印_In tay_${stamp}.xlsx`,"GCN":`PH3_GCN_${stamp}.xlsx`};
+    for(const mode of PROD_MODES){
+      const subset=data.filter(o=>productionModeLabel(o.production_mode)===mode);const wb=await buildResponsibilityWorkbook(mode,subset);await triggerWorkbookDownload(wb,names[mode]);
+      await new Promise(r=>setTimeout(r,220));
+    }
+    $("replyMsg").innerHTML=`<span class="ok">已下載 3 份：機印 ${data.filter(o=>o.production_mode===PROD_MODES[0]).length} 筆、手印 ${data.filter(o=>o.production_mode===PROD_MODES[1]).length} 筆、GCN ${data.filter(o=>o.production_mode===PROD_MODES[2]).length} 筆 / Đã tải 3 file.</span>`;
+  }catch(err){console.error(err);$("replyMsg").innerHTML=`<span class="bad">下載三份交期檔失敗 / Tải 3 file thất bại：${esc(err.message||err)}</span>`}
 }
 
 async function downloadMailReady(){
@@ -1009,147 +1146,64 @@ async function downloadMailReady(){
 }
 
 async function refillExcel(){
-  const file=$("refillFile").files[0];if(!file)return;
-  const showProblems=(title,items)=>{
-    const shown=items.slice(0,60);
-    $("replyMsg").innerHTML=`<div class="import-help"><b>⚠ ${esc(title)}</b><br>${shown.map((x,i)=>`${i+1}. ${esc(x)}`).join("<br>")}${items.length>60?`<br>…另外還有 ${items.length-60} 個問題 / Còn ${items.length-60} lỗi khác`:""}</div>`;
-  };
+  const files=[...$("refillFile").files];if(!files.length)return;
+  const showProblems=(title,items)=>{const shown=items.slice(0,80);$("replyMsg").innerHTML=`<div class="import-help"><b>⚠ ${esc(title)}</b><br>${shown.map((x,i)=>`${i+1}. ${esc(x)}`).join("<br>")}${items.length>80?`<br>…另外還有 ${items.length-80} 個問題 / Còn ${items.length-80} lỗi khác`:""}</div>`};
   try{
-    if(dirtyKeys.size){
-      $("replyMsg").innerHTML=`<span class="bad">⚠ 畫面上還有 ${dirtyKeys.size} 筆未儲存，請先儲存後再回填另一份 Excel / Còn ${dirtyKeys.size} dòng chưa lưu, hãy lưu trước khi nhập Excel khác</span>`;
-      $("refillFile").value="";
-      return;
+    if(dirtyKeys.size){$("replyMsg").innerHTML=`<span class="bad">⚠ 畫面上還有 ${dirtyKeys.size} 筆未儲存，請先儲存後再回填 Excel / Còn ${dirtyKeys.size} dòng chưa lưu.</span>`;$("refillFile").value="";return}
+    $("replyMsg").textContent=`檢查 ${files.length} 份回填 Excel… / Đang kiểm tra ${files.length} file…`;
+    const issues=[],staged=[],seenKeys=new Set();
+    for(const file of files){
+      const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:"array",cellDates:false});if(!wb.SheetNames.length){issues.push(`${file.name}: Excel 沒有工作表`);continue}
+      let expectedMode="";
+      if(wb.SheetNames.includes("__PH3_META")){
+        const ma=XLSX.utils.sheet_to_json(wb.Sheets["__PH3_META"],{header:1,defval:"",raw:true});
+        const typeRow=ma.find(r=>String(r[0]||"")==="TYPE"),modeRow=ma.find(r=>String(r[0]||"")==="MODE");
+        if(String(typeRow?.[1]||"")==="RESPONSIBILITY")expectedMode=productionModeLabel(modeRow?.[1]);
+      }
+      const mainName=wb.SheetNames.find(n=>n!=="__PH3_META")||wb.SheetNames[0];const a=XLSX.utils.sheet_to_json(wb.Sheets[mainName],{header:1,defval:"",raw:true});
+      if(a.length<2){continue}
+      const headers=a[0].map(x=>String(x??"").trim());
+      const find=n=>headers.indexOf(n);
+      const idxCustomer=find(HEADERS[2]),idxOrder=find(HEADERS[3]),idxNet=find(HEADERS[4]),idxPh3=find(HEADERS[21]),idx99=find(HEADERS[22]),idxMode=find(PROD_MODE_HEADER);
+      const missing=[[idxCustomer,HEADERS[2]],[idxOrder,HEADERS[3]],[idxNet,HEADERS[4]],[idxPh3,HEADERS[21]],[idx99,HEADERS[22]]].filter(x=>x[0]<0);
+      if(missing.length){issues.push(`${file.name}：缺少 ${missing.map(x=>`「${x[1]}」`).join("、")} / Thiếu cột`);continue}
+      const upstreamIdx=[17,18,19,20].map(i=>find(HEADERS[i]));
+      for(let i=1;i<a.length;i++){
+        const r=a[i],excelRow=i+1;if(!r.some(v=>v!==""&&v!=null))continue;
+        const customer=String(r[idxCustomer]??"").trim(),order=String(r[idxOrder]??"").trim(),net=String(r[idxNet]??"").trim();
+        if(!customer||!order||!net){issues.push(`${file.name} 第 ${excelRow} 列：KH／訂單號／NET 不可空白 / Không được để trống`);continue}
+        const key=[customer,order,net].join("|");if(seenKeys.has(key)){issues.push(`${file.name} 第 ${excelRow} 列：重複資料 ${key} / Dữ liệu trùng`);continue}seenKeys.add(key);
+        const o=rows.find(x=>x.unique_key===key);if(!o){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：系統找不到此筆 / Không tìm thấy`);continue}
+        const fileMode=idxMode>=0?productionModeLabel(r[idxMode]):"";
+        if(expectedMode){
+          if(!fileMode||fileMode!==expectedMode){issues.push(`${file.name} 第 ${excelRow} 列：生產方式被修改或不符（應為 ${expectedMode}）/ Hình thức sản xuất không đúng`);continue}
+          if(productionModeLabel(o.production_mode)!==expectedMode){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：此單目前已改分配為 ${productionModeShort(o.production_mode)}，不能再使用舊的 ${expectedMode} 回覆；請重新下載新單位檔案 / Đơn đã đổi bộ phận, không thể dùng file cũ`);continue}
+        }
+        const rawPh3=r[idxPh3],raw99=r[idx99],ph3=rawPh3===""||rawPh3==null?"":excelDate(rawPh3),w99=raw99===""||raw99==null?"":excelDate(raw99);
+        if(rawPh3!==""&&rawPh3!=null&&!ph3){issues.push(`${file.name} 第 ${excelRow} 列：PH3 日期格式錯誤 ${rawPh3} / Sai ngày PH3`);continue}
+        if(raw99!==""&&raw99!=null&&!w99){issues.push(`${file.name} 第 ${excelRow} 列：99 日期格式錯誤 ${raw99} / Sai ngày 99`);continue}
+        const prevDates=[];let badPrev=false;upstreamIdx.forEach(ci=>{if(ci<0)return;const raw=r[ci];if(raw===""||raw==null)return;const d=excelDate(raw);if(!d)badPrev=true;else prevDates.push(d)});if(badPrev){issues.push(`${file.name} 第 ${excelRow} 列：前工段日期格式錯誤 / Sai ngày công đoạn trước`);continue}
+        prevDates.sort();const prev=prevDates.at(-1)||"";if(ph3&&prev&&ph3<prev){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：PH3 早於前工段 / PH3 sớm hơn công đoạn trước`);continue}if(w99&&ph3&&w99<ph3){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：99 早於 PH3 / 99 sớm hơn PH3`);continue}
+        staged.push({o,key,ph3:ph3||null,w99:w99||null,newMode:expectedMode?productionModeLabel(o.production_mode):(idxMode>=0?fileMode:productionModeLabel(o.production_mode)),expectedMode,file:file.name});
+      }
     }
-    $("replyMsg").textContent="檢查回填 Excel… / Đang kiểm tra Excel nhập lại…";
-    const buf=await file.arrayBuffer();
-    const wb=XLSX.read(buf,{type:"array",cellDates:false});
-    if(!wb.SheetNames.length)throw new Error("Excel 沒有工作表 / Excel không có sheet");
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true});
-    if(a.length<2)throw new Error("Excel沒有資料 / Excel không có dữ liệu");
-
-    const headers=a[0].map(x=>String(x??"").trim());
-    const required=[
-      {idx:2,name:HEADERS[2]},{idx:3,name:HEADERS[3]},{idx:4,name:HEADERS[4]},
-      {idx:21,name:HEADERS[21]},{idx:22,name:HEADERS[22]}
-    ];
-    const missing=required.filter(x=>headers.indexOf(x.name)<0);
-    if(missing.length){
-      showProblems("回填 Excel 欄位不完整，尚未回填 / Thiếu cột, chưa nhập dữ liệu",missing.map(x=>`缺少「${x.name}」；請使用系統下載的回填 Excel，不要刪除或改名欄位 / Thiếu cột \"${x.name}\"; hãy dùng file Excel tải từ hệ thống và không đổi tên cột`));
-      $("refillFile").value="";
-      return;
-    }
-
-    const idxCustomer=headers.indexOf(HEADERS[2]);
-    const idxOrder=headers.indexOf(HEADERS[3]);
-    const idxNet=headers.indexOf(HEADERS[4]);
-    const idxPh3=headers.indexOf(HEADERS[21]);
-    const idx99=headers.indexOf(HEADERS[22]);
-    const upstreamIdx=[17,18,19,20].map(i=>headers.indexOf(HEADERS[i]));
-    const issues=[];
-    const staged=[];
-    const seenKeys=new Set();
-
-    for(let i=1;i<a.length;i++){
-      const r=a[i];
-      const excelRow=i+1;
-      if(!r.some(v=>v!==""&&v!=null))continue;
-      const customer=String(r[idxCustomer]??"").trim();
-      const order=String(r[idxOrder]??"").trim();
-      const net=String(r[idxNet]??"").trim();
-      if(!customer||!order||!net){
-        const miss=[]; if(!customer)miss.push(`C「${HEADERS[2]}」`); if(!order)miss.push(`D「${HEADERS[3]}」`); if(!net)miss.push(`E「${HEADERS[4]}」`);
-        issues.push(`Excel 第 ${excelRow} 列：必填欄空白 ${miss.join("、")} / Dòng ${excelRow}: thiếu trường bắt buộc`);
-        continue;
-      }
-      const key=[customer,order,net].join("|");
-      if(seenKeys.has(key)){
-        issues.push(`Excel 第 ${excelRow} 列：同一組 KH + 訂單號 + NET 重複（${key}）/ Dòng ${excelRow}: trùng KH + Mã đơn + NET`);
-        continue;
-      }
-      seenKeys.add(key);
-
-      const rawPh3=r[idxPh3], raw99=r[idx99];
-      const ph3=rawPh3===""||rawPh3==null?"":excelDate(rawPh3);
-      const w99=raw99===""||raw99==null?"":excelDate(raw99);
-      if(rawPh3!==""&&rawPh3!=null&&!ph3){
-        issues.push(`Excel 第 ${excelRow} 列 V「${HEADERS[21]}」格式錯誤：${rawPh3}；請使用 yyyy/mm/dd / Dòng ${excelRow} cột V sai định dạng ngày`);
-        continue;
-      }
-      if(raw99!==""&&raw99!=null&&!w99){
-        issues.push(`Excel 第 ${excelRow} 列 W「${HEADERS[22]}」格式錯誤：${raw99}；請使用 yyyy/mm/dd / Dòng ${excelRow} cột W sai định dạng ngày`);
-        continue;
-      }
-
-      const badUpstream=[];
-      const prevDates=[];
-      upstreamIdx.forEach((ci,k)=>{
-        if(ci<0)return;
-        const raw=r[ci]; if(raw===""||raw==null)return;
-        const d=excelDate(raw);
-        if(!d)badUpstream.push(`${importColumnLetter(ci+1)}=${raw}`); else prevDates.push(d);
-      });
-      if(badUpstream.length){
-        issues.push(`Excel 第 ${excelRow} 列：前工段日期格式錯誤 ${badUpstream.join("、")} / Dòng ${excelRow}: ngày công đoạn trước sai định dạng`);
-        continue;
-      }
-      prevDates.sort();
-      const prev=prevDates.length?prevDates[prevDates.length-1]:"";
-      if(ph3&&prev&&ph3<prev){
-        issues.push(`Excel 第 ${excelRow} 列（${key}）：PH3 ${ph3.replaceAll("-","/")} 早於最後前工段 ${prev.replaceAll("-","/")} / PH3 sớm hơn công đoạn trước`);
-        continue;
-      }
-      if(w99&&ph3&&w99<ph3){
-        issues.push(`Excel 第 ${excelRow} 列（${key}）：99 ${w99.replaceAll("-","/")} 早於 PH3 ${ph3.replaceAll("-","/")} / 99 sớm hơn PH3`);
-        continue;
-      }
-
-      const o=rows.find(x=>x.unique_key===key);
-      if(!o){
-        issues.push(`Excel 第 ${excelRow} 列（${key}）：系統找不到這筆資料；請確認 KH、訂單號、NET 沒被改動 / Không tìm thấy dữ liệu; kiểm tra KH, Mã đơn, NET`);
-        continue;
-      }
-      staged.push({o,key,ph3:ph3||null,w99:w99||null});
-    }
-
-    if(issues.length){
-      showProblems(`發現 ${issues.length} 個回填問題，為避免部分資料誤寫，本次完全沒有回填 / Phát hiện ${issues.length} lỗi; lần này chưa nhập bất kỳ dòng nào`,issues);
-      $("refillFile").value="";
-      return;
-    }
-
-    let applied=0;
+    if(issues.length){showProblems(`發現 ${issues.length} 個問題，為避免部分資料誤寫，本次完全沒有回填 / Phát hiện ${issues.length} lỗi; chưa nhập dữ liệu`,issues);$("refillFile").value="";return}
+    let appliedDates=0,appliedModes=0;
     staged.forEach(x=>{
-      const oldPh3=String(x.o.ph3_date||"").slice(0,10);
-      const old99=String(x.o.warehouse99_date||"").slice(0,10);
-      if(oldPh3!==String(x.ph3||"") || old99!==String(x.w99||"")){
-        x.o.ph3_date=x.ph3;
-        x.o.warehouse99_date=x.w99;
-        dirtyKeys.add(x.key);
-        issueKeys.delete(x.key);
-        applied++;
-      }
+      const oldMode=productionModeLabel(x.o.production_mode),newMode=productionModeLabel(x.newMode);
+      if(!x.expectedMode&&newMode&&newMode!==oldMode){applyProductionModeDraft(x.o,newMode);appliedModes++;return}
+      const oldPh3=String(x.o.ph3_date||"").slice(0,10),old99=String(x.o.warehouse99_date||"").slice(0,10);
+      if(oldPh3!==String(x.ph3||"")||old99!==String(x.w99||"")){x.o.ph3_date=x.ph3;x.o.warehouse99_date=x.w99;markDateDirty(x.key);issueKeys.delete(x.key);appliedDates++}
     });
-
-    if(!applied){
-      $("replyMsg").innerHTML=`<span class="warn">Excel 檢查通過，但 PH3/99 日期沒有任何變更 / Excel hợp lệ nhưng không có thay đổi ngày PH3/99</span>`;
-      $("refillFile").value="";
-      render();
-      return;
-    }
-
-    $("replyMsg").innerHTML=`<span class="warn">✓ Excel 檢查通過，已把 ${applied} 筆修改帶回畫面，但<strong>尚未儲存到系統</strong>。請確認後按「儲存目前修改」 / Excel hợp lệ, đã đưa ${applied} dòng vào màn hình nhưng <strong>chưa lưu vào hệ thống</strong>. Hãy kiểm tra rồi bấm Lưu.</span>`;
-    $("refillFile").value="";
-    render();
-  }catch(err){
-    console.error(err);$("replyMsg").innerHTML=`<span class="bad">回填失敗 / Nhập lại thất bại：${esc(err.message||err)}</span>`;$("refillFile").value="";
-  }
+    if(!appliedDates&&!appliedModes){$("replyMsg").innerHTML=`<span class="warn">Excel 檢查通過，但沒有任何變更 / Excel hợp lệ nhưng không có thay đổi</span>`;$("refillFile").value="";render();return}
+    $("replyMsg").innerHTML=`<span class="warn">✓ 已彙總 ${files.length} 份 Excel：交期 ${appliedDates} 筆、生產方式 ${appliedModes} 筆已帶回畫面，但<strong>尚未儲存</strong>。請確認後按「儲存目前修改」 / Đã gộp ${files.length} file; <strong>chưa lưu</strong>.</span>`;$("refillFile").value="";render();
+  }catch(err){console.error(err);$("replyMsg").innerHTML=`<span class="bad">回填失敗 / Nhập lại thất bại：${esc(err.message||err)}</span>`;$("refillFile").value=""}
 }
 
 $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});$("logoutBtn").onclick=logout;if($("createAccountsBtn"))$("createAccountsBtn").onclick=createAccountsBulk;$("refreshBtn").onclick=async()=>{
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
-  dirtyKeys.clear();issueKeys.clear();await loadAll()
-};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;
+  dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();issueKeys.clear();await loadAll()
+};$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;if($("downloadSplitBtn"))$("downloadSplitBtn").onclick=downloadSplitFiles;
 ["fAllSearch","fCustomer","fOrder","fItem"].forEach(id=>$(id)?.addEventListener("input",render));
 ["fStatus","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
