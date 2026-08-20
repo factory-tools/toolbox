@@ -314,6 +314,7 @@ const QUOTE_STANDARD=QUOTE_STANDARD_HISTORY[0];
 let quoteUnit='PC';
 let quoteStandardsMode='current';
 let quoteStripsAuto=true;
+let quoteStripsManual=false;
 function quoteInkName(v){return v==='SILICONE'?'SILICONE':'水性 / Mực nước';}
 function quoteMethodName(v){return v==='K3'?'K3':'手印 / In tay';}
 function quoteFindRule(ink,layers,std=QUOTE_STANDARD){return (std.layers[ink]||[]).find(r=>layers>=Number(r.min)&&layers<=Number(r.max));}
@@ -338,11 +339,12 @@ function quoteApplyStripSuggestion(force=false){
   if(!$('quoteStrips'))return;
   const method=$('quoteMethod').value,width=Number($('quoteWidth').value),r=quoteEstimateStrips(method,width);
   if(r&&(force||quoteStripsAuto||!Number($('quoteStrips').value))){
-    $('quoteStrips').value=r.strips;quoteStripsAuto=true;
-    $('quoteStripsHint').textContent=r.estimated?'自動估算單邊條數（可修改） / Số sợi 1 bên ước tính tự động (có thể sửa)':'標準單邊條數（可修改本次報價） / Số sợi 1 bên theo tiêu chuẩn (có thể sửa cho lần này)';
+    $('quoteStrips').value=r.strips;quoteStripsAuto=true;quoteStripsManual=false;$('quoteStrips').readOnly=true;
+    if($('quoteStripsEditBtn'))$('quoteStripsEditBtn').classList.remove('active');
+    $('quoteStripsHint').textContent=r.estimated?'自動估算單邊條數 / Số sợi 1 bên được ước tính tự động':'依目前標準自動帶入 / Tự động theo tiêu chuẩn hiện tại';
   }else if(!r){
     if(force)$('quoteStrips').value='';
-    $('quoteStripsHint').textContent=method==='K3'?'K3 尚無排帶標準，請輸入單邊條數 / K3 chưa có tiêu chuẩn xếp sợi, vui lòng nhập số sợi 1 bên':'目前沒有可用標準，請輸入單邊條數 / Chưa có tiêu chuẩn, vui lòng nhập số sợi 1 bên';
+    $('quoteStripsHint').textContent='目前沒有可用標準 / Chưa có tiêu chuẩn phù hợp';
   }
   calcQuoteCapacity();
 }
@@ -383,7 +385,7 @@ function calcQuoteCapacity(){
     $('quoteCapacity8').textContent=capY>0?`${fmt(capY,2)} Y`:'—';
     $('quoteCapacity8Alt').textContent=capY>0?'Y 報價不需輸入 PC 長度 / Báo giá Y không cần chiều dài PC':'—';
   }
-  if(!(oneSide>0)||!(tableY>0))$('quoteFormula').textContent='請輸入「單邊排帶條數」 / Vui lòng nhập「Tổng số sợi 1 bên bàn」.';
+  if(!(oneSide>0)||!(tableY>0))$('quoteFormula').textContent='目前無法取得排帶條數，請檢查寬度標準 / Không thể lấy số sợi, vui lòng kiểm tra tiêu chuẩn khổ dây.';
   else if(!rule)$('quoteFormula').textContent=`目前 ${inkLabel} 標準沒有涵蓋 ${Number.isFinite(layers)?fmt(layers,0):'—'} 層。 / Tiêu chuẩn ${inkLabel} hiện chưa bao gồm ${Number.isFinite(layers)?fmt(layers,0):'—'} lớp.`;
   else if(quoteUnit==='PC'&&!(pcLen>0))$('quoteFormula').textContent='報 PC 必須輸入每 PC 長度（mm） / Báo giá PC phải nhập chiều dài mỗi PC (mm).';
   else $('quoteFormula').textContent=`單邊 ${fmt(oneSide,0)}條 × ${sides}邊 × 桌長 ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/桌；${fmt(layers,0)}層 → ${fmt(rule.tables12,2)}桌/12H → ${fmt(tables8,2)}桌/8H。 / ${fmt(oneSide,0)} sợi/1 bên × ${sides} bên × ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/bàn; ${fmt(layers,0)} lớp → ${fmt(rule.tables12,2)} bàn/12H → ${fmt(tables8,2)} bàn/8H.`;
@@ -416,7 +418,16 @@ if($('quoteUnitPc')){
   $('quoteUnitPc').addEventListener('click',()=>quoteSetUnit('PC'));$('quoteUnitY').addEventListener('click',()=>quoteSetUnit('Y'));
   $('quoteMethod').addEventListener('change',updateQuoteTableLength);
   $('quoteWidth').addEventListener('input',()=>{quoteStripsAuto=true;quoteApplyStripSuggestion(true);});
-  $('quoteStrips').addEventListener('input',()=>{quoteStripsAuto=false;calcQuoteCapacity();});
+  $('quoteStrips').addEventListener('input',()=>{if(quoteStripsManual){quoteStripsAuto=false;calcQuoteCapacity();}});
+  $('quoteStripsEditBtn').addEventListener('click',()=>{
+    quoteStripsManual=!quoteStripsManual;
+    $('quoteStrips').readOnly=!quoteStripsManual;
+    $('quoteStripsEditBtn').classList.toggle('active',quoteStripsManual);
+    if(quoteStripsManual){
+      $('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';
+      $('quoteStrips').focus();$('quoteStrips').select();
+    }else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
+  });
   ['quoteInk','quotePcLength','quoteLayers','quoteTableLength'].forEach(id=>$(id).addEventListener('input',calcQuoteCapacity));
   $('quoteStandardsBtn').addEventListener('click',openQuoteStandards);$('quoteStandardsClose').addEventListener('click',closeQuoteStandards);
   $('quoteStandardsPanel').addEventListener('click',e=>{if(e.target===$('quoteStandardsPanel'))closeQuoteStandards();});
