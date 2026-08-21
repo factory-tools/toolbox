@@ -1,4 +1,4 @@
-// PH3 V33：沿用 V32，新增 MSK/印刷色人工修正、印刷類型獨立欄、指定前綴自動分配與分檔排序。
+// PH3 V34：沿用 V33，優化 Excel 提示、同 MSK 群組底色、分檔完整判斷欄與目前狀況統計。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
@@ -1074,6 +1074,13 @@ async function downloadCurrent(){
 
     const wb=new ExcelJS.Workbook();
     const ws=wb.addWorksheet("PH3回覆");
+    const guide=wb.addWorksheet("填寫說明_Hướng dẫn");
+    guide.addRow(["PH3 Excel 填寫說明 / Hướng dẫn điền Excel"]);
+    guide.addRow(["1", "淡黃色且藍框欄位：填寫 PH3完工日、99入庫日 / Ô vàng viền xanh: nhập ngày PH3 và ngày 99"]);
+    guide.addRow(["2", "日期格式 yyyy/mm/dd / Định dạng ngày yyyy/mm/dd"]);
+    guide.addRow(["3", "狀態、PH3工段天數、前工段等欄位由公式自動判斷，請勿修改 / Trạng thái, số ngày PH3 và công đoạn trước được tính tự động"]);
+    guide.addRow(["4", "生產方式可依需要修改；修改後回填系統會重新判斷 / Có thể đổi hình thức sản xuất khi cần"]);
+    guide.getColumn(1).width=6;guide.getColumn(2).width=100;guide.getRow(1).font={bold:true,size:14};
 
     const headers=WEB_COLUMNS.map(c=>c.label);
     ws.addRow(headers);
@@ -1188,7 +1195,6 @@ async function downloadCurrent(){
       const head=ws.getCell(1,ci);
       head.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FF2F75B5"}};
       head.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
-      head.note="★ 請只修改此欄日期 / Chỉ sửa ngày ở cột này";
       for(let rr=2;rr<=ws.rowCount;rr++){
         const cell=ws.getCell(rr,ci);
         cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
@@ -1199,7 +1205,6 @@ async function downloadCurrent(){
     if(editColMode>0){
       const head=ws.getCell(1,editColMode);head.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FF7030A0"}};
       head.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
-      head.note="★ 可修改：機印 / In máy、手印 / In tay、GCN。若由原單位改到新單位，原交期會失效並要求重新回覆。";
       for(let rr=2;rr<=ws.rowCount;rr++){
         const cell=ws.getCell(rr,editColMode);cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
         cell.dataValidation={type:"list",allowBlank:true,formulae:['"機印 / In máy,手印 / In tay,GCN"'],showErrorMessage:true,errorTitle:"請選擇清單 / Chọn từ danh sách",error:"只能選機印 / In máy、手印 / In tay、GCN"};
@@ -1255,16 +1260,20 @@ function updateWorkflowStatus(){
   const fresh=data.filter(o=>chaseCount(o)===1).length, repeat=data.filter(o=>chaseCount(o)>1).length;
   const machine=count(PROD_MODES[0]), hand=count(PROD_MODES[1]), gcn=count(PROD_MODES[2]);
   const need=data.filter(o=>o.needs_reply).length, done=data.filter(o=>o.ever_replied&&!o.needs_reply).length;
+  const pendingMachine=pending(PROD_MODES[0]), pendingHand=pending(PROD_MODES[1]), pendingGcn=pending(PROD_MODES[2]);
   el.innerHTML=`<span class="wf-label">目前狀況 / Tình trạng hiện tại</span>`+
-    `<button type="button" class="wf-chip wf-click" data-filter-mode="">總數 ${data.length} / Tổng</button>`+
-    `<button type="button" class="wf-chip wf-new wf-click" data-filter-status="new">新單 ${fresh} / Mới</button>`+
-    `<button type="button" class="wf-chip wf-repeat wf-click" data-filter-status="repeat">再次追問 ${repeat} / Hỏi lại</button>`+
-    `<button type="button" class="wf-chip wf-warn wf-click" data-filter-mode="unassigned">未分配 ${un} / Chưa phân công</button>`+
-    `<button type="button" class="wf-chip wf-click" data-filter-mode="${esc(PROD_MODES[0])}">機印 ${machine}</button>`+
-    `<button type="button" class="wf-chip wf-click" data-filter-mode="${esc(PROD_MODES[1])}">手印 ${hand}</button>`+
-    `<button type="button" class="wf-chip wf-click" data-filter-mode="GCN">外發GCN ${gcn}</button>`+
-    `<button type="button" class="wf-chip wf-warn wf-click" data-filter-status="need">待回覆 ${need} / Chờ trả lời</button>`+
-    `<span class="wf-chip wf-done">已完成 ${done} / Hoàn tất</span>`;
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="">這份總筆數 ${data.length} / Tổng số ${data.length}</button>`+
+    `<button type="button" class="wf-chip wf-new wf-click" data-filter-status="new">新單 ${fresh} / Mới ${fresh}</button>`+
+    `<button type="button" class="wf-chip wf-repeat wf-click" data-filter-status="repeat">再次追問 ${repeat} / Hỏi lại ${repeat}</button>`+
+    `<button type="button" class="wf-chip wf-warn wf-click" data-filter-mode="unassigned">未分配 ${un} / Chưa phân công ${un}</button>`+
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="${esc(PROD_MODES[0])}">機印總筆數 ${machine} / Tổng In máy ${machine}</button>`+
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="${esc(PROD_MODES[1])}">手印總筆數 ${hand} / Tổng In tay ${hand}</button>`+
+    `<button type="button" class="wf-chip wf-click" data-filter-mode="GCN">外發GCN總筆數 ${gcn} / Tổng GCN ${gcn}</button>`+
+    `<button type="button" class="wf-chip wf-warn wf-click" data-filter-status="need">待回覆總數 ${need} / Tổng chờ trả lời ${need}</button>`+
+    `<span class="wf-chip wf-warn">機印待回覆 ${pendingMachine} / In máy chờ ${pendingMachine}</span>`+
+    `<span class="wf-chip wf-warn">手印待回覆 ${pendingHand} / In tay chờ ${pendingHand}</span>`+
+    `<span class="wf-chip wf-warn">GCN待回覆 ${pendingGcn} / GCN chờ ${pendingGcn}</span>`+
+    `<span class="wf-chip wf-done">已完成 ${done} / Hoàn tất ${done}</span>`;
   el.querySelectorAll("[data-filter-mode]").forEach(btn=>btn.addEventListener("click",()=>{if($("fMode"))$("fMode").value=btn.dataset.filterMode||"";render()}));
   el.querySelectorAll("[data-filter-status]").forEach(btn=>btn.addEventListener("click",()=>{$("fStatus").value=btn.dataset.filterStatus||"";render()}));
 }
@@ -1282,40 +1291,84 @@ function responsibilitySort(data){
   });
 }
 async function buildResponsibilityWorkbook(mode,data){
-  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("PH3交期回覆");const headers=responseHeaders();ws.addRow(headers);
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet("PH3交期回覆");
+  const guide=wb.addWorksheet("填寫說明_Hướng dẫn");
+  guide.addRow(["PH3 分流 Excel 填寫說明 / Hướng dẫn điền file phân công"]);
+  guide.addRow(["1", `此檔生產方式：${productionModeShort(mode)}，請勿修改 / Hình thức của file: ${productionModeShort(mode)}, không sửa`]);
+  guide.addRow(["2", "只需填寫 PH3完工日、99入庫日；日期格式 yyyy/mm/dd / Chỉ nhập ngày PH3 và ngày 99; định dạng yyyy/mm/dd"]);
+  guide.addRow(["3", "同一 MSK 會用同一列底色，且同 MSK＋同印刷色已排在一起 / Cùng MSK dùng cùng màu hàng; cùng MSK + màu in được xếp gần nhau"]);
+  guide.addRow(["4", "前工段、PH3工段天數、狀態、上次回覆等由系統/公式判斷，請勿修改 / Công đoạn trước, số ngày PH3, trạng thái, lần trả lời trước được hệ thống tính"]);
+  guide.getColumn(1).width=6;guide.getColumn(2).width=110;guide.getRow(1).font={bold:true,size:14};
   const meta=wb.addWorksheet("__PH3_META");meta.addRow(["TYPE","RESPONSIBILITY"]);meta.addRow(["MODE",mode]);meta.state="veryHidden";
+
+  const headers=WEB_COLUMNS.map(c=>c.label);ws.addRow(headers);
   const dateObj=s=>{if(!s)return "";const p=parseYMD(String(s).slice(0,10));return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s};
-  responsibilitySort(data).forEach(o=>{
-    const arr=dbToArray(o);const vals=[];
-    for(let i=0;i<=20;i++)vals.push([5,16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
-    vals.push(mode);
-    vals.push(primaryMsk(o));
-    vals.push(mskPrintType(o));
-    vals.push(printColorText(o));
-    vals.push(o.ph3_date?dateObj(o.ph3_date):"");vals.push(o.warehouse99_date?dateObj(o.warehouse99_date):"");
-    ws.addRow(vals);
+  const sorted=responsibilitySort(data);
+  const groupPalette=["FFF2F7FF","FFFFF4E6","FFF1F8EE","FFF7F0FA","FFFFFCE8","FFEEF8F8"];
+  let lastMsk=null, groupIndex=-1;
+
+  sorted.forEach(o=>{
+    const arr=dbToArray(o), prev=latestUpstream(o), values=[];
+    WEB_COLUMNS.forEach(c=>{
+      if(c.kind==="data"){
+        const v=arr[c.idx];values.push([5,16,17,18,19,20,21,22].includes(c.idx)&&v?dateObj(v):(v??""));
+      }else if(c.kind==="msk")values.push(primaryMsk(o));
+      else if(c.kind==="printType")values.push(mskPrintType(o));
+      else if(c.kind==="printColor")values.push(printColorText(o));
+      else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
+      else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
+      else if(c.kind==="prevPh3")values.push(prevPh3(o)?dateObj(prevPh3(o)):"");
+      else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
+      else if(c.kind==="days")values.push("");
+      else if(c.kind==="status")values.push("");
+      else if(c.kind==="lastReply")values.push(lastReplyUser(o));
+    });
+    const r=ws.addRow(values), rn=r.number;
+    const colPrevStage=WEB_COLUMNS.findIndex(c=>c.kind==="prevStage")+1;
+    const colPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
+    const col99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
+    const colDays=WEB_COLUMNS.findIndex(c=>c.kind==="days")+1;
+    const colStatus=WEB_COLUMNS.findIndex(c=>c.kind==="status")+1;
+    const L=n=>ws.getColumn(n).letter;
+    const origCol=idx=>WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===idx)+1;
+    const c93=L(origCol(17)), c96=L(origCol(20)), cReq=L(origCol(16));
+    const upstreamRange=`${c93}${rn}:${c96}${rn}`, ph=L(colPh3), w=L(col99), days=L(colDays);
+    r.getCell(colPrevStage).value={formula:`IF(MAX(${upstreamRange})=0,"—",CHOOSE(MATCH(MAX(${upstreamRange}),${upstreamRange},0),"織造/93 ","染色/94 ","上漿/95 ","束頭/96 ")&TEXT(MAX(${upstreamRange}),"yyyy/mm/dd"))`};
+    r.getCell(colDays).value={formula:`IF(${ph}${rn}="","",IF(MAX(${upstreamRange})=0,"",IF(${ph}${rn}<MAX(${upstreamRange}),-1,NETWORKDAYS.INTL(MAX(${upstreamRange})+1,${ph}${rn},11))))`};
+    r.getCell(colStatus).value={formula:`IF(${ph}${rn}="","待回覆 / Chờ trả lời",IF(MAX(${upstreamRange})>0,IF(${ph}${rn}<MAX(${upstreamRange}),"PH3早於前站 / PH3 sớm hơn công đoạn trước；",""),"")&IF(AND(${days}${rn}<>"",${days}${rn}>7),"PH3超7天 / PH3 >7 ngày；","")&IF(AND(${w}${rn}<>"",${ph}${rn}<>"",${w}${rn}<${ph}${rn}),"99早於PH3 / 99 sớm hơn PH3；","")&IF(AND(${w}${rn}<>"",${cReq}${rn}<>"",${w}${rn}>${cReq}${rn}),"99晚於客需 / 99 trễ hơn KH；","")&"已回覆 / Đã trả lời")`};
+
+    // 同 MSK 整列同底色；不同 MSK 交替淡色。沒有 MSK 使用淡灰色。
+    const msk=primaryMsk(o)||"";
+    if(msk!==lastMsk){groupIndex++;lastMsk=msk}
+    const rowColor=msk?groupPalette[groupIndex%groupPalette.length]:"FFF3F4F6";
+    for(let ci=1;ci<=WEB_COLUMNS.length;ci++)r.getCell(ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:rowColor}};
+
+    // 有異動的客需/前工段欄仍保留紅色警示，優先於 MSK 群組底色。
+    const changes=new Set(o.changed_fields||[]);
+    [16,17,18,19,20].forEach(i=>{if(changes.has(COLNAMES[i])){const ci=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===i)+1;if(ci>0){r.getCell(ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}};r.getCell(ci).font={color:{argb:"FF7F0000"},bold:true}}}});
+
+    // PH3/99 可填欄不用大註解：以粗藍框標示，底色沿用 MSK 群組色。
+    [colPh3,col99].forEach(ci=>{
+      const cell=r.getCell(ci);cell.border={left:{style:"medium",color:{argb:"FF2F75B5"}},right:{style:"medium",color:{argb:"FF2F75B5"}}};cell.numFmt="yyyy/m/d";
+    });
+    r.getCell(colPh3).dataValidation={type:"custom",allowBlank:true,formulae:[`OR(${ph}${rn}="",MAX(${upstreamRange})=0,${ph}${rn}>=MAX(${upstreamRange}))`],showErrorMessage:true,errorStyle:"stop",errorTitle:"PH3日期錯誤 / Lỗi ngày PH3",error:"PH3完工日不能早於前工段日期 / Ngày PH3 không được sớm hơn công đoạn trước"};
+    r.getCell(col99).dataValidation={type:"custom",allowBlank:true,formulae:[`OR(${w}${rn}="",${ph}${rn}="",${w}${rn}>=${ph}${rn})`],showErrorMessage:true,errorStyle:"stop",errorTitle:"99日期錯誤 / Lỗi ngày 99",error:"99入庫日不能早於PH3完工日 / Ngày 99 không được sớm hơn ngày PH3"};
   });
-  ws.views=[{state:"frozen",xSplit:5,ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:headers.length}};
-  const modeCol=headers.indexOf(PROD_MODE_HEADER)+1, ph3Col=headers.indexOf(HEADERS[21])+1, w99Col=headers.indexOf(HEADERS[22])+1;
-  const colorCol=headers.indexOf(PRINT_COLOR_HEADER)+1;
-  ws.getRow(1).height=40;ws.getRow(1).eachCell((c,i)=>{
-    c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};
-    const fill=(i===modeCol)?"FF7030A0":((i===ph3Col||i===w99Col)?"FF2F75B5":((i===colorCol)?"FF4472C4":"FF548235"));
-    c.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}};
-  });
-  ws.getCell(1,modeCol).note="此檔已分配的生產方式，請勿修改 / Hình thức đã phân công, không sửa.";
-  ws.getCell(1,colorCol).note="系統從生管品名＋訂單備注＋摘要自動抓取；如無法辨識顯示空白 / Hệ thống tự lấy từ 3 cột thông tin.";
-  [ph3Col,w99Col].forEach(ci=>{ws.getCell(1,ci).note="★ 請回填日期 yyyy/mm/dd / Hãy nhập ngày yyyy/mm/dd"});
-  const dateHeaders=[HEADERS[5],HEADERS[16],HEADERS[17],HEADERS[18],HEADERS[19],HEADERS[20],HEADERS[21],HEADERS[22]];
-  const dateCols=dateHeaders.map(h=>headers.indexOf(h)+1).filter(x=>x>0);
-  for(let r=2;r<=Math.max(2,ws.rowCount);r++){
-    ws.getRow(r).height=22;
-    ws.getCell(r,modeCol).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFE4DFEC"}};
-    ws.getCell(r,colorCol).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFEAF2FF"}};
-    [ph3Col,w99Col].forEach(ci=>{ws.getCell(r,ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};ws.getCell(r,ci).numFmt="yyyy/m/d"});
-    dateCols.forEach(ci=>ws.getCell(r,ci).numFmt="yyyy/m/d");
+
+  ws.views=[{state:"frozen",xSplit:5,ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:WEB_COLUMNS.length}};
+  ws.getRow(1).height=42;ws.getRow(1).eachCell((c,i)=>{c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};const col=WEB_COLUMNS[i-1];let fill="FF548235";if(col.kind==="mode")fill="FF7030A0";else if(col.kind==="data"&&(col.idx===21||col.idx===22))fill="FF2F75B5";else if(col.kind==="printColor")fill="FF4472C4";else fill=(col.kind==="data")?excelHeaderColorByOriginalIndex(col.idx+1):(excelDerivedColor(col.kind)||"FF548235");c.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}}});
+  WEB_COLUMNS.forEach((c,i)=>ws.getColumn(i+1).width=Math.max(7,Math.min(30,Math.round(c.width/9.4))));
+  for(let rr=2;rr<=ws.rowCount;rr++){ws.getRow(rr).height=22;WEB_COLUMNS.forEach((c,i)=>{if(c.kind==="data"&&[5,16,17,18,19,20,21,22].includes(c.idx))ws.getCell(rr,i+1).numFmt="yyyy/m/d"})}
+
+  // 條件式警示與「下載目前 Excel」一致。
+  if(ws.rowCount>=2){
+    const last=ws.rowCount, colPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1, col99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
+    const col93=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===17)+1, col96=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===20)+1, colReq=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===16)+1;
+    const ph=ws.getColumn(colPh3).letter,w=ws.getColumn(col99).letter,c93=ws.getColumn(col93).letter,c96=ws.getColumn(col96).letter,cReq=ws.getColumn(colReq).letter;
+    ws.addConditionalFormatting({ref:`${ph}2:${ph}${last}`,rules:[{type:"expression",formulae:[`AND(${ph}2<>"",MAX(${c93}2:${c96}2)>0,${ph}2<MAX(${c93}2:${c96}2))`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}]});
+    ws.addConditionalFormatting({ref:`${w}2:${w}${last}`,rules:[{type:"expression",formulae:[`AND(${w}2<>"",${ph}2<>"",${w}2<${ph}2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}},{type:"expression",formulae:[`AND(${w}2<>"",${cReq}2<>"",${w}2>${cReq}2)`],style:{fill:{type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}}}}]});
   }
-  autoFitWorksheet(ws,{min:7,max:30,padding:2});
   return wb;
 }
 async function triggerWorkbookDownload(wb,name){
