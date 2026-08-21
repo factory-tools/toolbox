@@ -170,11 +170,11 @@ addOrder({qty:'',unit:'PC',width:25,length:'',method:'HAND',side:'SINGLE'});
 
 
 // 實際每桌產量換算 / Quy đổi sản lượng thực tế mỗi bàn
-function defaultActualTableLength(method){return method==='K3'?32:25;}
+function defaultActualTableLength(method){return method==='K3'?29:25;}
 function updateActualLengthByMethod(){
   const m=$('actualMethod').value;
   $('actualTableLength').value=defaultActualTableLength(m);
-  $('actualLengthHint').textContent=m==='K3'?'K3 預設 32Y，可直接修改 / K3 mặc định 32Y, có thể sửa':'手印預設 25Y，可直接修改 / In tay mặc định 25Y, có thể sửa';
+  $('actualLengthHint').textContent=m==='K3'?'K3 預設 29Y，可直接修改 / K3 mặc định 29Y, có thể sửa':'手印預設 25Y，可直接修改 / In tay mặc định 25Y, có thể sửa';
   calcActualTable();
 }
 function calcActualTable(){
@@ -306,7 +306,7 @@ const QUOTE_STANDARD_HISTORY=[
       HAND:[{width:8,strips:30},{width:10,strips:26},{width:12,strips:22},{width:15,strips:18},{width:16,strips:14},{width:18,strips:15},{width:20,strips:14},{width:25,strips:12},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
       K3:[{width:8,strips:30},{width:10,strips:26},{width:12,strips:22},{width:15,strips:18},{width:16,strips:14},{width:18,strips:15},{width:20,strips:14},{width:25,strips:12},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}]
     },
-    tableLength:{HAND:25,K3:32},
+    tableLength:{HAND:25,K3:29},
     sides:2
   }
 ];
@@ -357,8 +357,8 @@ function quoteSetUnit(unit){
 }
 function updateQuoteTableLength(){
   const m=$('quoteMethod').value;
-  $('quoteTableLength').value=QUOTE_STANDARD.tableLength[m]|| (m==='K3'?32:25);
-  $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 32Y，可修改本次報價 / K3 mặc định 32Y, có thể sửa cho lần này':'手印預設 25Y，可修改本次報價 / In tay mặc định 25Y, có thể sửa cho lần này';
+  $('quoteTableLength').value=QUOTE_STANDARD.tableLength[m]|| (m==='K3'?29:25);
+  $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 29Y，可修改本次報價 / K3 mặc định 29Y, có thể sửa cho lần này':'手印預設 25Y，可修改本次報價 / In tay mặc định 25Y, có thể sửa cho lần này';
   quoteApplyStripSuggestion(true);
 }
 function calcQuoteCapacity(){
