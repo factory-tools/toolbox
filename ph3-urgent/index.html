@@ -245,9 +245,23 @@ body{overflow-x:hidden}
 .workflow-guide{padding:5px 7px;margin-top:5px;background:#f6f9fc;justify-content:flex-start}.workflow-guide .workflow-steps-long{display:none}.workflow-status{margin-left:0!important}
 .wf-chip{border:1px solid #bfd0df;font-family:inherit;line-height:1.25;color:#334155}.wf-click{cursor:pointer}.wf-click:hover{outline:2px solid #8ab0d7;outline-offset:1px}
 .mode-cell-wrap{gap:5px}.row-select{flex:0 0 16px;width:16px}.row-select input{width:15px;height:15px}.cell-mode{flex:1 1 auto;width:auto!important;min-width:128px!important;font-size:11px!important;padding:3px 5px!important}
+/* V32 — 生產方式顏色辨識：未分配灰、機印藍、手印黃、外發GCN紫 */
+.cell-mode.mode-unassigned{background:#f1f5f9!important;color:#475569!important;border-color:#cbd5e1!important;font-weight:800}
+.cell-mode.mode-machine{background:#dbeafe!important;color:#1e3a8a!important;border-color:#93c5fd!important;font-weight:900}
+.cell-mode.mode-hand{background:#fef3c7!important;color:#92400e!important;border-color:#fcd34d!important;font-weight:900}
+.cell-mode.mode-gcn{background:#ede9fe!important;color:#5b21b6!important;border-color:#c4b5fd!important;font-weight:900}
 .change-detail{margin-top:3px;padding-top:3px;border-top:1px dashed #d98b8b;font-size:9px;line-height:1.15;color:#8b0000;font-weight:900;white-space:normal}.change-detail span{font-size:8px;font-weight:700}
 .compact-help-only{font-size:10px;color:#64748b;cursor:help}
 @media(max-width:1450px){.ribbon-controls{grid-template-columns:minmax(130px,.7fr) minmax(170px,.9fr) minmax(130px,.68fr) minmax(140px,.72fr) minmax(240px,1.35fr) max-content!important}}
+
+
+/* V33 — MSK/印刷色可人工修正；印刷類型獨立顯示 */
+.cell-analysis{width:100%;height:28px;box-sizing:border-box;border:1px solid #b9c9da;border-radius:6px;padding:3px 5px;font-size:11px;font-family:inherit;background:#fff}
+.cell-analysis:focus{outline:2px solid #93c5fd;outline-offset:1px}
+.analysis-source{margin-top:2px;font-size:9px;color:#64748b;line-height:1.1}
+.manual-warn{margin-top:3px;padding:3px 4px;border-radius:5px;background:#fff3cd;color:#8a5a00;font-size:9px;font-weight:800;white-space:normal;line-height:1.2}
+.manual-warn span{font-weight:600;font-size:8px}
+.c-printtype{background:#f8fafc!important;white-space:normal!important;line-height:1.2}
 
 </style>
 </head>
@@ -416,6 +430,6 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
   });
 })();
 </script>
-<script src="./app.js?v=20260820-29"></script>
+<script src="./app.js?v=20260821-33"></script>
 </body>
 </html>

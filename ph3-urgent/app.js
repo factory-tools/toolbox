@@ -1,20 +1,21 @@
-// PH3 V29：沿用 V28 正常版，只優化 PH3 評估版面、生產方式篩選/批量操作、客需日期異動顯示；其他功能不動。
+// PH3 V33：沿用 V32，新增 MSK/印刷色人工修正、印刷類型獨立欄、指定前綴自動分配與分檔排序。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
 const COLNAMES=["col_a","col_b","customer","order_no","net","order_date","item_no","color","width","model","unit","qty","progress_ref","product_name","order_note","summary","customer_required","weaving_date","dyeing_date","sizing_date","aglet_date","ph3_date","warehouse99_date"];
 const PROD_MODE_HEADER="生產方式 / Hình thức sản xuất";
 const MSK_HEADER="MSK網版";
+const PRINT_TYPE_HEADER="印刷類型 / Loại in";
 const PRINT_COLOR_HEADER="印刷色 / Màu in";
 const PROD_MODES=["機印 / In máy","手印 / In tay","GCN"];
-const MSK_MODE_RULES={TD:"手印 / In tay",TT:"手印 / In tay",TK:"手印 / In tay",MPW:"手印 / In tay",MD:"機印 / In máy",MT:"機印 / In máy",MY:"機印 / In máy",MP:"機印 / In máy",MK:"機印 / In máy"};
+const AUTO_MODE_RULES={TD:"手印 / In tay",MD:"機印 / In máy",MPW:"機印 / In máy",SPW:"手印 / In tay"};
 const MSK_TYPE_RULES={
-  TD:"手印 / In tay",MD:"機印 / In máy",
-  TT:"手印－轉印 / In tay - In chuyển",MT:"機印－轉印 / In máy - In chuyển",
-  MY:"機印－移印 / In máy - In chạm",MP:"機印－噴印 / In máy - Phun silicon",
-  TK:"手印－膠片束頭 / In tay - Đầu keo",MK:"機印－膠片束頭 / In máy - Đầu keo",
-  MPW:"手印 / In tay"
+  TD:"手印 / IN TAY",MD:"機印 / IN MÁY",MPW:"機印 / IN MÁY",SPW:"手印 / IN TAY",
+  TT:"手印－轉印 / IN TAY TEM IN CHUYỂN",MT:"機印－轉印 / IN MÁY IN TEM CHUYỂN",
+  MY:"移印 / IN CHẠM",MP:"噴塗 / PHUN SILICON",
+  TK:"手印－膠片束頭 / IN TAY ĐẦU KEO",MK:"機印－膠片束頭 / IN MÁY ĐẦU KEO"
 };
+const MSK_PREFIXES=Object.keys(MSK_TYPE_RULES).sort((a,b)=>b.length-a.length);
 const KEYCOLS=[2,3,4], PROGRESS_START=17;
 const $=id=>document.getElementById(id);
 const cfg=window.PH3_CONFIG||{};
@@ -28,6 +29,7 @@ let customerRequiredChangeMap=new Map();
 const dirtyKeys=new Set();
 const dirtyDateKeys=new Set();
 const dirtyModeKeys=new Set();
+const dirtyAnalysisKeys=new Set();
 const selectedKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
@@ -51,40 +53,53 @@ function blockIfUnsaved(actionText){
   return true;
 }
 function syncDirtyKey(key){
-  if(dirtyDateKeys.has(key)||dirtyModeKeys.has(key))dirtyKeys.add(key); else dirtyKeys.delete(key);
+  if(dirtyDateKeys.has(key)||dirtyModeKeys.has(key)||dirtyAnalysisKeys.has(key))dirtyKeys.add(key); else dirtyKeys.delete(key);
 }
 function markDateDirty(key){dirtyDateKeys.add(key);dirtyKeys.add(key)}
 function productionModeLabel(v){return PROD_MODES.includes(String(v||""))?String(v):""}
 function productionModeShort(v){return ({"機印 / In máy":"機印 / In máy","手印 / In tay":"手印 / In tay","GCN":"外發GCN"})[String(v||"")]||"—"}
 function productionModeOptionText(v){return String(v||"")==="GCN"?"外發GCN":String(v||"")}
+function productionModeColorClass(v){
+  v=productionModeLabel(v);
+  if(v==="機印 / In máy")return "mode-machine";
+  if(v==="手印 / In tay")return "mode-hand";
+  if(v==="GCN")return "mode-gcn";
+  return "mode-unassigned";
+}
 function shortDate(v){const x=fmt(v);if(!x)return "—";const m=x.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?`${Number(m[2])}/${Number(m[3])}`:x}
 
-function mskCodes(o){
+function cleanMskCode(v){return String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
+function rawMskCodes(o){
   const text=[o.product_name,o.order_note,o.summary].map(v=>String(v||"")).join(" ").toUpperCase();
   const out=[];
-  const re=/(?:^|\s|[，,;；])MSK\s*[:：-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,})/g;
-  let m;
-  while((m=re.exec(text))){
-    const code=String(m[1]||"").replace(/[.,，;；:：)）]+$/g,"");
-    if(code&&!out.includes(code))out.push(code);
-  }
+  const push=v=>{const code=cleanMskCode(v);if(code&&code.length>=4&&!out.includes(code))out.push(code)};
+  // 1) 優先抓明確寫在 MSK 後面的編號；輸出時只保留英數字。
+  const explicit=/\bMSK\s*[:：#=\-]?\s*([A-Z0-9][A-Z0-9\-\/._]{3,})/g;
+  let m;while((m=explicit.exec(text)))push(m[1]);
+  // 2) 已知網版類型即使前面沒有寫 MSK，也嘗試辨識完整編號。
+  const prefixGroup=MSK_PREFIXES.join("|");
+  const known=new RegExp(`\\b(?:${prefixGroup})[A-Z0-9\\-\\/._]{4,}\\b`,"g");
+  while((m=known.exec(text)))push(m[0]);
   return out;
 }
-function primaryMsk(o){return mskCodes(o)[0]||""}
+function manualMsk(o){return cleanMskCode(o.manual_msk||"")}
+function mskCodes(o){const manual=manualMsk(o);return manual?[manual]:rawMskCodes(o)}
+function primaryMsk(o){const manual=manualMsk(o);if(manual)return manual;const raw=rawMskCodes(o);return raw.length===1?raw[0]:""}
+function needsManualMsk(o){return !manualMsk(o)&&rawMskCodes(o).length>1}
 function mskSuggestedModeFromCode(code){
-  const c=String(code||"").toUpperCase();
-  const prefix=Object.keys(MSK_MODE_RULES).find(k=>c.startsWith(k));
-  return prefix?MSK_MODE_RULES[prefix]:"";
+  const c=cleanMskCode(code);
+  const prefix=Object.keys(AUTO_MODE_RULES).sort((a,b)=>b.length-a.length).find(k=>c.startsWith(k));
+  return prefix?AUTO_MODE_RULES[prefix]:"";
 }
 function mskSuggestedMode(o){return mskSuggestedModeFromCode(primaryMsk(o))}
 function mskPrintTypeFromCode(code){
-  const c=String(code||"").toUpperCase();
-  const prefix=Object.keys(MSK_TYPE_RULES).sort((a,b)=>b.length-a.length).find(k=>c.startsWith(k));
-  return prefix?MSK_TYPE_RULES[prefix]:"";
+  const c=cleanMskCode(code);
+  const prefix=MSK_PREFIXES.find(k=>c.startsWith(k));
+  return prefix?MSK_TYPE_RULES[prefix]:"其他／待人工分流 / Khác / Cần phân loại";
 }
-function mskPrintType(o){return mskPrintTypeFromCode(primaryMsk(o))}
+function mskPrintType(o){const c=primaryMsk(o);return c?mskPrintTypeFromCode(c):""}
 function printColors(o){
-  // 三欄一起看：生管品名＋訂單備注＋摘要。只抓「MAU/MÀU 後的色名或色號」，不計算顏色數量。
+  // 三欄一起看：生管品名＋訂單備注＋摘要。只抓「MAU/MÀU 後的色名或色號」。
   const text=[o.product_name,o.order_note,o.summary].map(v=>String(v||"")).join(" ").toUpperCase();
   const out=[];
   const stop=new Set(["IN","LOGO","MSK","MAT","MẶT","CHAM","CHẠM","CHUYEN","CHUYỂN","BONG","BÓNG","PHUN","SILICON","TRUC","TRỰC","TIEP","TIẾP","MAU","MÀU","COLOR","COLOUR"]);
@@ -92,12 +107,22 @@ function printColors(o){
   let m;
   while((m=re.exec(text))){
     let token=String(m[1]||"").replace(/^[,;，；]+|[,;，；:：)）]+$/g,"");
-    if(!token||/^\d+$/.test(token)||stop.has(token))continue;
+    if(!token||/^\\d+$/.test(token)||stop.has(token))continue;
     if(!out.includes(token))out.push(token);
   }
   return out;
 }
-function printColorText(o){return printColors(o).join(" / ")}
+function autoPrintColorText(o){return printColors(o).join(" / ")}
+function printColorText(o){return String(o.manual_print_color||"").trim()||autoPrintColorText(o)}
+function analysisSource(o,field){return String(o[field]||"").trim()?"人工 / Thủ công":"自動 / Tự động"}
+function applyAutoModeDrafts(){
+  rows.forEach(o=>{
+    if(productionModeLabel(o.production_mode))return;
+    if(needsManualMsk(o))return;
+    const mode=mskSuggestedMode(o);
+    if(mode)applyProductionModeDraft(o,mode);
+  });
+}
 function chaseCount(o){const n=Number(o.chase_count||1);return Number.isFinite(n)&&n>0?n:1}
 function chaseState(o){
   const repeated=chaseCount(o)>1;
@@ -423,6 +448,7 @@ async function loadAll(){
   $("sChanged").textContent=rows.filter(x=>(x.changed_fields||[]).length).length;
   refreshPrevDateOptions();
   await loadBatches();
+  applyAutoModeDrafts();
   render();
 }
 async function loadHistory(){
@@ -435,8 +461,9 @@ const WEB_COLUMNS=[
   ...HEADERS.slice(16,21).map((h,j)=>({kind:"data",idx:j+16,label:h,width:[82,84,84,84,84][j]||72})),
   // 生產方式右側固定接 MSK網版、印刷色，方便分配時直接一起看。
   {kind:"mode",label:PROD_MODE_HEADER,width:164},
-  {kind:"msk",label:MSK_HEADER,width:132},
-  {kind:"printColor",label:PRINT_COLOR_HEADER,width:104},
+  {kind:"msk",label:MSK_HEADER,width:150},
+  {kind:"printType",label:PRINT_TYPE_HEADER,width:170},
+  {kind:"printColor",label:PRINT_COLOR_HEADER,width:118},
   {kind:"prevStage",label:"前工段 / Công đoạn trước",width:108},
   {kind:"data",idx:21,label:HEADERS[21],width:106},
   {kind:"prevPh3",label:"PH3 lần trước / PH3上次回覆日",width:96},
@@ -497,7 +524,7 @@ function render(){
     let cls="fixed";
     if(c.kind==="data" && c.idx>=17)cls="progress";
     if(c.kind==="data" && KEYCOLS.includes(c.idx))cls="key";
-    if(["msk","printColor","mode","prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
+    if(["msk","printType","printColor","mode","prevStage","prevPh3","prev99","days","status","lastReply"].includes(c.kind))cls="progress";
     if(c.kind==="prevStage")cls+=" h-prevstage";
     if(c.kind==="prevPh3")cls+=" h-prevph3";
     if(c.kind==="prev99")cls+=" h-prev99";
@@ -538,20 +565,27 @@ function render(){
         }
       }else if(c.kind==="msk"){
         cls="progress c-msk";
-        const codes=mskCodes(o), code=codes[0]||"", printType=mskPrintType(o), same=mskSameCount(o);
-        if(!code)content='<span class="muted">未解析 / Chưa nhận diện</span>';
-        else content=`<b>${esc(codes.join(" / "))}</b>`+
-          (printType?`<div class="msk-suggest">${esc(printType)}</div>`:`<div class="msk-suggest">待確認 / Cần xác nhận</div>`)+
-          (same>1?`<button type="button" class="msk-same" data-msk="${esc(code)}">同 MSK ${same} 筆 / Cùng MSK ${same}</button>`:``);
+        if(dirtyAnalysisKeys.has(o.unique_key))cls+=" draftcell";
+        const raw=rawMskCodes(o), code=primaryMsk(o), same=mskSameCount(o), manual=manualMsk(o);
+        const candidate=needsManualMsk(o)?`<div class="manual-warn" title="${esc(raw.join(" / "))}">需手動判斷 / Cần phân biệt thủ công<br><span>候選 / Gợi ý：${esc(raw.join(" / "))}</span></div>`:"";
+        content=`<input class="cell-analysis cell-msk-edit" data-key="${esc(o.unique_key)}" value="${esc(code)}" placeholder="${needsManualMsk(o)?"請手動填 MSK / Nhập MSK":"未解析 / Chưa nhận diện"}" title="MSK網版只保留英文字母與數字；可人工修正 / Chỉ giữ chữ và số; có thể sửa thủ công">`+
+          `<div class="analysis-source">${manual?"人工 / Thủ công":"自動 / Tự động"}</div>`+candidate+
+          (code&&same>1?`<button type="button" class="msk-same" data-msk="${esc(code)}">同 MSK ${same} 筆 / Cùng MSK ${same} dòng</button>`:``);
+      }else if(c.kind==="printType"){
+        cls="progress c-printtype";
+        const type=mskPrintType(o);
+        content=type?`<b>${esc(type)}</b>`:(needsManualMsk(o)?'<span class="warn">待手動選 MSK / Chờ chọn MSK</span>':'<span class="muted">未解析 / Chưa nhận diện</span>');
       }else if(c.kind==="printColor"){
         cls="progress c-printcolor";
-        const color=printColorText(o);
-        content=color?`<b>${esc(color)}</b>`:'<span class="muted">未解析 / Chưa nhận diện</span>';
+        if(dirtyAnalysisKeys.has(o.unique_key))cls+=" draftcell";
+        const color=printColorText(o), manual=String(o.manual_print_color||"").trim();
+        content=`<input class="cell-analysis cell-color-edit" data-key="${esc(o.unique_key)}" value="${esc(color)}" placeholder="未解析 / Chưa nhận diện" title="系統先自動辨識；如有錯可直接人工修改 / Hệ thống tự nhận diện; có thể sửa thủ công">`+
+          `<div class="analysis-source">${manual?"人工 / Thủ công":"自動 / Tự động"}</div>`;
       }else if(c.kind==="mode"){
         cls="progress c-mode";
         if(dirtyKeys.has(o.unique_key))cls+=" draftcell";
         const cur=productionModeLabel(o.production_mode), old=productionModeLabel(o.previous_production_mode);
-        content=`<div class="mode-cell-wrap"><label class="row-select" title="勾選此訂單做批量分配 / Chọn đơn này để phân công hàng loạt"><input type="checkbox" class="row-pick" data-key="${esc(o.unique_key)}" ${selectedKeys.has(o.unique_key)?"checked":""}><span class="sr-only">選 / Chọn</span></label><select class="cell-mode" title="選擇生產方式 / Chọn hình thức sản xuất" data-key="${esc(o.unique_key)}"><option value="">未分配 / Chưa phân công</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(productionModeOptionText(m))}</option>`).join("")}</select></div>`+
+        content=`<div class="mode-cell-wrap"><label class="row-select" title="勾選此訂單做批量分配 / Chọn đơn này để phân công hàng loạt"><input type="checkbox" class="row-pick" data-key="${esc(o.unique_key)}" ${selectedKeys.has(o.unique_key)?"checked":""}><span class="sr-only">選 / Chọn</span></label><select class="cell-mode ${productionModeColorClass(cur)}" title="選擇生產方式 / Chọn hình thức sản xuất" data-key="${esc(o.unique_key)}"><option value="">未分配 / Chưa phân công</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(productionModeOptionText(m))}</option>`).join("")}</select></div>`+
           (old&&old!==cur?`<div class="mode-prev">原 / Trước: ${esc(productionModeShort(old))}</div>`:"");
       }else if(c.kind==="prevStage"){
         cls="progress c-prevstage";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
@@ -569,6 +603,7 @@ function render(){
         const chase=chaseState(o);
         let status=`<span class="badge ${chase.cls}">${esc(chase.label)}</span> `+(o.needs_reply?'<span class="badge b-red">待回覆 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>');
         if(!o.production_mode)status+=' <span class="badge b-orange">未分配 / Chưa phân công</span>';
+        if(needsManualMsk(o))status+=' <span class="badge b-red">MSK需手動判斷 / Cần phân biệt MSK</span>';
         if(o.previous_production_mode&&o.production_mode&&o.previous_production_mode!==o.production_mode)status+=` <span class="badge b-orange">原 ${esc(productionModeShort(o.previous_production_mode))} → ${esc(productionModeShort(o.production_mode))}</span>`;
         if((o.changed_fields||[]).length){
           const reqChange=ch.has("customer_required")?customerRequiredChangeMap.get(o.unique_key):null;
@@ -592,6 +627,8 @@ function render(){
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
   grid.querySelectorAll(".cell-mode").forEach(inp=>inp.addEventListener("change",saveDirectMode));
+  grid.querySelectorAll(".cell-msk-edit").forEach(inp=>inp.addEventListener("change",saveManualMsk));
+  grid.querySelectorAll(".cell-color-edit").forEach(inp=>inp.addEventListener("change",saveManualPrintColor));
   grid.querySelectorAll(".row-pick").forEach(inp=>inp.addEventListener("change",e=>{
     const key=e.target.dataset.key;if(e.target.checked)selectedKeys.add(key);else selectedKeys.delete(key);updateBulkModeState();
   }));
@@ -803,6 +840,18 @@ async function calcBulkReply(){
   render();
 }
 
+function saveManualMsk(e){
+  const key=e.target.dataset.key,o=rows.find(x=>x.unique_key===key);if(!o)return;
+  const cleaned=cleanMskCode(e.target.value);e.target.value=cleaned;
+  o.manual_msk=cleaned||null;dirtyAnalysisKeys.add(key);dirtyKeys.add(key);
+  // 若目前未分配，人工填入後仍只對 TD/MD/MPW/SPW 自動帶生產方式。
+  if(!productionModeLabel(o.production_mode)){const mode=mskSuggestedMode(o);if(mode)applyProductionModeDraft(o,mode)}
+  render();
+}
+function saveManualPrintColor(e){
+  const key=e.target.dataset.key,o=rows.find(x=>x.unique_key===key);if(!o)return;
+  o.manual_print_color=String(e.target.value||"").trim()||null;dirtyAnalysisKeys.add(key);dirtyKeys.add(key);render();
+}
 async function saveDraftReplies(){
   if(!dirtyKeys.size){
     $("replyMsg").innerHTML='<span class="warn">目前沒有尚未儲存的修改 / Không có thay đổi chưa lưu</span>';
@@ -811,6 +860,7 @@ async function saveDraftReplies(){
 
   const payload=[];
   const modePayload=[];
+  const analysisPayload=[];
   const invalid=[];
   for(const key of dirtyDateKeys){
     const o=rows.find(x=>x.unique_key===key);
@@ -821,6 +871,10 @@ async function saveDraftReplies(){
     if(ph3 && prev && ph3<prev){invalid.push(`${key}: PH3 < 前站`);issueKeys.set(key,"PH3早於前工段 / PH3 sớm hơn công đoạn trước");continue}
     if(w99 && ph3 && w99<ph3){invalid.push(`${key}: 99 < PH3`);issueKeys.set(key,"99早於PH3 / 99 sớm hơn PH3");continue}
     payload.push({unique_key:key,ph3_date:ph3,warehouse99_date:w99});
+  }
+  for(const key of dirtyAnalysisKeys){
+    const o=rows.find(x=>x.unique_key===key);if(!o)continue;
+    analysisPayload.push({unique_key:key,manual_msk:manualMsk(o)||null,manual_print_color:String(o.manual_print_color||"").trim()||null});
   }
   for(const key of dirtyModeKeys){
     const o=rows.find(x=>x.unique_key===key);if(!o)continue;
@@ -836,7 +890,12 @@ async function saveDraftReplies(){
 
   $("replyMsg").textContent="儲存中… / Đang lưu…";
   try{
-    let modeUpdated=0,dateUpdated=0,late99=0,over7=0;
+    let modeUpdated=0,dateUpdated=0,analysisUpdated=0,late99=0,over7=0;
+    if(analysisPayload.length){
+      const {data,error}=await sb.rpc("ph3_update_analysis_overrides",{p_rows:analysisPayload});
+      if(error)throw new Error(`MSK／印刷色儲存失敗 / Lưu MSK/màu in thất bại：${error.message}`);
+      analysisUpdated=Number(data?.updated||analysisPayload.length);
+    }
     if(modePayload.length){
       const {data,error}=await sb.rpc("ph3_update_production_modes",{p_rows:modePayload});
       if(error)throw new Error(`生產方式儲存失敗 / Lưu hình thức sản xuất thất bại：${error.message}`);
@@ -847,8 +906,8 @@ async function saveDraftReplies(){
       if(error)throw error;
       dateUpdated=Number(data?.updated||payload.length);late99=Number(data?.late99||0);over7=Number(data?.over7||0);
     }
-    dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();
-    $("replyMsg").innerHTML=`<span class="ok">已儲存：生產方式 ${modeUpdated} 筆、交期 ${dateUpdated} 筆 / Đã lưu: hình thức ${modeUpdated}, ngày giao ${dateUpdated}</span>`+
+    dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();dirtyAnalysisKeys.clear();
+    $("replyMsg").innerHTML=`<span class="ok">已儲存：MSK／印刷色 ${analysisUpdated} 筆、生產方式 ${modeUpdated} 筆、交期 ${dateUpdated} 筆 / Đã lưu: MSK/màu ${analysisUpdated}, hình thức ${modeUpdated}, ngày giao ${dateUpdated}</span>`+
       (late99?` <span class="warn">；99晚於客需 ${late99} 筆 / ${late99} dòng 99 trễ hơn KH</span>`:"")+
       (over7?` <span class="warn">；PH3超過7天 ${over7} 筆 / PH3 >7 ngày: ${over7}</span>`:"");
     await loadAll();
@@ -882,12 +941,12 @@ function excelHeaderColorByOriginalIndex(i){
 }
 function excelDerivedColor(kind){
   // 所有系統提示/參考欄統一藍色，與 93~96 的黃色工段欄清楚區隔。
-  return ["printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FF4472C4":null;
+  return ["printType","printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FF4472C4":null;
 }
 function excelDerivedBodyColor(kind){
   // 生產方式可編輯欄用淡黃；系統提示/參考欄維持淡藍。
   if(kind==="mode")return "FFFFF2CC";
-  return ["printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
+  return ["printType","printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
 }
 
 async function downloadBlankTemplate(){
@@ -1033,6 +1092,7 @@ async function downloadCurrent(){
           const v=arr[c.idx];
           values.push([5,16,17,18,19,20,21,22].includes(c.idx)&&v?dateObj(v):(v??""));
         }else if(c.kind==="msk")values.push(primaryMsk(o));
+        else if(c.kind==="printType")values.push(mskPrintType(o));
         else if(c.kind==="printColor")values.push(printColorText(o));
         else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
         else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
@@ -1208,16 +1268,29 @@ function updateWorkflowStatus(){
   el.querySelectorAll("[data-filter-mode]").forEach(btn=>btn.addEventListener("click",()=>{if($("fMode"))$("fMode").value=btn.dataset.filterMode||"";render()}));
   el.querySelectorAll("[data-filter-status]").forEach(btn=>btn.addEventListener("click",()=>{$("fStatus").value=btn.dataset.filterStatus||"";render()}));
 }
-function responseHeaders(){return [...HEADERS.slice(0,21),PROD_MODE_HEADER,MSK_HEADER,PRINT_COLOR_HEADER,HEADERS[21],HEADERS[22]]}
+function responseHeaders(){return [...HEADERS.slice(0,21),PROD_MODE_HEADER,MSK_HEADER,PRINT_TYPE_HEADER,PRINT_COLOR_HEADER,HEADERS[21],HEADERS[22]]}
+function responsibilitySort(data){
+  const cmp=(a,b)=>String(a||"").localeCompare(String(b||""),undefined,{numeric:true,sensitivity:"base"});
+  return [...data].sort((a,b)=>{
+    const am=primaryMsk(a),bm=primaryMsk(b);
+    if(!!am!==!!bm)return am?-1:1;
+    let x=cmp(am,bm);if(x)return x;
+    const ac=printColorText(a),bc=printColorText(b);
+    if(!!ac!==!!bc)return ac?-1:1;
+    x=cmp(ac,bc);if(x)return x;
+    return cmp(a.customer,b.customer)||cmp(a.order_no,b.order_no)||cmp(a.net,b.net);
+  });
+}
 async function buildResponsibilityWorkbook(mode,data){
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("PH3交期回覆");const headers=responseHeaders();ws.addRow(headers);
   const meta=wb.addWorksheet("__PH3_META");meta.addRow(["TYPE","RESPONSIBILITY"]);meta.addRow(["MODE",mode]);meta.state="veryHidden";
   const dateObj=s=>{if(!s)return "";const p=parseYMD(String(s).slice(0,10));return p?new Date(p.getUTCFullYear(),p.getUTCMonth(),p.getUTCDate(),12,0,0):s};
-  data.forEach(o=>{
+  responsibilitySort(data).forEach(o=>{
     const arr=dbToArray(o);const vals=[];
     for(let i=0;i<=20;i++)vals.push([5,16,17,18,19,20].includes(i)&&arr[i]?dateObj(arr[i]):(arr[i]??""));
     vals.push(mode);
     vals.push(primaryMsk(o));
+    vals.push(mskPrintType(o));
     vals.push(printColorText(o));
     vals.push(o.ph3_date?dateObj(o.ph3_date):"");vals.push(o.warehouse99_date?dateObj(o.warehouse99_date):"");
     ws.addRow(vals);
@@ -1375,7 +1448,7 @@ async function refillExcel(){
 
 $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});$("logoutBtn").onclick=logout;if($("createAccountsBtn"))$("createAccountsBtn").onclick=createAccountsBulk;$("refreshBtn").onclick=async()=>{
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
-  dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();issueKeys.clear();await loadAll()
+  dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();dirtyAnalysisKeys.clear();issueKeys.clear();await loadAll()
 };$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;if($("downloadSplitBtn"))$("downloadSplitBtn").onclick=downloadSplitFiles;if($("selectVisibleBtn"))$("selectVisibleBtn").onclick=selectVisibleRows;if($("bulkMachineBtn"))$("bulkMachineBtn").onclick=()=>bulkAssignMode(PROD_MODES[0]);if($("bulkHandBtn"))$("bulkHandBtn").onclick=()=>bulkAssignMode(PROD_MODES[1]);if($("bulkGcnBtn"))$("bulkGcnBtn").onclick=()=>bulkAssignMode(PROD_MODES[2]);updateBulkModeState();
 ["fAllSearch","fCustomer","fOrder","fItem"].forEach(id=>$(id)?.addEventListener("input",render));
 ["fStatus","fMode","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
