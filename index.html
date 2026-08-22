@@ -1,10 +1,11 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><link rel="manifest" href="manifest.json?v=20260821-special-layout-v1"><link rel="stylesheet" href="style.css?v=20260821-special-layout-v1"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><link rel="manifest" href="manifest.json?v=20260822-wip-capacity-v1"><link rel="stylesheet" href="style.css?v=20260822-wip-capacity-v1"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
 <section id="homePage" class="page active"><div class="card"><h1>工廠工具箱</h1><p class="subtitle">Hộp công cụ nhà máy</p><div class="tool-grid">
 <button class="tool-card" data-page="quantityPage"><span class="tool-icon">📦</span><span class="zh">數量推算工具</span><span class="vi">Công cụ ước tính số lượng</span></button>
 <button class="tool-card" data-page="printingPage"><span class="tool-icon">🖨️</span><span class="zh">批量印刷桌數試算</span><span class="vi">Tính số bàn in hàng loạt</span></button>
 <button class="tool-card" data-page="actualTablePage"><span class="tool-icon">📐</span><span class="zh">實際每桌產量換算</span><span class="vi">Quy đổi sản lượng thực tế mỗi bàn</span></button>
 <button class="tool-card" data-page="machinePrintPage"><span class="tool-icon">⚙️</span><span class="zh">機印產能試算</span><span class="vi">Tính sản lượng in máy</span></button>
 <button class="tool-card" data-page="quoteCapacityPage"><span class="tool-icon">💰</span><span class="zh">報價標準產能</span><span class="vi">Năng suất chuẩn báo giá</span></button>
+<button class="tool-card" data-page="wipCapacityPage"><span class="tool-icon">📊</span><span class="zh">未完工產能分析</span><span class="vi">Phân tích năng suất chưa hoàn thành</span></button>
 <button class="tool-card disabled"><span class="tool-icon">📏</span><span class="zh">碼克重換算</span><span class="vi">Quy đổi trọng lượng theo yard</span><small>即將推出 / Sắp ra mắt</small></button>
 <button class="tool-card disabled"><span class="tool-icon">📉</span><span class="zh">生產損耗計算</span><span class="vi">Tính hao hụt sản xuất</span><small>即將推出 / Sắp ra mắt</small></button>
 </div></div></section>
@@ -126,6 +127,64 @@
 </div></div>
 </section>
 
+
+<section id="wipCapacityPage" class="page"><div class="card wide-card wip-card">
+<button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button>
+<div class="wip-head"><div><h1>未完工產能分析</h1><p class="subtitle">Phân tích năng suất chưa hoàn thành</p></div><div id="wipFileName" class="wip-file-name">尚未匯入 Excel / Chưa nhập Excel</div></div>
+
+<div class="wip-upload-box">
+  <label class="wip-file-btn">📂 選擇 Excel / Chọn Excel<input id="wipExcelFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
+  <div class="wip-upload-note">直接匯入每日 Excel；系統會從 co_name、co_mname、co_memo、co_note 擷取 MSK，並依 CO_Width 換算成 25MM 等效未完工碼數。<br>Nhập Excel hằng ngày; hệ thống tự nhận MSK và quy đổi lượng chưa hoàn thành về khổ chuẩn 25MM.</div>
+</div>
+<div id="wipStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
+
+<div id="wipAnalysisArea" class="hidden">
+  <div class="wip-kpis">
+    <div><span>資料筆數<br>Số dòng</span><b id="wipKpiRows">0</b></div>
+    <div><span>已辨識 MSK<br>Đã nhận MSK</span><b id="wipKpiRecognized">0</b></div>
+    <div><span>待確認<br>Cần kiểm tra</span><b id="wipKpiReview">0</b></div>
+    <div class="primary"><span>25MM 未完工總量<br>Tổng chưa hoàn thành 25MM</span><b id="wipKpi25">0 Y</b></div>
+  </div>
+
+  <div class="wip-section-title">快速篩選 / Lọc nhanh</div>
+  <div id="wipQuickFilters" class="wip-quick-filters">
+    <button class="active" data-filter="ALL">全部<br><small>Tất cả</small></button>
+    <button data-filter="HAND_TOTAL">手印總量<br><small>In tay</small></button>
+    <button data-filter="MACHINE_TOTAL">機印總量<br><small>In máy</small></button>
+    <button data-filter="TRANSFER">轉印<br><small>In chuyển</small></button>
+    <button data-filter="PAD">移印<br><small>In chấm</small></button>
+    <button data-filter="SPRAY">噴塗<br><small>Phun silicon</small></button>
+    <button data-filter="FILM">膠片<br><small>Đầu keo</small></button>
+    <button data-filter="REVIEW">待確認<br><small>Cần kiểm tra</small></button>
+  </div>
+
+  <div class="wip-filter-grid">
+    <label><span>MSK 細類 / Loại MSK</span><select id="wipTypeFilter"><option value="ALL">全部 / Tất cả</option></select></label>
+    <label><span>原訂單單位 / Đơn vị</span><select id="wipUnitFilter"><option value="ALL">全部 / Tất cả</option></select></label>
+    <label><span>寬度 / Khổ</span><select id="wipWidthFilter"><option value="ALL">全部 / Tất cả</option></select></label>
+    <label class="wip-search"><span>搜尋 MSK／品名／備註 / Tìm kiếm</span><input id="wipSearch" type="search" placeholder="輸入關鍵字 / Nhập từ khóa"></label>
+  </div>
+
+  <div class="wip-section-title">目前篩選統計 / Thống kê theo bộ lọc</div>
+  <div class="wip-current-summary">
+    <div><span>明細筆數<br>Số dòng</span><b id="wipFilteredRows">0</b></div>
+    <div><span>未完工折合碼<br>Yard chưa hoàn thành</span><b id="wipFilteredYards">0 Y</b></div>
+    <div class="primary"><span>25MM 等效未完工<br>Chưa hoàn thành quy đổi 25MM</span><b id="wipFiltered25">0 Y</b></div>
+  </div>
+
+  <div class="wip-two-col">
+    <div><div class="wip-section-title">製程分類統計 / Thống kê theo loại in</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>分類 / Loại</th><th>筆數<br>Dòng</th><th>未完工折合碼<br>Yard</th><th>25MM 等效未完工<br>Yard 25MM</th></tr></thead><tbody id="wipProcessSummaryBody"></tbody></table></div></div>
+    <div><div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>CO_Unit</th><th>訂單量<br>CO_Num</th><th>已完工<br>CO_FINISH</th><th>未完工<br>Chưa hoàn thành</th></tr></thead><tbody id="wipUnitSummaryBody"></tbody></table></div></div>
+  </div>
+
+  <div class="wip-detail-head"><div class="wip-section-title">明細 / Chi tiết</div><div class="wip-detail-actions"><button id="wipExportBtn" type="button" class="excel-btn">下載目前明細 / Tải chi tiết</button><span id="wipPageInfo"></span></div></div>
+  <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
+    <th>#</th><th>MSK</th><th>MSK類型</th><th>印刷分類</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼</th><th>25MM等效未完工</th><th>判斷</th><th>來源內容</th>
+  </tr></thead><tbody id="wipDetailBody"></tbody></table></div>
+  <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁</button><button id="wipNextPage" type="button">下一頁 →</button></div>
+</div>
+</div></section>
+
 <section id="printingPage" class="page"><div class="card wide-card"><button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button><h1>批量印刷桌數試算</h1><p class="subtitle">Tính số bàn và thời gian in hàng loạt</p>
 <div class="help compact-help"><div><strong>可從 Excel 直接複製貼上多筆訂單</strong><span>Có thể sao chép trực tiếp nhiều đơn hàng từ Excel</span></div><div><strong>欄位順序：訂單量、單位、寬度mm、長度mm、印刷方式、單／雙面；未填時預設單面</strong><span>Thứ tự: SL đơn hàng, đơn vị, khổ mm, dài mm, phương pháp in, một/hai mặt; để trống sẽ mặc định một mặt</span></div></div>
 <div class="settings-title">產能與工時設定 / Cài đặt năng suất và thời gian</div>
@@ -146,4 +205,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="app.js?v=20260821-special-layout-v1"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="app.js?v=20260822-wip-capacity-v1"></script></body></html>
