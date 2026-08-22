@@ -592,10 +592,14 @@ function wipRender(){
 }
 function wipRenderStageSummary(){
   const defs=[['HAND','手印'],['HAND_TRANSFER','手印→轉印'],['MACHINE','機印'],['MACHINE_TRANSFER','機印→轉印'],['PAD','移印'],['SPRAY','噴塗'],['FILM','膠片']];
-  $('wipStageMatrixHead').innerHTML='<tr><th>狀態 / Trạng thái</th>'+defs.map(([g,n])=>`<th>${n}<br><small>${g==='FILM'?'雙':'25MM Y'}</small></th>`).join('')+'</tr>';
-  const rowHtml=(stage,label,cls='')=>`<tr class="${cls}"><td><b>${label}</b></td>`+defs.map(([g])=>{const arr=wipRowsForGroup(wipFiltered.filter(r=>r.stage===stage),g);const v=g==='FILM'?wipSum(arr,'pairUnfinished'):wipSum(arr,'eq25');return `<td>${wipFmt(v,0)} ${g==='FILM'?'雙':'Y'}</td>`;}).join('')+'</tr>';
-  const total=`<tr class="stage-process-total"><td><b>總計 / Tổng</b></td>`+defs.map(([g])=>{const arr=wipRowsForGroup(wipFiltered,g);const v=g==='FILM'?wipSum(arr,'pairUnfinished'):wipSum(arr,'eq25');return `<td><b>${wipFmt(v,0)} ${g==='FILM'?'雙':'Y'}</b></td>`;}).join('')+'</tr>';
-  $('wipStageSummaryBody').innerHTML=rowHtml('ARRIVED','已到 98-G100 / Đã tới')+rowHtml('NOT_ARRIVED','未到 98-G100 / Chưa tới')+total;
+  $('wipStageMatrixHead').innerHTML='<tr><th>製程 / Công đoạn</th><th>已到 98-G100<br><small>Đã tới</small></th><th>未到 98-G100<br><small>Chưa tới</small></th><th>總計<br><small>Tổng</small></th></tr>';
+  $('wipStageSummaryBody').innerHTML=defs.map(([g,n])=>{
+    const arrived=wipRowsForGroup(wipFiltered.filter(r=>r.stage==='ARRIVED'),g);
+    const notArrived=wipRowsForGroup(wipFiltered.filter(r=>r.stage==='NOT_ARRIVED'),g);
+    const total=wipRowsForGroup(wipFiltered,g);
+    const key=g==='FILM'?'pairUnfinished':'eq25', unit=g==='FILM'?'雙':'Y';
+    return `<tr><td><b>${n}</b><br><small>${g==='FILM'?'雙':'25MM Y'}</small></td><td>${wipFmt(wipSum(arrived,key),0)} ${unit}</td><td>${wipFmt(wipSum(notArrived,key),0)} ${unit}</td><td><b>${wipFmt(wipSum(total,key),0)} ${unit}</b></td></tr>`;
+  }).join('');
 }
 function wipRenderProcessSummary(){
   const defs=[['HAND','手印'],['HAND_TRANSFER','手印→轉印'],['HAND_TOTAL','手印總量'],['MACHINE','機印'],['MACHINE_TRANSFER','機印→轉印'],['MACHINE_TOTAL','機印總量'],['PAD','移印'],['SPRAY','噴塗'],['FILM','膠片']];
@@ -608,12 +612,17 @@ function wipRenderUnitSummary(){
   const defs=[['手印 / In tay',['HAND']],['手印→轉印 / In tay chuyển',['HAND_TRANSFER']],['機印 / In máy',['MACHINE']],['機印→轉印 / In máy chuyển',['MACHINE_TRANSFER']],['移印 / In chấm',['PAD']],['噴塗 / Phun silicon',['SPRAY']],['膠片 / Đầu keo',['FILM']]];
   $('wipUnitSummaryBody').innerHTML=defs.map(([name,groups])=>{const rows=wipFiltered.filter(r=>groups.some(g=>wipHasGroup(r,g)));if(!rows.length)return'';const map=new Map();rows.forEach(r=>{const k=r.unit||'空白';if(!map.has(k))map.set(k,{unit:k,n:0,f:0,u:0,rows:0});const x=map.get(k);x.n+=r.coNum;x.f+=r.coFinish;x.u+=r.unfinished;x.rows++;});const body=[...map.values()].sort((a,b)=>String(a.unit).localeCompare(String(b.unit),undefined,{numeric:true})).map(x=>`<tr><td><b>${wipEsc(x.unit)}</b></td><td>${wipFmt(x.n,2)}</td><td>${wipFmt(x.f,2)}</td><td><b>${wipFmt(x.u,2)}</b></td></tr>`).join('');return `<details class="wip-unit-group"><summary><span>${name}</span><span class="wip-unit-meta">${wipFmt(rows.length)} 筆 · ${wipFmt(map.size)} 種單位 ＋</span></summary><div class="wip-unit-inner"><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>CO_Unit</th><th>訂單量 CO_Num</th><th>已完工 CO_FINISH</th><th>未完工</th></tr></thead><tbody>${body}</tbody></table></div></div></details>`;}).join('')||'<div class="wip-unit-empty">無資料 / Không có dữ liệu</div>';
 }
+function wipCapacityRowsArrived(){
+  const type=$('wipTypeFilter').value,unit=$('wipUnitFilter').value,width=$('wipWidthFilter').value,od=$('wipOverdueFilter').value,q=$('wipSearch').value.trim().toUpperCase();
+  return wipRows.filter(r=>r.stage==='ARRIVED'&&wipQuickMatch(r,wipQuick)&&(type==='ALL'||r.types.includes(type))&&(unit==='ALL'||r.unit===unit)&&(width==='ALL'||(width==='待確認'?r.width<=0:String(r.width)===width))&&(od==='ALL'||(od==='OVER30'?r.over30:!r.over30))&&(!q||(r.msk+' '+r.source+' '+r.printType+' '+r.coProc+' '+r.coSproc).toUpperCase().includes(q)));
+}
 function wipRenderCapacity(){
   const defs=[['HAND','手印','Y'],['HAND_TRANSFER','手印→轉印','Y'],['MACHINE','機印','Y'],['MACHINE_TRANSFER','機印→轉印','Y'],['PAD','移印','Y'],['SPRAY','噴塗','Y'],['FILM','膠片','雙']];let days={};
-  const html=defs.map(([g,n,u])=>{const cfg=wipCapacityCfg[g],m=wipStandardMetric(wipFiltered,g),eff=cfg.cap*(cfg.run/cfg.h),d=eff>0?m.value/eff:0;days[g]=d;return `<tr><td>${n}</td><td><input class="wip-cap-input" data-cap-group="${g}" data-field="cap" type="number" min="0" step="1" value="${cfg.cap}"> ${u}</td><td><input class="wip-cap-input small" data-cap-group="${g}" data-field="h" type="number" min="1" step="1" value="${cfg.h}"> h</td><td><select class="wip-cap-input" data-cap-group="${g}" data-field="run"><option value="12" ${cfg.run===12?'selected':''}>12h</option><option value="16" ${cfg.run===16?'selected':''}>16h（+4h）</option><option value="24" ${cfg.run===24?'selected':''}>24h</option></select></td><td>${wipFmt(m.value,0)} ${u}</td><td><b>${wipFmt(d,2)} 天</b></td></tr>`;}).join('');
+  const capacityRows=wipCapacityRowsArrived();
+  const html=defs.map(([g,n,u])=>{const cfg=wipCapacityCfg[g],m=wipStandardMetric(capacityRows,g),eff=cfg.cap*(cfg.run/cfg.h),d=eff>0?m.value/eff:0;days[g]=d;return `<tr><td>${n}</td><td><input class="wip-cap-input" data-cap-group="${g}" data-field="cap" type="number" min="0" step="1" value="${cfg.cap}"> ${u}</td><td><input class="wip-cap-input small" data-cap-group="${g}" data-field="h" type="number" min="1" step="1" value="${cfg.h}"> h</td><td><select class="wip-cap-input compact-select" data-cap-group="${g}" data-field="run"><option value="12" ${cfg.run===12?'selected':''}>12h</option><option value="16" ${cfg.run===16?'selected':''}>16h（+4h）</option><option value="24" ${cfg.run===24?'selected':''}>24h</option></select></td><td>${wipFmt(m.value,0)} ${u}</td><td><b>${wipFmt(d,2)} 天</b></td></tr>`;}).join('');
   const handTotal=days.HAND+days.HAND_TRANSFER,machineTotal=days.MACHINE+days.MACHINE_TRANSFER;const candidates=[['手印總負荷',handTotal],['機印總負荷',machineTotal],['移印',days.PAD],['噴塗',days.SPRAY],['膠片',days.FILM]].sort((a,b)=>b[1]-a[1]);
-  $('wipCapacityBody').innerHTML=html+`<tr class="total-row"><td><b>手印總負荷（共用桌）</b></td><td colspan="4">手印天數 + 手印→轉印天數</td><td><b>${wipFmt(handTotal,2)} 天</b></td></tr><tr class="total-row"><td><b>機印總負荷</b></td><td colspan="4">機印天數 + 機印→轉印天數</td><td><b>${wipFmt(machineTotal,2)} 天</b></td></tr>`;
-  const top=candidates[0];$('wipBottleneck').innerHTML=top&&top[1]>0?`目前瓶頸製程 / Công đoạn nghẽn：<b>${top[0]}</b>，依目前設定約需 <b>${wipFmt(top[1],2)} 天</b>。手印→轉印與機印→轉印仍分開顯示，方便你評估轉印材料是否要提早準備。`:'目前沒有可計算的未完工負荷。';
+  $('wipCapacityBody').innerHTML=html+`<tr class="total-row"><td><b>手印總負荷（共用桌）</b></td><td colspan="4">只計已到98-G100：手印天數 + 手印→轉印天數</td><td><b>${wipFmt(handTotal,2)} 天</b></td></tr><tr class="total-row"><td><b>機印總負荷</b></td><td colspan="4">只計已到98-G100：機印天數 + 機印→轉印天數</td><td><b>${wipFmt(machineTotal,2)} 天</b></td></tr>`;
+  const top=candidates[0];$('wipBottleneck').innerHTML=top&&top[1]>0?`目前瓶頸製程 / Công đoạn nghẽn：<b>${top[0]}</b>，以「已到98-G100」未完工量計算，依目前設定約需 <b>${wipFmt(top[1],2)} 天</b>。`:'目前「已到98-G100」沒有可計算的未完工負荷。';
 }
 function wipRenderOver30(){
   const rows=wipFiltered.filter(r=>r.over30);const defs=[['手印總量',r=>wipHasGroup(r,'HAND')||wipHasGroup(r,'HAND_TRANSFER'),'Y'],['機印總量',r=>wipHasGroup(r,'MACHINE')||wipHasGroup(r,'MACHINE_TRANSFER'),'Y'],['手印→轉印（備料）',r=>wipHasGroup(r,'HAND_TRANSFER'),'Y'],['機印→轉印（備料）',r=>wipHasGroup(r,'MACHINE_TRANSFER'),'Y'],['移印',r=>wipHasGroup(r,'PAD'),'Y'],['噴塗',r=>wipHasGroup(r,'SPRAY'),'Y'],['膠片',r=>wipHasGroup(r,'FILM'),'雙']];
