@@ -104,3 +104,9 @@
 .wip-stage-matrix .wip-cap-input.compact-select{width:86px;min-width:80px}
 .wip-stage-matrix th{white-space:nowrap}
 .wip-muted{font-size:12px;color:#68758d;font-weight:400}
+
+/* 未完工產能分析：製程＋產能下載按鈕 */
+.wip-section-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:4px}
+.wip-section-title-row .wip-section-title{margin:0}
+.wip-summary-export-btn{white-space:nowrap;padding:10px 16px;font-size:14px}
+@media(max-width:720px){.wip-section-title-row{align-items:stretch}.wip-summary-export-btn{width:100%}}

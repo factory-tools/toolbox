@@ -163,7 +163,7 @@
     <div class="wip-active-filter"><span>目前套用 / Đang áp dụng：</span><b id="wipActiveFilterText">全部資料 / Tất cả dữ liệu</b></div>
   </div>
 
-  <div class="wip-section-title wip-important-title">印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày năng lực theo công đoạn</div>
+  <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày năng lực theo công đoạn</div><button id="wipProcessCapacityExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載製程＋產能 / Tải công đoạn & năng lực</button></div>
   <div class="wip-stage-note">
     本表只統計「有辨識到 MSK 網版」的印刷資料；沒有 MSK 的訂單不列入本工具。已到／未到／總未完工依目前篩選條件顯示；「預估需要天數」固定只用已到 98-G100 的未完工量計算，因為這些是已收到料、目前需要消化的量。手印、機印、轉印、移印、噴塗以 25MM 等效 Y 統計，膠片以「雙」統計。原始 CO_Unit 請在下方點開查看。Y 僅使用 co_unum − co_ufinish 換算。<br>
     Bảng này chỉ thống kê dữ liệu <b>in</b> có nhận diện được MSK; đơn không có MSK không được tính. Lượng đã tới / chưa tới / tổng chưa hoàn thành thay đổi theo bộ lọc hiện tại; riêng “số ngày cần” luôn tính theo lượng chưa hoàn thành <b>đã tới 98-G100</b>, tức lượng nguyên liệu đã nhận và cần xử lý. In tay, in máy, in chuyển, in chấm và phun silicon dùng Yard quy đổi 25MM; đầu keo dùng đơn vị đôi. Có thể mở phần đơn vị gốc CO_Unit bên dưới để đối chiếu. Yard chỉ lấy từ co_unum − co_ufinish.
