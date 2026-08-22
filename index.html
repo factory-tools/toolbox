@@ -162,6 +162,7 @@
     <label><span>MSK 細類 / Loại MSK</span><select id="wipTypeFilter"><option value="ALL">全部 / Tất cả</option></select></label>
     <label><span>原訂單單位 / Đơn vị</span><select id="wipUnitFilter"><option value="ALL">全部 / Tất cả</option></select></label>
     <label><span>寬度 / Khổ</span><select id="wipWidthFilter"><option value="ALL">全部 / Tất cả</option></select></label>
+    <label><span>98-G100 狀態 / Trạng thái 98-G100</span><select id="wipStageFilter"><option value="ALL">全部 / Tất cả</option><option value="ARRIVED">已到 98-G100 / Đã tới 98-G100</option><option value="NOT_ARRIVED">未到 98-G100 / Chưa tới 98-G100</option></select></label>
     <label class="wip-search"><span>搜尋 MSK／品名／備註 / Tìm kiếm</span><input id="wipSearch" type="search" placeholder="輸入關鍵字 / Nhập từ khóa"></label>
   </div>
 
@@ -174,12 +175,16 @@
 
   <div class="wip-two-col">
     <div><div class="wip-section-title">製程分類統計 / Thống kê theo loại in</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>分類 / Loại</th><th>筆數<br>Dòng</th><th>未完工折合碼<br>Yard</th><th>25MM 等效未完工<br>Yard 25MM</th></tr></thead><tbody id="wipProcessSummaryBody"></tbody></table></div></div>
-    <div><div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>CO_Unit</th><th>訂單量<br>CO_Num</th><th>已完工<br>CO_FINISH</th><th>未完工<br>Chưa hoàn thành</th></tr></thead><tbody id="wipUnitSummaryBody"></tbody></table></div></div>
+    <div><div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>分類 / Loại</th><th>CO_Unit</th><th>訂單量<br>CO_Num</th><th>已完工<br>CO_FINISH</th><th>未完工<br>Chưa hoàn thành</th></tr></thead><tbody id="wipUnitSummaryBody"></tbody></table></div></div>
   </div>
+
+
+  <div class="wip-section-title">98-G100 到達狀態統計 / Thống kê trạng thái tới 98-G100</div>
+  <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>狀態 / Trạng thái</th><th>筆數<br>Dòng</th><th>未完工折合碼<br>Yard</th><th>25MM 等效未完工<br>Yard 25MM</th></tr></thead><tbody id="wipStageSummaryBody"></tbody></table></div>
 
   <div class="wip-detail-head"><div class="wip-section-title">明細 / Chi tiết</div><div class="wip-detail-actions"><button id="wipExportBtn" type="button" class="excel-btn">下載目前明細 / Tải chi tiết</button><span id="wipPageInfo"></span></div></div>
   <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
-    <th>#</th><th>MSK</th><th>MSK類型</th><th>印刷分類</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼</th><th>25MM等效未完工</th><th>判斷</th><th>來源內容</th>
+    <th>#</th><th>MSK</th><th>MSK類型</th><th>印刷分類</th><th>98-G100狀態</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼</th><th>25MM等效未完工</th><th>判斷</th><th>來源內容</th>
   </tr></thead><tbody id="wipDetailBody"></tbody></table></div>
   <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁</button><button id="wipNextPage" type="button">下一頁 →</button></div>
 </div>
@@ -205,4 +210,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="app.js?v=20260822-wip-capacity-v1"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="app.js?v=20260822-wip-capacity-v2"></script></body></html>

@@ -490,7 +490,7 @@ if($('quoteUnitPc')){
 
 /* V25 未完工產能分析 / Phân tích năng suất chưa hoàn thành */
 const WIP_PAGE_SIZE=100;
-let wipRows=[],wipFiltered=[],wipPage=1,wipQuick='ALL';
+let wipRows=[],wipFiltered=[],wipPage=1,wipQuick='ALL',wipSourceHeaders=[],wipSourceRowMap=new Map(),wipSourceSheetName='';
 const WIP_TYPE_META={
   TD:{name:'手印 / IN TAY',group:'HAND'}, SPW:{name:'手印 / IN TAY',group:'HAND'},
   MD:{name:'機印 / IN MÁY',group:'MACHINE'}, MPW:{name:'機印 / IN MÁY',group:'MACHINE'},
@@ -505,7 +505,7 @@ function wipNum(v){if(v==null||v==='')return 0;if(typeof v==='number')return Num
 function wipWidthNum(v){const n=wipNum(v);return n>0?n:0;}
 function wipFmt(n,d=0){return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:0});}
 function wipFindHeader(matrix){
-  const required=['coname','comname','comemo','conote','conum','counit','cofinish','counum','coufinish','cowidth'];
+  const required=['coname','comname','comemo','conote','conum','counit','cofinish','counum','coufinish','cowidth','coproc','cosproc'];
   let best=null;
   for(let r=0;r<Math.min(matrix.length,40);r++){
     const row=matrix[r]||[], map={}; row.forEach((v,i)=>{const k=wipNormHeader(v);if(k)map[k]=i;});
@@ -529,9 +529,12 @@ function wipRowFromArray(row,map,rowNo){
   else if(types.length>1){judgement='多種類型：'+types.join(', ')+' / Nhiều loại';}
   const coNum=wipNum(get('conum')),coFinish=wipNum(get('cofinish')),unfinished=Math.max(0,coNum-coFinish);
   const unum=wipNum(get('counum')),ufinish=wipNum(get('coufinish')),unfinishedY=Math.max(0,unum-ufinish),width=wipWidthNum(get('cowidth'));
+  const coProc=String(get('coproc')??'').trim(),coSproc=String(get('cosproc')??'').trim();
+  const stage=((coProc.slice(0,2).toUpperCase()==='98')&&(coSproc.toUpperCase()==='G100'))?'ARRIVED':'NOT_ARRIVED';
+  const stageLabel=stage==='ARRIVED'?'已到 98-G100 / Đã tới 98-G100':'未到 98-G100 / Chưa tới 98-G100';
   let eq25=width>0?unfinishedY*width/25:null;
   if(width<=0&&judgement==='OK')judgement='寬度待確認 / Cần kiểm tra khổ';
-  return {rowNo,msk:hits.map(x=>x.code).join(' / '),type,group,printType:type?WIP_TYPE_META[type].name:'待確認 / Cần kiểm tra',unit:String(get('counit')??'').trim()||'空白',widthRaw:get('cowidth'),width,coNum,coFinish,unfinished,unum,ufinish,unfinishedY,eq25,judgement,source};
+  return {rowNo,msk:hits.map(x=>x.code).join(' / '),type,group,printType:type?WIP_TYPE_META[type].name:'待確認 / Cần kiểm tra',unit:String(get('counit')??'').trim()||'空白',widthRaw:get('cowidth'),width,coNum,coFinish,unfinished,unum,ufinish,unfinishedY,eq25,judgement,source,coProc,coSproc,stage,stageLabel};
 }
 function wipReadWorkbook(file){
   if(typeof XLSX==='undefined'){throw new Error('Excel 解析元件未載入，請確認網路可連線後重新整理。 / Không tải được bộ đọc Excel.');}
@@ -542,11 +545,11 @@ async function wipImportFile(file){
   try{
     const wb=await wipReadWorkbook(file); let chosen=null;
     for(const name of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true});const h=wipFindHeader(matrix);if(h&&h.score>=7){chosen={name,matrix,h};break;}if(!chosen||h.score>chosen.h.score)chosen={name,matrix,h};}
-    if(!chosen||chosen.h.score<7)throw new Error('找不到必要欄位。至少需要 co_name、co_mname、co_memo、co_note、CO_Num、CO_Unit、CO_FINISH、co_unum、co_ufinish、CO_Width。');
-    const missing=['coname','comname','comemo','conote','conum','counit','cofinish','counum','coufinish','cowidth'].filter(k=>chosen.h.map[k]==null);
+    if(!chosen||chosen.h.score<7)throw new Error('找不到必要欄位。至少需要 co_name、co_mname、co_memo、co_note、CO_Num、CO_Unit、CO_FINISH、co_unum、co_ufinish、CO_Width、CO_PROC、CO_SPROC。');
+    const missing=['coname','comname','comemo','conote','conum','counit','cofinish','counum','coufinish','cowidth','coproc','cosproc'].filter(k=>chosen.h.map[k]==null);
     if(missing.length)throw new Error('缺少欄位 / Thiếu cột: '+missing.join(', '));
-    wipRows=[];
-    for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const arr=chosen.matrix[r]||[];if(arr.every(v=>v==null||String(v).trim()===''))continue;wipRows.push(wipRowFromArray(arr,chosen.h.map,r+1));}
+    wipRows=[]; wipSourceHeaders=(chosen.matrix[chosen.h.row]||[]).slice(); wipSourceRowMap=new Map(); wipSourceSheetName=chosen.name;
+    for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const arr=chosen.matrix[r]||[];if(arr.every(v=>v==null||String(v).trim()===''))continue;const rowNo=r+1;wipSourceRowMap.set(rowNo,arr.slice());wipRows.push(wipRowFromArray(arr,chosen.h.map,rowNo));}
     wipQuick='ALL'; wipPage=1; wipBuildFilters(); $('wipAnalysisArea').classList.remove('hidden');
     status.textContent=`已完成：${chosen.name}，共 ${wipFmt(wipRows.length)} 筆 / Hoàn tất: ${wipFmt(wipRows.length)} dòng`;
     wipRender();
@@ -562,41 +565,46 @@ function wipBuildFilters(){
   setOpts('wipWidthFilter',[...new Set(wipRows.map(r=>r.width>0?String(r.width):'待確認'))].sort((a,b)=>parseFloat(a)-parseFloat(b)));
 }
 function wipApplyFilters(){
-  const type=$('wipTypeFilter').value,unit=$('wipUnitFilter').value,width=$('wipWidthFilter').value,q=$('wipSearch').value.trim().toUpperCase();
-  wipFiltered=wipRows.filter(r=>wipQuickMatch(r,wipQuick)&&(type==='ALL'||r.type===type)&&(unit==='ALL'||r.unit===unit)&&(width==='ALL'||(width==='待確認'?r.width<=0:String(r.width)===width))&&(!q||(r.msk+' '+r.source+' '+r.printType).toUpperCase().includes(q)));
+  const type=$('wipTypeFilter').value,unit=$('wipUnitFilter').value,width=$('wipWidthFilter').value,stage=$('wipStageFilter').value,q=$('wipSearch').value.trim().toUpperCase();
+  wipFiltered=wipRows.filter(r=>wipQuickMatch(r,wipQuick)&&(type==='ALL'||r.type===type)&&(unit==='ALL'||r.unit===unit)&&(width==='ALL'||(width==='待確認'?r.width<=0:String(r.width)===width))&&(stage==='ALL'||r.stage===stage)&&(!q||(r.msk+' '+r.source+' '+r.printType+' '+r.coProc+' '+r.coSproc).toUpperCase().includes(q)));
 }
 function wipSum(rows,key){return rows.reduce((s,r)=>s+(Number(r[key])||0),0);}
 function wipRender(){
   wipApplyFilters(); const allRec=wipRows.filter(r=>r.type).length,review=wipRows.filter(r=>r.group==='REVIEW'||r.judgement!=='OK').length;
   $('wipKpiRows').textContent=wipFmt(wipRows.length);$('wipKpiRecognized').textContent=wipFmt(allRec);$('wipKpiReview').textContent=wipFmt(review);$('wipKpi25').textContent=wipFmt(wipSum(wipRows,'eq25'),0)+' Y';
   $('wipFilteredRows').textContent=wipFmt(wipFiltered.length);$('wipFilteredYards').textContent=wipFmt(wipSum(wipFiltered,'unfinishedY'),0)+' Y';$('wipFiltered25').textContent=wipFmt(wipSum(wipFiltered,'eq25'),0)+' Y';
-  wipRenderProcessSummary();wipRenderUnitSummary();wipRenderDetails();
+  wipRenderProcessSummary();wipRenderUnitSummary();wipRenderStageSummary();wipRenderDetails();
 }
 function wipRenderProcessSummary(){
   const defs=[['手印 / In tay',['HAND']],['手印→轉印 / In tay chuyển',['HAND_TRANSFER']],['手印總量 / Tổng in tay',['HAND','HAND_TRANSFER']],['機印 / In máy',['MACHINE']],['機印→轉印 / In máy chuyển',['MACHINE_TRANSFER']],['機印總量 / Tổng in máy',['MACHINE','MACHINE_TRANSFER']],['轉印總量 / Tổng in chuyển',['HAND_TRANSFER','MACHINE_TRANSFER']],['移印總量 / Tổng in chấm',['PAD']],['噴塗總量 / Tổng phun silicon',['SPRAY']],['膠片總量 / Tổng đầu keo',['FILM_HAND','FILM_MACHINE']],['待確認 / Cần kiểm tra',['REVIEW']]];
   $('wipProcessSummaryBody').innerHTML=defs.map(([name,groups])=>{const a=wipFiltered.filter(r=>groups.includes(r.group));return `<tr class="${name.includes('總量')?'total-row':''}"><td>${name}</td><td>${wipFmt(a.length)}</td><td>${wipFmt(wipSum(a,'unfinishedY'),0)} Y</td><td><b>${wipFmt(wipSum(a,'eq25'),0)} Y</b></td></tr>`;}).join('');
 }
 function wipRenderUnitSummary(){
-  const map=new Map();wipFiltered.forEach(r=>{if(!map.has(r.unit))map.set(r.unit,{n:0,f:0,u:0});const x=map.get(r.unit);x.n+=r.coNum;x.f+=r.coFinish;x.u+=r.unfinished;});
-  $('wipUnitSummaryBody').innerHTML=[...map.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))).map(([u,x])=>`<tr><td><b>${u}</b></td><td>${wipFmt(x.n,2)}</td><td>${wipFmt(x.f,2)}</td><td><b>${wipFmt(x.u,2)}</b></td></tr>`).join('')||'<tr><td colspan="4">無資料 / Không có dữ liệu</td></tr>';
+  const map=new Map();wipFiltered.forEach(r=>{const cat=wipGroupLabel(r.group),key=cat+'||'+r.unit;if(!map.has(key))map.set(key,{cat,unit:r.unit,n:0,f:0,u:0});const x=map.get(key);x.n+=r.coNum;x.f+=r.coFinish;x.u+=r.unfinished;});
+  $('wipUnitSummaryBody').innerHTML=[...map.values()].sort((a,b)=>a.cat.localeCompare(b.cat)||String(a.unit).localeCompare(String(b.unit))).map(x=>`<tr><td>${x.cat}</td><td><b>${x.unit}</b></td><td>${wipFmt(x.n,2)}</td><td>${wipFmt(x.f,2)}</td><td><b>${wipFmt(x.u,2)}</b></td></tr>`).join('')||'<tr><td colspan="5">無資料 / Không có dữ liệu</td></tr>';
+}
+function wipRenderStageSummary(){
+  const defs=[['已到 98-G100 / Đã tới 98-G100','ARRIVED'],['未到 98-G100 / Chưa tới 98-G100','NOT_ARRIVED']];
+  $('wipStageSummaryBody').innerHTML=defs.map(([name,key])=>{const a=wipFiltered.filter(r=>r.stage===key);return `<tr><td><b>${name}</b></td><td>${wipFmt(a.length)}</td><td><b>${wipFmt(wipSum(a,'unfinishedY'),0)} Y</b></td><td><b>${wipFmt(wipSum(a,'eq25'),0)} Y</b></td></tr>`;}).join('');
 }
 function wipRenderDetails(){
   const pages=Math.max(1,Math.ceil(wipFiltered.length/WIP_PAGE_SIZE));if(wipPage>pages)wipPage=pages;const start=(wipPage-1)*WIP_PAGE_SIZE,rows=wipFiltered.slice(start,start+WIP_PAGE_SIZE);
   $('wipPageInfo').textContent=`${wipPage} / ${pages}（${wipFmt(wipFiltered.length)} 筆）`;
   $('wipPrevPage').disabled=wipPage<=1;$('wipNextPage').disabled=wipPage>=pages;
-  $('wipDetailBody').innerHTML=rows.map(r=>`<tr class="${r.judgement==='OK'?'':'wip-review-row'}"><td>${r.rowNo}</td><td class="msk-cell">${r.msk||'—'}</td><td>${r.type||'—'}</td><td>${r.printType}</td><td>${r.unit}</td><td>${r.width>0?wipFmt(r.width,2):'⚠'}</td><td>${wipFmt(r.coNum,2)}</td><td>${wipFmt(r.coFinish,2)}</td><td><b>${wipFmt(r.unfinished,2)}</b></td><td>${wipFmt(r.unum,2)}</td><td>${wipFmt(r.ufinish,2)}</td><td><b>${wipFmt(r.unfinishedY,2)} Y</b></td><td><b>${r.eq25==null?'⚠':wipFmt(r.eq25,2)+' Y'}</b></td><td>${r.judgement}</td><td class="source-cell" title="${String(r.source).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}">${String(r.source).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td></tr>`).join('')||'<tr><td colspan="15">沒有符合篩選條件的資料 / Không có dữ liệu phù hợp</td></tr>';
+  $('wipDetailBody').innerHTML=rows.map(r=>`<tr class="${r.judgement==='OK'?'':'wip-review-row'}"><td>${r.rowNo}</td><td class="msk-cell">${r.msk||'—'}</td><td>${r.type||'—'}</td><td>${r.printType}</td><td><b>${r.stageLabel}</b></td><td>${r.coProc||'—'}</td><td>${r.coSproc||'—'}</td><td>${r.unit}</td><td>${r.width>0?wipFmt(r.width,2):'⚠'}</td><td>${wipFmt(r.coNum,2)}</td><td>${wipFmt(r.coFinish,2)}</td><td><b>${wipFmt(r.unfinished,2)}</b></td><td>${wipFmt(r.unum,2)}</td><td>${wipFmt(r.ufinish,2)}</td><td><b>${wipFmt(r.unfinishedY,2)} Y</b></td><td><b>${r.eq25==null?'⚠':wipFmt(r.eq25,2)+' Y'}</b></td><td>${r.judgement}</td><td class="source-cell" title="${String(r.source).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}">${String(r.source).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td></tr>`).join('')||'<tr><td colspan="18">沒有符合篩選條件的資料 / Không có dữ liệu phù hợp</td></tr>';
 }
 function wipExportCurrent(){
   if(!wipFiltered.length)return;
-  const heads=['Excel列','MSK','MSK類型','印刷分類','CO_Unit','CO_Width','CO_Num','CO_FINISH','原單位未完工','co_unum','co_ufinish','未完工折合碼Y','25MM等效未完工Y','判斷','來源內容'];
-  const data=wipFiltered.map(r=>[r.rowNo,r.msk,r.type,r.printType,r.unit,r.widthRaw,r.coNum,r.coFinish,r.unfinished,r.unum,r.ufinish,r.unfinishedY,r.eq25==null?'':r.eq25,r.judgement,r.source]);
-  if(typeof XLSX!=='undefined'){const ws=XLSX.utils.aoa_to_sheet([heads,...data]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'未完工明細');XLSX.writeFile(wb,'未完工產能分析_目前明細.xlsx');}
+  const addedHeads=['擷取MSK','MSK類型','印刷分類','98-G100狀態','原單位未完工','未完工折合碼Y','25MM等效未完工Y','分析判斷'];
+  const heads=[...wipSourceHeaders,...addedHeads];
+  const data=wipFiltered.map(r=>{const original=(wipSourceRowMap.get(r.rowNo)||[]).slice();while(original.length<wipSourceHeaders.length)original.push('');return [...original,r.msk,r.type,r.printType,r.stageLabel,r.unfinished,r.unfinishedY,r.eq25==null?'':r.eq25,r.judgement];});
+  if(typeof XLSX!=='undefined'){const ws=XLSX.utils.aoa_to_sheet([heads,...data]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,(wipSourceSheetName||'未完工明細').slice(0,31));XLSX.writeFile(wb,'未完工產能分析_目前明細_保留原欄位.xlsx');}
 }
 function wipInit(){
   if(!$('wipExcelFile'))return;
   $('wipExcelFile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)wipImportFile(f);});
   $('wipQuickFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;wipQuick=b.dataset.filter;[...$('wipQuickFilters').querySelectorAll('button')].forEach(x=>x.classList.toggle('active',x===b));wipPage=1;wipRender();});
-  ['wipTypeFilter','wipUnitFilter','wipWidthFilter'].forEach(id=>$(id).addEventListener('change',()=>{wipPage=1;wipRender();}));
+  ['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter'].forEach(id=>$(id).addEventListener('change',()=>{wipPage=1;wipRender();}));
   $('wipSearch').addEventListener('input',()=>{wipPage=1;wipRender();});
   $('wipPrevPage').addEventListener('click',()=>{if(wipPage>1){wipPage--;wipRenderDetails();}});$('wipNextPage').addEventListener('click',()=>{if(wipPage*WIP_PAGE_SIZE<wipFiltered.length){wipPage++;wipRenderDetails();}});$('wipExportBtn').addEventListener('click',wipExportCurrent);
 }
