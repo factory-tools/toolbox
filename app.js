@@ -490,7 +490,7 @@ if($('quoteUnitPc')){
 
 /* V27 延伸：未完工產能分析（不含 V28 全製程功能） */
 const WIP_PAGE_SIZE=100;
-let wipRows=[],wipFiltered=[],wipPage=1,wipQuick='ALL',wipSourceHeaders=[],wipSourceRowMap=new Map(),wipSourceSheetName='';
+let wipRows=[],wipFiltered=[],wipPage=1,wipQuick='ALL',wipSourceHeaders=[],wipSourceRowMap=new Map(),wipSourceSheetName='',wipImportedRawCount=0;
 const WIP_TYPE_META={
   TD:{name:'手印 / IN TAY',group:'HAND'}, SPW:{name:'手印 / IN TAY',group:'HAND'},
   MD:{name:'機印 / IN MÁY',group:'MACHINE'}, MPW:{name:'機印 / IN MÁY',group:'MACHINE'},
@@ -576,15 +576,24 @@ async function wipImportFile(file){
     for(const name of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true});const h=wipFindHeader(matrix);if(h&&h.score>=7){chosen={name,matrix,h};break;}if(!chosen||h.score>chosen.h.score)chosen={name,matrix,h};}
     if(!chosen||chosen.h.score<7)throw new Error('找不到必要欄位。');
     const missing=['coname','comname','comemo','conote','conum','counit','cofinish','counum','coufinish','cowidth','coproc','cosproc'].filter(k=>chosen.h.map[k]==null);if(missing.length)throw new Error('缺少欄位 / Thiếu cột: '+missing.join(', '));
-    wipRows=[];wipSourceHeaders=(chosen.matrix[chosen.h.row]||[]).slice();wipSourceRowMap=new Map();wipSourceSheetName=chosen.name;
-    for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const arr=chosen.matrix[r]||[];if(arr.every(v=>v==null||String(v).trim()===''))continue;const rowNo=r+1;wipSourceRowMap.set(rowNo,arr.slice());wipRows.push(wipRowFromArray(arr,chosen.h.map,rowNo));}
-    wipQuick='ALL';wipPage=1;wipBuildFilters();$('wipAnalysisArea').classList.remove('hidden');status.textContent=`已完成：${chosen.name}，共 ${wipFmt(wipRows.length)} 筆 / Hoàn tất: ${wipFmt(wipRows.length)} dòng`;wipRender();
+    wipRows=[];wipImportedRawCount=0;wipSourceHeaders=(chosen.matrix[chosen.h.row]||[]).slice();wipSourceRowMap=new Map();wipSourceSheetName=chosen.name;
+    for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){
+      const arr=chosen.matrix[r]||[];if(arr.every(v=>v==null||String(v).trim()===''))continue;
+      wipImportedRawCount++;const rowNo=r+1;const parsed=wipRowFromArray(arr,chosen.h.map,rowNo);
+      // 本工具只分析「有辨識到 MSK 網版」的印刷資料；沒有網版的資料不進任何統計、篩選、明細或匯出。
+      if(!parsed.types.length)continue;
+      wipSourceRowMap.set(rowNo,arr.slice());wipRows.push(parsed);
+    }
+    wipQuick='ALL';wipPage=1;wipBuildFilters();$('wipAnalysisArea').classList.remove('hidden');
+    const excluded=Math.max(0,wipImportedRawCount-wipRows.length);
+    status.textContent=`已完成：${chosen.name}｜原始 ${wipFmt(wipImportedRawCount)} 筆；有 MSK 納入印刷分析 ${wipFmt(wipRows.length)} 筆；無 MSK ${wipFmt(excluded)} 筆不列入本工具統計 / Hoàn tất: ${wipFmt(wipRows.length)} dòng có MSK được đưa vào phân tích in; ${wipFmt(excluded)} dòng không có MSK không được tính`;
+    wipRender();
     if(chosen.h.map['cokeydate']==null)status.textContent+='　⚠ 找不到 CO_KEYDATE，30天統計暫無法計算';
   }catch(err){console.error(err);status.textContent='⚠ '+(err?.message||String(err));$('wipAnalysisArea').classList.add('hidden');}
 }
 function wipHasGroup(r,g){return r.groups?.includes(g);}
 function wipQuickMatch(r,key){
-  if(key==='ALL')return true;if(key==='HAND_TOTAL')return wipHasGroup(r,'HAND')||wipHasGroup(r,'HAND_TRANSFER');if(key==='MACHINE_TOTAL')return wipHasGroup(r,'MACHINE')||wipHasGroup(r,'MACHINE_TRANSFER');if(key==='TRANSFER')return wipHasGroup(r,'HAND_TRANSFER')||wipHasGroup(r,'MACHINE_TRANSFER');if(key==='PAD')return wipHasGroup(r,'PAD');if(key==='SPRAY')return wipHasGroup(r,'SPRAY');if(key==='FILM')return wipHasGroup(r,'FILM');if(key==='OVER30')return r.over30;if(key==='REVIEW')return !r.groups?.length||r.judgement!=='OK';return true;
+  if(key==='ALL')return true;if(key==='HAND_TOTAL')return wipHasGroup(r,'HAND')||wipHasGroup(r,'HAND_TRANSFER');if(key==='MACHINE_TOTAL')return wipHasGroup(r,'MACHINE')||wipHasGroup(r,'MACHINE_TRANSFER');if(key==='TRANSFER')return wipHasGroup(r,'HAND_TRANSFER')||wipHasGroup(r,'MACHINE_TRANSFER');if(key==='PAD')return wipHasGroup(r,'PAD');if(key==='SPRAY')return wipHasGroup(r,'SPRAY');if(key==='FILM')return wipHasGroup(r,'FILM');if(key==='OVER30')return r.over30;if(key==='REVIEW')return r.judgement!=='OK';return true;
 }
 function wipBuildFilters(){
   const setOpts=(id,vals)=>{const el=$(id);el.innerHTML='<option value="ALL">全部 / Tất cả</option>'+vals.map(v=>`<option value="${wipEsc(v)}">${wipEsc(v)}</option>`).join('');};
@@ -602,8 +611,8 @@ function wipFilterLabel(){
   const picks=[['wipTypeFilter','MSK'],['wipUnitFilter','單位'],['wipWidthFilter','寬度'],['wipStageFilter','98-G100'],['wipOverdueFilter','30天']];picks.forEach(([id,n])=>{const el=$(id);if(el.value!=='ALL')labels.push(`${n}: ${el.options[el.selectedIndex].text.split('/')[0].trim()}`);});if($('wipSearch').value.trim())labels.push('搜尋: '+$('wipSearch').value.trim());return labels.length?labels.join(' × '):'全部資料 / Tất cả dữ liệu';
 }
 function wipRender(){
-  wipApplyFilters();const allRec=wipRows.filter(r=>r.types.length).length;
-  $('wipKpiRows').textContent=wipFmt(wipRows.length);$('wipKpiRecognized').textContent=wipFmt(allRec);$('wipKpiOver30').textContent=wipFmt(wipRows.filter(r=>r.over30).length);$('wipKpi25').textContent=wipFmt(wipSum(wipRows,'eq25'),0)+' Y';
+  wipApplyFilters();
+  $('wipKpiRows').textContent=wipFmt(wipRows.length);$('wipKpiRecognized').textContent=wipFmt(wipRows.filter(r=>r.unfinished>0).length);$('wipKpiOver30').textContent=wipFmt(wipRows.filter(r=>r.over30).length);$('wipKpi25').textContent=wipFmt(wipSum(wipRows,'eq25'),0)+' Y';
   $('wipFilteredRows').textContent=wipFmt(wipFiltered.length);$('wipFilteredYards').textContent=wipFmt(wipSum(wipFiltered,'unfinishedY'),0)+' Y';$('wipFiltered25').textContent=wipFmt(wipSum(wipFiltered,'eq25'),0)+' Y';$('wipActiveFilterText').textContent=wipFilterLabel();
   const badY=wipFiltered.filter(r=>r.groups?.some(g=>g!=='FILM')&&r.yardStatus!=='OK').length;if($('wipFilteredYardIssues'))$('wipFilteredYardIssues').textContent=wipFmt(badY);
   wipRenderStageSummary();wipRenderCapacity();wipRenderOver30();wipRenderUnitSummary();wipRenderDetails();
@@ -653,7 +662,7 @@ function wipRenderDetails(){
 async function wipExportCurrent(){
   if(!wipFiltered.length)return;const addedHeads=['擷取MSK','MSK類型','涉及製程','98-G100狀態','原單位未完工','未完工折合碼Y','25MM等效未完工Y','膠片未完工雙','折合碼狀態','CO_KEYDATE解析','30天期限','逾期天數','是否超30天','分析判斷'];const heads=[...wipSourceHeaders,...addedHeads];
   const data=wipFiltered.map(r=>{const original=(wipSourceRowMap.get(r.rowNo)||[]).slice();while(original.length<wipSourceHeaders.length)original.push('');return [...original,r.msk,r.type,r.printType,r.stageLabel,r.unfinished,r.unfinishedY==null?'':r.unfinishedY,r.eq25==null?'':r.eq25,r.pairUnfinished==null?'':r.pairUnfinished,r.yardStatus,wipDateFmt(r.keyDate),wipDateFmt(r.deadline30),r.deadline30?r.overdueDays:'',r.over30?'超過30天':'',r.judgement];});
-  if(typeof ExcelJS==='undefined'){const ws=XLSX.utils.aoa_to_sheet([heads,...data]);ws['!autofilter']={ref:XLSX.utils.encode_range({r:0,c:0},{r:data.length,c:heads.length-1})};const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'明細 Chi tiết');XLSX.writeFile(wb,'未完工產能分析_目前明細.xlsx');return;}
+  if(typeof ExcelJS==='undefined'){const ws=XLSX.utils.aoa_to_sheet([heads,...data]);ws['!autofilter']={ref:XLSX.utils.encode_range({r:0,c:0},{r:data.length,c:heads.length-1})};const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'明細 Chi tiết');XLSX.writeFile(wb,'印刷未完工產能分析_目前明細.xlsx');return;}
   const wb=new ExcelJS.Workbook();wb.creator='工廠工具箱';const detail=wb.addWorksheet('明細 Chi tiết',{views:[{state:'frozen',ySplit:1}]});detail.addRow(heads);data.forEach(x=>detail.addRow(x));detail.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,data.length+1),column:heads.length}};const a0=wipSourceHeaders.length+1;detail.getRow(1).height=34;detail.getRow(1).eachCell((c,col)=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:col>=a0?'FF1F6D5A':'FF17365D'}};});heads.forEach((h,i)=>detail.getColumn(i+1).width=i>=wipSourceHeaders.length?20:Math.min(28,Math.max(11,String(h||'').length+4)));for(let r=2;r<=detail.rowCount;r++){const row=detail.getRow(r);row.eachCell((c,col)=>{c.alignment={vertical:'middle'};if(typeof c.value==='number')c.numFmt='#,##0.00';if(col>=a0)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F7F4'}};});if(String(row.getCell(a0+12).value||'').includes('超過30天'))for(let c=a0;c<=heads.length;c++)row.getCell(c).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFE5E5'}};if(String(row.getCell(a0+13).value||'')!=='OK')for(let c=a0;c<=heads.length;c++)row.getCell(c).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2CC'}};}
   const stat=wb.addWorksheet('製程未完工 Thống kê',{views:[{state:'frozen',ySplit:1}]});
   stat.addRow(['製程','筆數','已到98-G100未完工','未到98-G100未完工','總未完工','單位']);
@@ -662,7 +671,7 @@ async function wipExportCurrent(){
     stat.addRow([n,all.length,wipSum(arr,key),wipSum(not,key),wipSum(all,key),u]);
   });wipStyleSummarySheet(stat,[28,14,24,24,24,14]);
   const overdue=wb.addWorksheet('超30天 Quá 30 ngày',{views:[{state:'frozen',ySplit:1}]});overdue.addRow(['製程','超30天筆數','未完工標準量','單位']);[['手印總量',['HAND','HAND_TRANSFER'],'Y'],['機印總量',['MACHINE','MACHINE_TRANSFER'],'Y'],['移印',['PAD'],'Y'],['噴塗',['SPRAY'],'Y'],['膠片',['FILM'],'雙']].forEach(([n,gs,u])=>{const base=wipFiltered.filter(r=>r.over30),a=base.filter(r=>gs.some(g=>wipHasGroup(r,g)));let v=u==='雙'?wipSum(a,'pairUnfinished'):gs.reduce((s,g)=>s+wipSum(wipRowsForGroup(base,g),'eq25'),0);overdue.addRow([n,a.length,v,u]);});wipStyleSummarySheet(overdue,[28,18,24,14]);
-  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='未完工產能分析_目前明細_美化版.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷未完工產能分析_目前明細_美化版.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function wipStyleSummarySheet(ws,widths){ws.getRow(1).height=30;ws.getRow(1).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};});widths.forEach((w,i)=>ws.getColumn(i+1).width=w);for(let r=2;r<=ws.rowCount;r++)ws.getRow(r).eachCell((c,i)=>{c.alignment={vertical:'middle',horizontal:i===1?'left':'right'};if(i>1&&typeof c.value==='number')c.numFmt='#,##0.00';});}
 function wipClearAllFilters(){wipQuick='ALL';[...$('wipQuickFilters').querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.filter==='ALL'));['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter','wipOverdueFilter'].forEach(id=>$(id).value='ALL');$('wipSearch').value='';wipPage=1;wipRender();}
