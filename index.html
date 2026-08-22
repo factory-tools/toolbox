@@ -173,14 +173,16 @@
     <div class="primary"><span>25MM 等效未完工<br>Chưa hoàn thành quy đổi 25MM</span><b id="wipFiltered25">0 Y</b></div>
   </div>
 
-  <div class="wip-two-col">
-    <div><div class="wip-section-title">製程分類統計 / Thống kê theo loại in</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>分類 / Loại</th><th>筆數<br>Dòng</th><th>未完工折合碼<br>Yard</th><th>25MM 等效未完工<br>Yard 25MM</th></tr></thead><tbody id="wipProcessSummaryBody"></tbody></table></div></div>
-    <div><div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>分類 / Loại</th><th>CO_Unit</th><th>訂單量<br>CO_Num</th><th>已完工<br>CO_FINISH</th><th>未完工<br>Chưa hoàn thành</th></tr></thead><tbody id="wipUnitSummaryBody"></tbody></table></div></div>
-  </div>
+  <div class="wip-section-title">製程分類統計 / Thống kê theo loại in</div>
+  <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>分類 / Loại</th><th>筆數<br>Dòng</th><th>未完工折合碼<br>Yard</th><th>25MM 等效未完工<br>Yard 25MM</th></tr></thead><tbody id="wipProcessSummaryBody"></tbody></table></div>
 
+  <div class="wip-section-title wip-important-title">98-G100 製程到達量 / Lượng theo công đoạn tại 98-G100</div>
+  <div class="wip-stage-note">用 25MM 等效未完工量比較各製程目前已到手上的工作量，方便判斷加班需求。 / Dùng lượng chưa hoàn thành quy đổi 25MM để so sánh tải công việc đã tới từng công đoạn.</div>
+  <div class="table-scroll"><table class="wip-summary-table wip-stage-table"><thead><tr><th>製程 / Công đoạn</th><th>已到 98-G100<br>Đã tới</th><th>未到 98-G100<br>Chưa tới</th><th>合計<br>Tổng</th><th>已到占比<br>Tỷ lệ đã tới</th><th>明細<br>Chi tiết</th></tr></thead><tbody id="wipStageSummaryBody"></tbody></table></div>
 
-  <div class="wip-section-title">98-G100 到達狀態統計 / Thống kê trạng thái tới 98-G100</div>
-  <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>狀態 / Trạng thái</th><th>筆數<br>Dòng</th><th>未完工折合碼<br>Yard</th><th>25MM 等效未完工<br>Yard 25MM</th></tr></thead><tbody id="wipStageSummaryBody"></tbody></table></div>
+  <div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div>
+  <div class="wip-unit-note">依製程分組，點開需要看的製程才顯示 CO_Unit 明細，避免不同單位混在同一張長表。 / Nhóm theo công đoạn, bấm mở để xem chi tiết CO_Unit.</div>
+  <div id="wipUnitSummaryBody" class="wip-unit-groups"></div>
 
   <div class="wip-detail-head"><div class="wip-section-title">明細 / Chi tiết</div><div class="wip-detail-actions"><button id="wipExportBtn" type="button" class="excel-btn">下載目前明細 / Tải chi tiết</button><span id="wipPageInfo"></span></div></div>
   <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
@@ -210,4 +212,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="app.js?v=20260822-wip-capacity-v2"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20260822-wip-capacity-v3"></script></body></html>
