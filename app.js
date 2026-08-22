@@ -674,58 +674,62 @@ function wipRenderDetails(){
 
 async function wipExportProcessCapacity(){
   if(!wipRows.length)return;
-  const defs=[['HAND','手印 / In tay','Y'],['HAND_TRANSFER','手印→轉印 / In tay→In chuyển','Y'],['MACHINE','機印 / In máy','Y'],['MACHINE_TRANSFER','機印→轉印 / In máy→In chuyển','Y'],['PAD','移印 / In chấm','Y'],['SPRAY','噴塗 / Phun silicon','Y'],['FILM','膠片 / Đầu keo','雙']];
   const capacityRows=wipCapacityRowsArrived();
-  const rows=[];const dayMap={};
-  defs.forEach(([g,n,u])=>{
-    const arrived=wipRowsForGroup(wipFiltered.filter(r=>r.stage==='ARRIVED'),g);
-    const notArrived=wipRowsForGroup(wipFiltered.filter(r=>r.stage==='NOT_ARRIVED'),g);
-    const total=wipRowsForGroup(wipFiltered,g);
-    const key=g==='FILM'?'pairUnfinished':'eq25';
-    const cfg=wipCapacityCfg[g];
-    const metric=wipStandardMetric(capacityRows,g);
-    const effective=cfg.h>0?cfg.cap*(cfg.run/cfg.h):0;
-    const days=effective>0?metric.value/effective:0;dayMap[g]=days;
-    rows.push([n,total.length,wipSum(arrived,key),wipSum(notArrived,key),wipSum(total,key),u,cfg.cap,cfg.h,cfg.run,effective,metric.value,days]);
-  });
-  const handTotal=(dayMap.HAND||0)+(dayMap.HAND_TRANSFER||0),machineTotal=(dayMap.MACHINE||0)+(dayMap.MACHINE_TRANSFER||0);
-  const candidates=[['手印總負荷 / Tổng tải In tay',handTotal],['機印總負荷 / Tổng tải In máy',machineTotal],['移印 / In chấm',dayMap.PAD||0],['噴塗 / Phun silicon',dayMap.SPRAY||0],['膠片 / Đầu keo',dayMap.FILM||0]].sort((a,b)=>b[1]-a[1]);
-  const bottleneck=candidates[0]||['—',0];
-  const heads=['製程 / Công đoạn','筆數 / Số nét','已到98-G100未完工 / Chưa HT đã tới','未到98-G100未完工 / Chưa HT chưa tới','總未完工 / Tổng chưa HT','單位 / Đơn vị','標準產能 / Năng lực chuẩn','標準工時 / Giờ chuẩn','每日運轉 / Giờ chạy/ngày','有效每日產能 / Năng lực/ngày','已到98-G100計算量 / Lượng dùng tính ngày','預估需要天數 / Số ngày cần'];
-  const info=[
-    ['報表 / Báo cáo','印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày năng lực theo công đoạn'],
-    ['目前篩選 / Bộ lọc hiện tại',wipFilterLabel()],
-    ['天數計算基準 / Cơ sở tính số ngày','固定使用已到98-G100未完工量 / Luôn dùng lượng chưa hoàn thành đã tới 98-G100'],
-    ['瓶頸製程 / Công đoạn nghẽn',`${bottleneck[0]}｜${wipFmt(bottleneck[1],2)} 天 / ngày`],
-    ['手印總負荷 / Tổng tải In tay',`${wipFmt(handTotal,2)} 天 / ngày`],
-    ['機印總負荷 / Tổng tải In máy',`${wipFmt(machineTotal,2)} 天 / ngày`]
+  const arrivedBase=wipFiltered.filter(r=>r.stage==='ARRIVED');
+  const metric=(g)=>wipStandardMetric(capacityRows,g).value||0;
+  const cfg=(g)=>wipCapacityCfg[g]||{cap:0,h:24,run:24};
+  const effective=(g)=>{const c=cfg(g);return c.h>0?c.cap*(c.run/c.h):0;};
+  const days=(g)=>{const e=effective(g);return e>0?metric(g)/e:0;};
+  const qty=(g)=>{const key=g==='FILM'?'pairUnfinished':'eq25';return wipSum(wipRowsForGroup(arrivedBase,g),key);};
+
+  const handQty=qty('HAND')+qty('HAND_TRANSFER');
+  const machineQty=qty('MACHINE')+qty('MACHINE_TRANSFER');
+  const handDays=days('HAND')+days('HAND_TRANSFER');
+  const machineDays=days('MACHINE')+days('MACHINE_TRANSFER');
+  const handCap=`${wipFmt(cfg('HAND').cap,0)} + ${wipFmt(cfg('HAND_TRANSFER').cap,0)}`;
+  const machineCap=`${wipFmt(cfg('MACHINE').cap,0)} + ${wipFmt(cfg('MACHINE_TRANSFER').cap,0)}`;
+  const handHours=`${wipFmt(cfg('HAND').h,0)} / ${wipFmt(cfg('HAND_TRANSFER').h,0)}`;
+  const machineHours=`${wipFmt(cfg('MACHINE').h,0)} / ${wipFmt(cfg('MACHINE_TRANSFER').h,0)}`;
+  const handRun=`${wipFmt(cfg('HAND').run,0)} / ${wipFmt(cfg('HAND_TRANSFER').run,0)}`;
+  const machineRun=`${wipFmt(cfg('MACHINE').run,0)} / ${wipFmt(cfg('MACHINE_TRANSFER').run,0)}`;
+
+  const rows=[
+    ['手印（含轉印） / In tay (gồm in chuyển)',handQty,'Y',handCap,handHours,handRun,handDays],
+    ['機印（含轉印） / In máy (gồm in chuyển)',machineQty,'Y',machineCap,machineHours,machineRun,machineDays],
+    ['移印 / In chấm',qty('PAD'),'Y',cfg('PAD').cap,cfg('PAD').h,cfg('PAD').run,days('PAD')],
+    ['噴塗 / Phun silicon',qty('SPRAY'),'Y',cfg('SPRAY').cap,cfg('SPRAY').h,cfg('SPRAY').run,days('SPRAY')],
+    ['膠片 / Đầu keo',qty('FILM'),'雙 / Đôi',cfg('FILM').cap,cfg('FILM').h,cfg('FILM').run,days('FILM')]
   ];
+  const maxDays=Math.max(...rows.map(r=>Number(r[6])||0));
+  const heads=['製程 / Công đoạn','已到98-G100未完工 / Chưa HT đã tới 98-G100','單位 / Đơn vị','標準產能 / Năng lực chuẩn','標準工時 / Giờ chuẩn','每日運轉 / Giờ chạy/ngày','需要消化天數 / Số ngày cần'];
+  const title='印刷加班申請－已到98-G100未完工與產能 / Đề nghị tăng ca in - lượng chưa HT đã tới 98-G100 & năng lực';
+
   if(typeof ExcelJS==='undefined'){
-    const aoa=[...info,[],heads,...rows,[],['備註 / Ghi chú','手印總負荷＝手印天數＋手印→轉印天數；機印總負荷＝機印天數＋機印→轉印天數。 / Tổng tải In tay = In tay + In tay→In chuyển; Tổng tải In máy = In máy + In máy→In chuyển.']];
-    const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!autofilter']={ref:`A${info.length+2}:L${info.length+2+rows.length}`};
-    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'製程產能 Công đoạn');XLSX.writeFile(wb,'印刷製程未完工_產能天數.xlsx');return;
+    const aoa=[[title],['計算基準 / Cơ sở','僅計算已到98-G100未完工量 / Chỉ tính lượng chưa hoàn thành đã tới 98-G100'],[],heads,...rows];
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:34},{wch:24},{wch:12},{wch:22},{wch:16},{wch:18},{wch:18}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'加班申請 Tăng ca');XLSX.writeFile(wb,'印刷加班申請_已到98G100.xlsx');return;
   }
+
   const wb=new ExcelJS.Workbook();wb.creator='工廠工具箱';
-  const ws=wb.addWorksheet('製程產能 Công đoạn',{views:[{state:'frozen',ySplit:9}]});
-  ws.mergeCells('A1:L1');const title=ws.getCell('A1');title.value='印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày năng lực theo công đoạn';title.font={bold:true,size:16,color:{argb:'FFFFFFFF'}};title.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}};title.alignment={horizontal:'center',vertical:'middle'};ws.getRow(1).height=28;
-  info.slice(1).forEach((x,i)=>{const r=3+i;ws.getCell(r,1).value=x[0];ws.getCell(r,1).font={bold:true};ws.getCell(r,2).value=x[1];ws.mergeCells(r,2,r,12);ws.getCell(r,2).alignment={wrapText:true};});
-  const headerRow=9;ws.addRow([]);while(ws.rowCount<headerRow-1)ws.addRow([]);ws.addRow(heads);
-  ws.getRow(headerRow).height=38;ws.getRow(headerRow).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E78'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+  const ws=wb.addWorksheet('加班申請 Tăng ca',{views:[{state:'frozen',ySplit:4}]});
+  ws.pageSetup={paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:1,margins:{left:0.25,right:0.25,top:0.35,bottom:0.35,header:0.15,footer:0.15}};
+  ws.mergeCells('A1:G1');const t=ws.getCell('A1');t.value=title;t.font={bold:true,size:15,color:{argb:'FFFFFFFF'}};t.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}};t.alignment={horizontal:'center',vertical:'middle'};ws.getRow(1).height=27;
+  ws.mergeCells('A2:G2');const note=ws.getCell('A2');note.value='計算基準：僅計算已到98-G100未完工量 / Cơ sở: chỉ tính lượng chưa hoàn thành đã tới 98-G100';note.font={italic:true,size:10,color:{argb:'FF5B6573'}};note.alignment={horizontal:'left',vertical:'middle'};ws.getRow(2).height=20;
+  ws.addRow([]);ws.addRow(heads);const hr=4;
+  ws.getRow(hr).height=34;ws.getRow(hr).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E78'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border={top:{style:'thin',color:{argb:'FFB8C7D9'}},bottom:{style:'thin',color:{argb:'FFB8C7D9'}},left:{style:'thin',color:{argb:'FFB8C7D9'}},right:{style:'thin',color:{argb:'FFB8C7D9'}}};});
   rows.forEach(row=>ws.addRow(row));
-  ws.autoFilter={from:{row:headerRow,column:1},to:{row:headerRow+rows.length,column:12}};
-  const totalStart=headerRow+rows.length+2;
-  ws.getCell(totalStart,1).value='手印總負荷 / Tổng tải In tay';ws.getCell(totalStart,12).value=handTotal;
-  ws.getCell(totalStart+1,1).value='機印總負荷 / Tổng tải In máy';ws.getCell(totalStart+1,12).value=machineTotal;
-  ws.getCell(totalStart+2,1).value='瓶頸製程 / Công đoạn nghẽn';ws.getCell(totalStart+2,2).value=bottleneck[0];ws.getCell(totalStart+2,12).value=bottleneck[1];
-  for(let r=totalStart;r<=totalStart+2;r++){for(let c=1;c<=12;c++){const cell=ws.getCell(r,c);cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2CC'}};cell.font={bold:true};}}
-  const widths=[28,14,22,22,20,12,18,16,18,20,24,18];widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
-  for(let r=headerRow+1;r<=headerRow+rows.length;r++){
-    for(let c=1;c<=12;c++){const cell=ws.getCell(r,c);cell.alignment={vertical:'middle',horizontal:c===1?'left':'right',wrapText:c===1};cell.border={bottom:{style:'thin',color:{argb:'FFD9E2F3'}}};}
-    [3,4,5,7,10,11].forEach(c=>ws.getCell(r,c).numFmt='#,##0.00');ws.getCell(r,12).numFmt='0.00';
+  for(let r=5;r<=4+rows.length;r++){
+    const isBottle=Math.abs((Number(ws.getCell(r,7).value)||0)-maxDays)<0.000001&&maxDays>0;
+    for(let c=1;c<=7;c++){
+      const cell=ws.getCell(r,c);cell.alignment={vertical:'middle',horizontal:c===1?'left':'center',wrapText:c===1};cell.border={top:{style:'thin',color:{argb:'FFD7DFEA'}},bottom:{style:'thin',color:{argb:'FFD7DFEA'}},left:{style:'thin',color:{argb:'FFD7DFEA'}},right:{style:'thin',color:{argb:'FFD7DFEA'}}};
+      if(isBottle)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2CC'}};
+    }
+    ws.getCell(r,2).numFmt='#,##0';ws.getCell(r,7).numFmt='0.00';ws.getRow(r).height=25;
   }
-  ws.getColumn(2).numFmt='#,##0';ws.getColumn(8).numFmt='0';ws.getColumn(9).numFmt='0';
-  ws.getCell(totalStart,12).numFmt='0.00';ws.getCell(totalStart+1,12).numFmt='0.00';ws.getCell(totalStart+2,12).numFmt='0.00';
-  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷製程未完工_產能天數.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  ws.getColumn(1).width=34;ws.getColumn(2).width=24;ws.getColumn(3).width=12;ws.getColumn(4).width=23;ws.getColumn(5).width=16;ws.getColumn(6).width=18;ws.getColumn(7).width=18;
+  ws.printArea=`A1:G${4+rows.length}`;
+  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷加班申請_已到98G100.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
 async function wipExportCurrent(){
