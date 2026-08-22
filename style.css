@@ -97,3 +97,10 @@
 .wip-current-summary .warning{background:#fff8e7;border-color:#e7c776}
 .wip-current-summary .warning b{color:#9a5c00}
 @media(max-width:760px){.wip-current-summary{grid-template-columns:1fr 1fr}}
+/* V27 merged process + capacity */
+.wip-stage-matrix th,.wip-stage-matrix td{vertical-align:middle}
+.wip-stage-matrix .wip-cap-input{width:88px;min-width:72px;padding:7px 8px;font-size:15px}
+.wip-stage-matrix .wip-cap-input.small{width:62px;min-width:56px}
+.wip-stage-matrix .wip-cap-input.compact-select{width:86px;min-width:80px}
+.wip-stage-matrix th{white-space:nowrap}
+.wip-muted{font-size:12px;color:#68758d;font-weight:400}

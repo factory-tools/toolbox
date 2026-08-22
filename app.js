@@ -612,21 +612,33 @@ function wipFilterLabel(){
 }
 function wipRender(){
   wipApplyFilters();
-  $('wipKpiRows').textContent=wipFmt(wipRows.length);$('wipKpiRecognized').textContent=wipFmt(wipRows.filter(r=>r.unfinished>0).length);$('wipKpiOver30').textContent=wipFmt(wipRows.filter(r=>r.over30).length);$('wipKpi25').textContent=wipFmt(wipSum(wipRows,'eq25'),0)+' Y';
-  $('wipFilteredRows').textContent=wipFmt(wipFiltered.length);$('wipFilteredYards').textContent=wipFmt(wipSum(wipFiltered,'unfinishedY'),0)+' Y';$('wipFiltered25').textContent=wipFmt(wipSum(wipFiltered,'eq25'),0)+' Y';$('wipActiveFilterText').textContent=wipFilterLabel();
+  if($('wipKpiRows'))$('wipKpiRows').textContent=wipFmt(wipRows.length);
+  if($('wipKpiRecognized'))$('wipKpiRecognized').textContent=wipFmt(wipRows.filter(r=>r.unfinished>0).length);
+  if($('wipKpiOver30'))$('wipKpiOver30').textContent=wipFmt(wipRows.filter(r=>r.over30).length);
+  if($('wipKpi25'))$('wipKpi25').textContent=wipFmt(wipSum(wipRows,'eq25'),0)+' Y';
+  if($('wipFilteredRows'))$('wipFilteredRows').textContent=wipFmt(wipFiltered.length);
+  if($('wipFilteredYards'))$('wipFilteredYards').textContent=wipFmt(wipSum(wipFiltered,'unfinishedY'),0)+' Y';
+  if($('wipFiltered25'))$('wipFiltered25').textContent=wipFmt(wipSum(wipFiltered,'eq25'),0)+' Y';
+  $('wipActiveFilterText').textContent=wipFilterLabel();
   const badY=wipFiltered.filter(r=>r.groups?.some(g=>g!=='FILM')&&r.yardStatus!=='OK').length;if($('wipFilteredYardIssues'))$('wipFilteredYardIssues').textContent=wipFmt(badY);
-  wipRenderStageSummary();wipRenderCapacity();wipRenderOver30();wipRenderUnitSummary();wipRenderDetails();
+  wipRenderStageSummary();wipRenderOver30();wipRenderUnitSummary();wipRenderDetails();
 }
 function wipRenderStageSummary(){
-  const defs=[['HAND','手印'],['HAND_TRANSFER','手印→轉印'],['MACHINE','機印'],['MACHINE_TRANSFER','機印→轉印'],['PAD','移印'],['SPRAY','噴塗'],['FILM','膠片']];
-  $('wipStageMatrixHead').innerHTML='<tr><th>製程 / Công đoạn</th><th>筆數<br><small>Dòng</small></th><th>已到 98-G100 未完工<br><small>Đã tới</small></th><th>未到 98-G100 未完工<br><small>Chưa tới</small></th><th>總未完工<br><small>Tổng chưa HT</small></th></tr>';
-  $('wipStageSummaryBody').innerHTML=defs.map(([g,n])=>{
+  const defs=[['HAND','手印 / In tay','Y'],['HAND_TRANSFER','手印→轉印 / In tay→In chuyển','Y'],['MACHINE','機印 / In máy','Y'],['MACHINE_TRANSFER','機印→轉印 / In máy→In chuyển','Y'],['PAD','移印 / In chấm','Y'],['SPRAY','噴塗 / Phun silicon','Y'],['FILM','膠片 / Đầu keo','雙']];
+  $('wipStageMatrixHead').innerHTML='<tr><th>製程 / Công đoạn</th><th>筆數<br><small>Số nét</small></th><th>已到98-G100未完工<br><small>Chưa HT đã tới 98-G100</small></th><th>未到98-G100未完工<br><small>Chưa HT chưa tới 98-G100</small></th><th>總未完工<br><small>Tổng chưa HT</small></th><th>標準產能<br><small>Năng lực chuẩn</small></th><th>標準工時<br><small>Giờ chuẩn</small></th><th>每日運轉<br><small>Giờ chạy/ngày</small></th><th>預估需要天數<br><small>Số ngày cần</small></th></tr>';
+  const capacityRows=wipCapacityRowsArrived(); let days={};
+  $('wipStageSummaryBody').innerHTML=defs.map(([g,n,u])=>{
     const arrived=wipRowsForGroup(wipFiltered.filter(r=>r.stage==='ARRIVED'),g);
     const notArrived=wipRowsForGroup(wipFiltered.filter(r=>r.stage==='NOT_ARRIVED'),g);
     const total=wipRowsForGroup(wipFiltered,g);
-    const key=g==='FILM'?'pairUnfinished':'eq25', unit=g==='FILM'?'雙':'Y';
-    return `<tr><td><b>${n}</b><br><small>${g==='FILM'?'雙':'25MM Y'}</small></td><td>${wipFmt(total.length)}</td><td>${wipFmt(wipSum(arrived,key),0)} ${unit}</td><td>${wipFmt(wipSum(notArrived,key),0)} ${unit}</td><td><b>${wipFmt(wipSum(total,key),0)} ${unit}</b></td></tr>`;
+    const key=g==='FILM'?'pairUnfinished':'eq25';
+    const cfg=wipCapacityCfg[g], metric=wipStandardMetric(capacityRows,g), eff=cfg.cap*(cfg.run/cfg.h), d=eff>0?metric.value/eff:0; days[g]=d;
+    return `<tr><td><b>${n}</b><br><small>${g==='FILM'?'雙 / đôi':'25MM Y'}</small></td><td>${wipFmt(total.length)}</td><td><b>${wipFmt(wipSum(arrived,key),0)} ${u}</b></td><td>${wipFmt(wipSum(notArrived,key),0)} ${u}</td><td><b>${wipFmt(wipSum(total,key),0)} ${u}</b></td><td><input class="wip-cap-input" data-cap-group="${g}" data-field="cap" type="number" min="0" step="1" value="${cfg.cap}"> ${u}</td><td><input class="wip-cap-input small" data-cap-group="${g}" data-field="h" type="number" min="1" step="1" value="${cfg.h}"> h</td><td><select class="wip-cap-input compact-select" data-cap-group="${g}" data-field="run"><option value="12" ${cfg.run===12?'selected':''}>12h</option><option value="16" ${cfg.run===16?'selected':''}>16h（+4h）</option><option value="24" ${cfg.run===24?'selected':''}>24h</option></select></td><td><b>${wipFmt(d,2)} 天 / ngày</b></td></tr>`;
   }).join('');
+  const handTotal=days.HAND+days.HAND_TRANSFER,machineTotal=days.MACHINE+days.MACHINE_TRANSFER;
+  const candidates=[['手印總負荷 / Tổng tải In tay',handTotal],['機印總負荷 / Tổng tải In máy',machineTotal],['移印 / In chấm',days.PAD],['噴塗 / Phun silicon',days.SPRAY],['膠片 / Đầu keo',days.FILM]].sort((a,b)=>b[1]-a[1]);
+  const top=candidates[0];
+  $('wipBottleneck').innerHTML=`<div><b>手印總負荷 / Tổng tải In tay：</b>${wipFmt(handTotal,2)} 天 / ngày　<span class="wip-muted">（手印＋手印→轉印共用手印桌 / In tay + In tay→In chuyển dùng chung bàn in tay）</span></div><div><b>機印總負荷 / Tổng tải In máy：</b>${wipFmt(machineTotal,2)} 天 / ngày</div>`+(top&&top[1]>0?`<div>目前瓶頸製程 / Công đoạn nghẽn：<b>${top[0]}</b>，依已到98-G100未完工量與目前產能設定，約需 <b>${wipFmt(top[1],2)} 天 / ngày</b>。</div>`:'<div>目前已到98-G100沒有可計算的未完工負荷。 / Hiện chưa có tải chưa hoàn thành đã tới 98-G100 để tính.</div>');
 }
 function wipRenderProcessSummary(){
   const defs=[['HAND','手印'],['HAND_TRANSFER','手印→轉印'],['HAND_TOTAL','手印總量'],['MACHINE','機印'],['MACHINE_TRANSFER','機印→轉印'],['MACHINE_TOTAL','機印總量'],['PAD','移印'],['SPRAY','噴塗'],['FILM','膠片']];
@@ -637,7 +649,7 @@ function wipRenderProcessSummary(){
 }
 function wipRenderUnitSummary(){
   const defs=[['手印 / In tay',['HAND']],['手印→轉印 / In tay chuyển',['HAND_TRANSFER']],['機印 / In máy',['MACHINE']],['機印→轉印 / In máy chuyển',['MACHINE_TRANSFER']],['移印 / In chấm',['PAD']],['噴塗 / Phun silicon',['SPRAY']],['膠片 / Đầu keo',['FILM']]];
-  $('wipUnitSummaryBody').innerHTML=defs.map(([name,groups])=>{const rows=wipFiltered.filter(r=>groups.some(g=>wipHasGroup(r,g)));if(!rows.length)return'';const map=new Map();rows.forEach(r=>{const k=r.unit||'空白';if(!map.has(k))map.set(k,{unit:k,n:0,f:0,u:0,rows:0});const x=map.get(k);x.n+=r.coNum;x.f+=r.coFinish;x.u+=r.unfinished;x.rows++;});const body=[...map.values()].sort((a,b)=>String(a.unit).localeCompare(String(b.unit),undefined,{numeric:true})).map(x=>`<tr><td><b>${wipEsc(x.unit)}</b></td><td>${wipFmt(x.n,2)}</td><td>${wipFmt(x.f,2)}</td><td><b>${wipFmt(x.u,2)}</b></td></tr>`).join('');return `<details class="wip-unit-group"><summary><span>${name}</span><span class="wip-unit-meta">${wipFmt(rows.length)} 筆 · ${wipFmt(map.size)} 種單位 ＋</span></summary><div class="wip-unit-inner"><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>CO_Unit</th><th>訂單量 CO_Num</th><th>已完工 CO_FINISH</th><th>未完工</th></tr></thead><tbody>${body}</tbody></table></div></div></details>`;}).join('')||'<div class="wip-unit-empty">無資料 / Không có dữ liệu</div>';
+  $('wipUnitSummaryBody').innerHTML=defs.map(([name,groups])=>{const rows=wipFiltered.filter(r=>groups.some(g=>wipHasGroup(r,g)));if(!rows.length)return'';const map=new Map();rows.forEach(r=>{const k=r.unit||'空白';if(!map.has(k))map.set(k,{unit:k,n:0,f:0,u:0,rows:0});const x=map.get(k);x.n+=r.coNum;x.f+=r.coFinish;x.u+=r.unfinished;x.rows++;});const body=[...map.values()].sort((a,b)=>String(a.unit).localeCompare(String(b.unit),undefined,{numeric:true})).map(x=>`<tr><td><b>${wipEsc(x.unit)}</b></td><td>${wipFmt(x.n,2)}</td><td>${wipFmt(x.f,2)}</td><td><b>${wipFmt(x.u,2)}</b></td></tr>`).join('');return `<details class="wip-unit-group"><summary><span>${name}</span><span class="wip-unit-meta">${wipFmt(rows.length)} 筆 / nét · ${wipFmt(map.size)} 種單位 / loại đơn vị ＋</span></summary><div class="wip-unit-inner"><div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>CO_Unit</th><th>訂單量 CO_Num</th><th>已完工 CO_FINISH</th><th>未完工</th></tr></thead><tbody>${body}</tbody></table></div></div></details>`;}).join('')||'<div class="wip-unit-empty">無資料 / Không có dữ liệu</div>';
 }
 function wipCapacityRowsArrived(){
   const type=$('wipTypeFilter').value,unit=$('wipUnitFilter').value,width=$('wipWidthFilter').value,od=$('wipOverdueFilter').value,q=$('wipSearch').value.trim().toUpperCase();
@@ -656,7 +668,7 @@ function wipRenderOver30(){
   $('wipOver30SummaryBody').innerHTML=defs.map(([n,test,u])=>{const a=rows.filter(test);let v;if(n==='手印總量')v=wipSum(wipRowsForGroup(rows,'HAND'),'eq25')+wipSum(wipRowsForGroup(rows,'HAND_TRANSFER'),'eq25');else if(n==='機印總量')v=wipSum(wipRowsForGroup(rows,'MACHINE'),'eq25')+wipSum(wipRowsForGroup(rows,'MACHINE_TRANSFER'),'eq25');else if(u==='雙')v=wipSum(a,'pairUnfinished');else v=wipSum(a,'eq25');return `<tr><td>${n}</td><td>${wipFmt(a.length)}</td><td><b>${wipFmt(v,0)}</b></td><td>${u}</td></tr>`;}).join('');
 }
 function wipRenderDetails(){
-  const pages=Math.max(1,Math.ceil(wipFiltered.length/WIP_PAGE_SIZE));if(wipPage>pages)wipPage=pages;const start=(wipPage-1)*WIP_PAGE_SIZE,rows=wipFiltered.slice(start,start+WIP_PAGE_SIZE);$('wipPageInfo').textContent=`${wipPage} / ${pages}（${wipFmt(wipFiltered.length)} 筆）`;$('wipPrevPage').disabled=wipPage<=1;$('wipNextPage').disabled=wipPage>=pages;
+  const pages=Math.max(1,Math.ceil(wipFiltered.length/WIP_PAGE_SIZE));if(wipPage>pages)wipPage=pages;const start=(wipPage-1)*WIP_PAGE_SIZE,rows=wipFiltered.slice(start,start+WIP_PAGE_SIZE);$('wipPageInfo').textContent=`${wipPage} / ${pages}（${wipFmt(wipFiltered.length)} 筆 / nét）`;$('wipPrevPage').disabled=wipPage<=1;$('wipNextPage').disabled=wipPage>=pages;
   $('wipDetailBody').innerHTML=rows.map(r=>`<tr class="${r.judgement==='OK'?'':'wip-review-row'}"><td>${r.rowNo}</td><td class="msk-cell">${wipEsc(r.msk||'—')}</td><td>${wipEsc(r.type||'—')}</td><td>${wipEsc(r.printType)}</td><td><b>${r.stageLabel}</b></td><td>${wipEsc(r.coProc||'—')}</td><td>${wipEsc(r.coSproc||'—')}</td><td>${wipEsc(r.unit)}</td><td>${r.width>0?wipFmt(r.width,2):'⚠'}</td><td>${wipFmt(r.coNum,2)}</td><td>${wipFmt(r.coFinish,2)}</td><td><b>${wipFmt(r.unfinished,2)}</b></td><td>${r.unum==null?'—':wipFmt(r.unum,2)}</td><td>${r.ufinish==null?'—':wipFmt(r.ufinish,2)}</td><td>${r.unfinishedY==null?'⚠':wipFmt(r.unfinishedY,2)+' Y'}</td><td>${r.eq25==null?'⚠':wipFmt(r.eq25,2)+' Y'}</td><td>${r.pairUnfinished==null?'—':wipFmt(r.pairUnfinished,2)+' 雙'}</td><td>${wipEsc(r.yardStatus)}</td><td>${wipDateFmt(r.keyDate)}</td><td>${wipDateFmt(r.deadline30)}</td><td>${r.deadline30?wipFmt(r.overdueDays)+' 天':'—'}</td><td>${r.over30?'🔴 超過30天 / Quá 30 ngày':'—'}</td><td>${wipEsc(r.judgement)}</td><td class="source-cell" title="${wipEsc(r.source)}">${wipEsc(r.source)}</td></tr>`).join('')||'<tr><td colspan="24">沒有符合篩選條件的資料 / Không có dữ liệu phù hợp</td></tr>';
 }
 async function wipExportCurrent(){
@@ -677,7 +689,7 @@ function wipStyleSummarySheet(ws,widths){ws.getRow(1).height=30;ws.getRow(1).eac
 function wipClearAllFilters(){wipQuick='ALL';[...$('wipQuickFilters').querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.filter==='ALL'));['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter','wipOverdueFilter'].forEach(id=>$(id).value='ALL');$('wipSearch').value='';wipPage=1;wipRender();}
 function wipInit(){
   if(!$('wipExcelFile'))return;$('wipExcelFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)wipImportFile(f);});$('wipQuickFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;wipQuick=b.dataset.filter;[...$('wipQuickFilters').querySelectorAll('button')].forEach(x=>x.classList.toggle('active',x===b));wipPage=1;wipRender();});['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter','wipOverdueFilter'].forEach(id=>$(id).addEventListener('change',()=>{wipPage=1;wipRender();}));$('wipSearch').addEventListener('input',()=>{wipPage=1;wipRender();});$('wipClearFilters').addEventListener('click',wipClearAllFilters);
-  $('wipCapacityBody').addEventListener('change',e=>{const el=e.target.closest('[data-cap-group]');if(!el)return;const g=el.dataset.capGroup,f=el.dataset.field,v=Number(el.value);if(!wipCapacityCfg[g])return;if(f==='run')wipCapacityCfg[g].run=v||24;else wipCapacityCfg[g][f]=Math.max(0,v||0);wipSaveCapacity();wipRenderCapacity();});
+  $('wipCapacityBody').addEventListener('change',e=>{const el=e.target.closest('[data-cap-group]');if(!el)return;const g=el.dataset.capGroup,f=el.dataset.field,v=Number(el.value);if(!wipCapacityCfg[g])return;if(f==='run')wipCapacityCfg[g].run=v||24;else wipCapacityCfg[g][f]=Math.max(0,v||0);wipSaveCapacity();wipRenderStageSummary();});
   $('wipPrevPage').addEventListener('click',()=>{if(wipPage>1){wipPage--;wipRenderDetails();}});$('wipNextPage').addEventListener('click',()=>{if(wipPage*WIP_PAGE_SIZE<wipFiltered.length){wipPage++;wipRenderDetails();}});$('wipExportBtn').addEventListener('click',wipExportCurrent);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wipInit);else wipInit();

@@ -163,41 +163,25 @@
     <div class="wip-active-filter"><span>目前套用 / Đang áp dụng：</span><b id="wipActiveFilterText">全部資料 / Tất cả dữ liệu</b></div>
   </div>
 
-  <div class="wip-kpis">
-    <div><span>印刷資料筆數（有MSK）<br>Số dòng in có MSK</span><b id="wipKpiRows">0</b></div>
-    <div><span>印刷未完工筆數<br>Dòng in chưa hoàn thành</span><b id="wipKpiRecognized">0</b></div>
-    <div><span>印刷超30天筆數<br>Dòng in quá 30 ngày</span><b id="wipKpiOver30">0</b></div>
-    <div class="primary"><span>印刷25MM等效未完工<br>Lượng in chưa HT quy đổi 25MM</span><b id="wipKpi25">0 Y</b></div>
+  <div class="wip-section-title wip-important-title">印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày năng lực theo công đoạn</div>
+  <div class="wip-stage-note">
+    本表只統計「有辨識到 MSK 網版」的印刷資料；沒有 MSK 的訂單不列入本工具。已到／未到／總未完工依目前篩選條件顯示；「預估需要天數」固定只用已到 98-G100 的未完工量計算，因為這些是已收到料、目前需要消化的量。手印、機印、轉印、移印、噴塗以 25MM 等效 Y 統計，膠片以「雙」統計。原始 CO_Unit 請在下方點開查看。Y 僅使用 co_unum − co_ufinish 換算。<br>
+    Bảng này chỉ thống kê dữ liệu <b>in</b> có nhận diện được MSK; đơn không có MSK không được tính. Lượng đã tới / chưa tới / tổng chưa hoàn thành thay đổi theo bộ lọc hiện tại; riêng “số ngày cần” luôn tính theo lượng chưa hoàn thành <b>đã tới 98-G100</b>, tức lượng nguyên liệu đã nhận và cần xử lý. In tay, in máy, in chuyển, in chấm và phun silicon dùng Yard quy đổi 25MM; đầu keo dùng đơn vị đôi. Có thể mở phần đơn vị gốc CO_Unit bên dưới để đối chiếu. Yard chỉ lấy từ co_unum − co_ufinish.
   </div>
-
-  <div class="wip-section-title">目前篩選統計 / Thống kê theo bộ lọc</div>
-  <div class="wip-current-summary">
-    <div><span>印刷明細筆數<br>Số dòng in</span><b id="wipFilteredRows">0</b></div>
-    <div><span>印刷未完工折合碼<br>Yard in chưa hoàn thành</span><b id="wipFilteredYards">0 Y</b></div>
-    <div class="primary"><span>印刷25MM等效未完工<br>Lượng in chưa HT quy đổi 25MM</span><b id="wipFiltered25">0 Y</b></div>
-    <div class="warning"><span>折合碼異常筆數<br>Dòng quy đổi bất thường</span><b id="wipFilteredYardIssues">0</b></div>
-  </div>
-
-  <div class="wip-section-title wip-important-title">印刷製程未完工統計 / Thống kê lượng in chưa hoàn thành theo công đoạn</div>
-  <div class="wip-stage-note">本表只統計「有辨識到 MSK 網版」的印刷資料；沒有 MSK 的訂單完全不進入本工具統計。每個製程直接看已到98-G100、未到與總未完工。手印、機印、轉印、移印、噴塗以25MM等效Y，膠片以「雙」統計；原始 CO_Unit 請在下方點開查看。Y 統計只使用 co_unum − co_ufinish。</div>
-  <div class="table-scroll"><table class="wip-summary-table wip-stage-matrix"><thead id="wipStageMatrixHead"></thead><tbody id="wipStageSummaryBody"></tbody></table></div>
-
-  <div class="wip-section-title">產能設定與已到98-G100未完工天數 / Thiết lập năng lực & số ngày cần cho lượng đã tới 98-G100</div>
-  <div class="wip-capacity-note">此區只計算「已到 98-G100」的未完工量，也就是已收到料、目前真正需要消化的量。預設為你提供的 24 小時標準產能，可直接修改；「每日運轉」可選 12h、16h（平日+4h）、24h。手印與手印→轉印共用手印桌，因此另計「手印總負荷」。</div>
-  <div class="table-scroll"><table class="wip-summary-table wip-capacity-table"><thead><tr><th>製程</th><th>標準產能</th><th>標準工時</th><th>每日運轉</th><th>已到98-G100未完工</th><th>預估需要天數</th></tr></thead><tbody id="wipCapacityBody"></tbody></table></div>
+  <div class="table-scroll"><table class="wip-summary-table wip-capacity-table wip-stage-matrix"><thead id="wipStageMatrixHead"></thead><tbody id="wipStageSummaryBody"></tbody></table></div>
   <div id="wipBottleneck" class="wip-bottleneck"></div>
 
   <div class="wip-section-title">超過30天未完工 / Chưa hoàn thành quá 30 ngày</div>
-  <div class="wip-overdue-note">期限＝CO_KEYDATE 往後加 30 個工作天，星期日不計；從隔天開始計算。手印與手印→轉印合併為「手印總量」。</div>
+  <div class="wip-overdue-note">期限＝CO_KEYDATE 往後加 30 個工作天，星期日不計，從隔天開始計算；手印與手印→轉印合併為「手印總量」。 / Hạn = CO_KEYDATE + 30 ngày làm việc, không tính Chủ nhật và bắt đầu tính từ ngày kế tiếp; In tay và In tay→In chuyển được gộp thành tổng In tay.</div>
   <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>製程 / Công đoạn</th><th>超30天筆數<br>Dòng</th><th>超30天未完工<br>Chưa HT quá 30 ngày</th><th>單位</th></tr></thead><tbody id="wipOver30SummaryBody"></tbody></table></div>
 
   <div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div>
-  <div class="wip-unit-note">主表已把所有單位合併；需要核對時才點開各製程查看 CO_Unit。 / Chỉ mở khi cần đối chiếu đơn vị gốc.</div>
+  <div class="wip-unit-note">主表已合併各原始單位；需要核對時再點開各製程查看 CO_Unit。 / Bảng chính đã gộp các đơn vị gốc; chỉ mở từng công đoạn khi cần đối chiếu CO_Unit.</div>
   <div id="wipUnitSummaryBody" class="wip-unit-groups"></div>
 
   <div class="wip-detail-head"><div class="wip-section-title">明細 / Chi tiết</div><div class="wip-detail-actions"><button id="wipExportBtn" type="button" class="excel-btn">下載目前明細 / Tải chi tiết</button><span id="wipPageInfo"></span></div></div>
   <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
-    <th>#</th><th>MSK</th><th>MSK類型</th><th>涉及製程</th><th>98-G100狀態</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼</th><th>25MM等效未完工</th><th>膠片未完工雙</th><th>折合碼狀態</th><th>CO_KEYDATE</th><th>30天期限</th><th>逾期天數</th><th>是否超30天</th><th>判斷</th><th>來源內容</th>
+    <th>#</th><th>MSK</th><th>MSK類型<br>Loại MSK</th><th>涉及製程<br>Công đoạn</th><th>98-G100狀態<br>Trạng thái</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工<br>Chưa HT đơn vị gốc</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼<br>Yard chưa HT</th><th>25MM等效未完工<br>Quy đổi 25MM</th><th>膠片未完工雙<br>Đôi đầu keo chưa HT</th><th>折合碼狀態<br>Trạng thái quy đổi</th><th>CO_KEYDATE</th><th>30天期限<br>Hạn 30 ngày</th><th>逾期天數<br>Số ngày trễ</th><th>是否超30天<br>Quá 30 ngày?</th><th>判斷<br>Kết quả</th><th>來源內容<br>Nội dung nguồn</th>
   </tr></thead><tbody id="wipDetailBody"></tbody></table></div>
   <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁</button><button id="wipNextPage" type="button">下一頁 →</button></div>
 </div>
