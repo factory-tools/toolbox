@@ -547,7 +547,7 @@ function wipRowFromArray(row,map,rowNo){
   const hasUnum=wipRawHasNumber(rawUnum);
   const hasUfinish=wipRawHasNumber(rawUfinish);
   const unum=hasUnum?wipNum(rawUnum):null,ufinish=hasUfinish?wipNum(rawUfinish):null;
-  const unit=String(get('counit')??'').trim()||'空白';const unitUpper=unit.toUpperCase();
+  const unit=String(get('counit')??'').trim()||'空白';const unitUpper=unit.toUpperCase();const width=wipWidthNum(get('cowidth'));
   let yardStatus='OK',unfinishedY=null;
   if(!hasUnum||!hasUfinish) yardStatus='折合碼缺資料 / Thiếu dữ liệu quy đổi Yard';
   else if(unum<0||ufinish<0) yardStatus='折合碼為負數 / Yard quy đổi âm';
