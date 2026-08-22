@@ -175,15 +175,12 @@
     <div><span>明細筆數<br>Số dòng</span><b id="wipFilteredRows">0</b></div>
     <div><span>未完工折合碼<br>Yard chưa hoàn thành</span><b id="wipFilteredYards">0 Y</b></div>
     <div class="primary"><span>25MM 等效未完工<br>Chưa hoàn thành quy đổi 25MM</span><b id="wipFiltered25">0 Y</b></div>
+    <div class="warning"><span>折合碼異常筆數<br>Dòng quy đổi bất thường</span><b id="wipFilteredYardIssues">0</b></div>
   </div>
 
-  <div class="wip-section-title wip-important-title">98-G100 已到／未到未完工量 / Lượng chưa hoàn thành đã tới / chưa tới 98-G100</div>
-  <div class="wip-stage-note">主表直接比較各印刷製程未完工量；手印、機印、轉印、移印、噴塗以 25MM 等效 Y，膠片以「雙」統計。原始 CO_Unit 請在下方「原訂單單位統計」點開查看。</div>
+  <div class="wip-section-title wip-important-title">製程未完工統計 / Thống kê chưa hoàn thành theo công đoạn</div>
+  <div class="wip-stage-note">已整合「製程分類」與「98-G100 已到／未到」：每個製程直接看已到、未到與總未完工。手印、機印、轉印、移印、噴塗以 25MM 等效 Y，膠片以「雙」統計；原始 CO_Unit 請在下方點開查看。Y 統計只使用 co_unum − co_ufinish，缺資料或疑似把 PC 直接當 Y 的資料不會灌入碼數總計。</div>
   <div class="table-scroll"><table class="wip-summary-table wip-stage-matrix"><thead id="wipStageMatrixHead"></thead><tbody id="wipStageSummaryBody"></tbody></table></div>
-
-  <div class="wip-section-title">製程分類統計 / Thống kê theo loại in</div>
-  <div class="wip-process-note">所有原始單位合併看標準量；原始單位明細需要時再點開。/ Gộp tất cả đơn vị gốc để xem lượng chuẩn.</div>
-  <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>製程 / Công đoạn</th><th>筆數<br>Dòng</th><th>標準未完工量<br>Lượng chuẩn chưa HT</th><th>單位<br>Đơn vị</th><th>說明<br>Ghi chú</th></tr></thead><tbody id="wipProcessSummaryBody"></tbody></table></div>
 
   <div class="wip-section-title">產能設定與已到98-G100未完工天數 / Thiết lập năng lực & số ngày cần cho lượng đã tới 98-G100</div>
   <div class="wip-capacity-note">此區只計算「已到 98-G100」的未完工量，也就是已收到料、目前真正需要消化的量。預設為你提供的 24 小時標準產能，可直接修改；「每日運轉」可選 12h、16h（平日+4h）、24h。手印與手印→轉印共用手印桌，因此另計「手印總負荷」。</div>
@@ -200,7 +197,7 @@
 
   <div class="wip-detail-head"><div class="wip-section-title">明細 / Chi tiết</div><div class="wip-detail-actions"><button id="wipExportBtn" type="button" class="excel-btn">下載目前明細 / Tải chi tiết</button><span id="wipPageInfo"></span></div></div>
   <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
-    <th>#</th><th>MSK</th><th>MSK類型</th><th>涉及製程</th><th>98-G100狀態</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼</th><th>25MM等效未完工</th><th>膠片未完工雙</th><th>CO_KEYDATE</th><th>30天期限</th><th>逾期天數</th><th>是否超30天</th><th>判斷</th><th>來源內容</th>
+    <th>#</th><th>MSK</th><th>MSK類型</th><th>涉及製程</th><th>98-G100狀態</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼</th><th>25MM等效未完工</th><th>膠片未完工雙</th><th>折合碼狀態</th><th>CO_KEYDATE</th><th>30天期限</th><th>逾期天數</th><th>是否超30天</th><th>判斷</th><th>來源內容</th>
   </tr></thead><tbody id="wipDetailBody"></tbody></table></div>
   <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁</button><button id="wipNextPage" type="button">下一頁 →</button></div>
 </div>

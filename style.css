@@ -92,3 +92,8 @@
 
 /* V27延伸微調：產能輸入適中尺寸 + 98-G100矩陣欄列交換 */
 .wip-capacity-table .wip-cap-input{width:88px!important;max-width:88px!important;padding:5px 7px!important;font-size:15px!important}.wip-capacity-table .wip-cap-input.small{width:58px!important;max-width:58px!important}.wip-capacity-table select.wip-cap-input{width:108px!important;max-width:108px!important}.wip-stage-matrix th,.wip-stage-matrix td{text-align:right}.wip-stage-matrix th:first-child,.wip-stage-matrix td:first-child{text-align:left;min-width:150px}.wip-stage-matrix td:first-child small{font-weight:400;color:#6c7b8e}
+/* V27 延伸修正：折合碼防呆與整合統計 */
+.wip-current-summary{grid-template-columns:repeat(4,1fr)}
+.wip-current-summary .warning{background:#fff8e7;border-color:#e7c776}
+.wip-current-summary .warning b{color:#9a5c00}
+@media(max-width:760px){.wip-current-summary{grid-template-columns:1fr 1fr}}
