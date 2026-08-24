@@ -237,6 +237,9 @@ function setMachineMode(mode){
   $('machinePcPatternField').classList.toggle('hidden',mode!=='PC');
   $('machinePcLengthField').classList.toggle('hidden',mode!=='PC');
   $('machinePcGuide').classList.toggle('hidden',mode!=='PC');
+  // 計數器 PC / Y 共用：每次歸零後輸入最後讀數。
+  if($('machineCounterField')) $('machineCounterField').classList.remove('hidden');
+  if($('machineCounterResult')) $('machineCounterResult').classList.remove('hidden');
   if($('machineOrderLabelZh')) $('machineOrderLabelZh').textContent=`訂單數量（${mode}）`;
   if($('machineOrderLabelVi')) $('machineOrderLabelVi').textContent=`Số lượng đơn hàng（${mode}）`;
   if($('machinePullLengthLabelZh')) $('machinePullLengthLabelZh').textContent=mode==='PC'?'建議拉帶長度設定值（可微調）':'拉帶長度設定值';
@@ -257,6 +260,7 @@ function calcMachinePrint(){
   const pullLength=Number($('machinePullLength').value);
   const pullSpeed=Number($('machinePullSpeed').value);
   const hpd=Number($('machineHoursPerDay').value);
+  const counterReading=$('machineCounterReading')?Number($('machineCounterReading').value):0;
   const pullSec=estimatedPullSeconds(pullLength,pullSpeed);
   const printSec=MACHINE_STROKE_SECONDS[machineStroke]||0;
   const cycleSec=pullSec+printSec;
@@ -281,12 +285,30 @@ function calcMachinePrint(){
   const perDay=perHour*(hpd>0?hpd:0);
   $('machinePerDay').textContent=perDay>0?fmt(perDay,machineMode==='PC'?0:2)+' '+unit:'—';
   $('machineOrderTime').textContent=(order>0&&perHour>0)?machineTimeText(order/perHour,hpd):'—';
+  if($('machineCounterTotalY')){
+    // 計數器最後一位紅色數字 = 0.1 m（10 cm）。例如 594 = 59.4 m。
+    // Y：走帶公尺換算 Yard，再乘同時印幾條。
+    // PC：走帶公尺換算 mm ÷ 單個產品長度，再乘同時印幾條。
+    const counterMeters=counterReading>0?counterReading/10:0;
+    if(machineMode==='PC'){
+      const productLength=Number($('machineProductLength').value);
+      const counterSinglePc=(counterMeters>0&&productLength>0)?counterMeters*1000/productLength:0;
+      const counterTotalPc=(counterSinglePc>0&&strips>0)?counterSinglePc*strips:0;
+      $('machineCounterTotalY').textContent=counterTotalPc>0?`${fmt(counterTotalPc,0)} PC`:'—';
+      if($('machineCounterHint')) $('machineCounterHint').textContent=counterTotalPc>0?`${fmt(counterMeters,1)} m × 1000 ÷ ${fmt(productLength,2)} mm = ${fmt(counterSinglePc,1)} PC/條 × ${fmt(strips,0)}條 / dây`:'計數器走帶 ÷ 單個長度 × 同時印幾條 / Bộ đếm ÷ chiều dài 1 SP × số dây';
+    }else{
+      const counterSingleY=counterMeters>0?counterMeters/0.9144:0;
+      const counterTotalY=(counterSingleY>0&&strips>0)?counterSingleY*strips:0;
+      $('machineCounterTotalY').textContent=counterTotalY>0?`${fmt(counterTotalY,2)} Y`:'—';
+      if($('machineCounterHint')) $('machineCounterHint').textContent=counterTotalY>0?`${fmt(counterMeters,1)} m ÷ 0.9144 = ${fmt(counterSingleY,2)} Y/條 × ${fmt(strips,0)}條 / dây`:'單條走帶 × 同時印幾條 / 1 dây × số dây in cùng lúc';
+    }
+  }
 }
 if($('machineModePc')){
   $('machineModePc').addEventListener('click',()=>setMachineMode('PC'));
   $('machineModeY').addEventListener('click',()=>setMachineMode('Y'));
   document.querySelectorAll('.machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setMachineStroke(Number(btn.dataset.stroke))));
-  ['machineOrderQty','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
+  ['machineOrderQty','machineStrips','machinePullLength','machinePullSpeed','machineHoursPerDay','machineCounterReading'].forEach(id=>$(id).addEventListener('input',calcMachinePrint));
   ['machineProductLength','machinePatternsPerRow'].forEach(id=>$(id).addEventListener('input',()=>{updateMachineSuggestedPullLength();calcMachinePrint();}));
   setMachineStroke(1);
   setMachineMode('PC');

@@ -57,10 +57,11 @@
 
 <div class="machine-section-title">機台實際參數 / Thông số thực tế của máy</div>
 <div class="machine-inputs">
-<div class="field machine-field machine-stroke-field"><span class="zh">刮印刀數</span><span class="vi">Số lần gạt mực</span><div class="machine-stroke" role="group" aria-label="刮印刀數"><button type="button" class="machine-stroke-btn active" data-stroke="1">1刀<br><small>5秒</small></button><button type="button" class="machine-stroke-btn" data-stroke="2">2刀<br><small>12秒</small></button><button type="button" class="machine-stroke-btn" data-stroke="3">3刀<br><small>17秒</small></button></div></div>
+<div class="field machine-field machine-stroke-field"><span class="zh">刮印刀數</span><span class="vi">Số lần gạt mực</span><div class="machine-stroke" role="group" aria-label="刮印刀數"><button type="button" class="machine-stroke-btn active" data-stroke="1">1刀 / 1 lần<br><small>5秒 / 5 giây</small></button><button type="button" class="machine-stroke-btn" data-stroke="2">2刀 / 2 lần<br><small>12秒 / 12 giây</small></button><button type="button" class="machine-stroke-btn" data-stroke="3">3刀 / 3 lần<br><small>17秒 / 17 giây</small></button></div></div>
 <label class="field machine-field emphasis-field"><span id="machinePullLengthLabelZh" class="zh">建議拉帶長度設定值（可微調）</span><span id="machinePullLengthLabelVi" class="vi">Giá trị chiều dài kéo dây đề nghị（có thể chỉnh）</span><input id="machinePullLength" type="number" inputmode="decimal" min="0" step="any" value="3080"><small id="machinePullLengthHint" class="machine-field-hint">PC：單個長度 × 每行圖案數 × 10，自動帶入後可微調 / PC: chiều dài × số hình × 10, có thể chỉnh lại</small></label>
 <label class="field machine-field"><span class="zh">拉帶速度設定值</span><span class="vi">Giá trị cài đặt tốc độ kéo dây</span><input id="machinePullSpeed" type="number" inputmode="decimal" min="0" step="any" value="320"></label>
 <label class="field machine-field"><span class="zh">每日可印時間（小時）</span><span class="vi">Số giờ in mỗi ngày</span><input id="machineHoursPerDay" type="number" inputmode="decimal" min="0" step="any" value="12"></label>
+<label id="machineCounterField" class="field machine-field"><span class="zh">計數器讀數（歸零後最後數字）</span><span class="vi">Số trên bộ đếm (số cuối sau khi về 0)</span><input id="machineCounterReading" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 / VD: 594"><small class="machine-field-hint">最後紅色數字 = 10cm；輸入整個顯示數字 / Số đỏ cuối = 10cm; nhập toàn bộ số hiển thị</small></label>
 </div>
 
 <div class="machine-speed-strip">
@@ -74,6 +75,7 @@
 <div class="machine-result"><span>每框總產量 / Tổng sản lượng mỗi khung</span><b id="machinePerFrame">—</b></div>
 <div class="machine-result primary"><span>整機每小時總產量 / Tổng sản lượng máy mỗi giờ</span><b id="machinePerHour">—</b><small id="machinePerHourHint">8條合計 / Tổng 8 dây</small></div>
 <div class="machine-result"><span>整機每日總產量 / Tổng sản lượng máy mỗi ngày</span><b id="machinePerDay">—</b></div>
+<div id="machineCounterResult" class="machine-result"><span>計數器換算總產量（PC / Y 共用）/ Tổng sản lượng theo bộ đếm</span><b id="machineCounterTotalY">—</b><small id="machineCounterHint">單條走帶 × 同時印幾條 / 1 dây × số dây in cùng lúc</small></div>
 <div class="machine-result time"><span>訂單所需時間 / Thời gian cần cho đơn hàng</span><b id="machineOrderTime">—</b></div>
 </div>
 <div id="machineFormulaNote" class="machine-note"></div>
