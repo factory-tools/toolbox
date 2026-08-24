@@ -209,13 +209,13 @@ function machineTimeText(hours, hoursPerDay){
   if(!(hours>=0) || !Number.isFinite(hours)) return '—';
   const totalMin=Math.round(hours*60);
   const h=Math.floor(totalMin/60), m=totalMin%60;
-  const simple=`約 ${h} 小時 ${m} 分鐘 / Khoảng ${h} giờ ${m} phút`;
+  const simple=`約需要 ${h} 小時 ${m} 分鐘 / Cần khoảng ${h} giờ ${m} phút`;
   if(!(hoursPerDay>0) || hours<=hoursPerDay) return simple;
   const days=Math.floor(hours/hoursPerDay);
   const remainHours=hours-days*hoursPerDay;
   const remainMin=Math.round(remainHours*60);
   const rh=Math.floor(remainMin/60), rm=remainMin%60;
-  return `約 ${days} 工作日 ${rh} 小時 ${rm} 分鐘 / Khoảng ${days} ngày làm việc ${rh} giờ ${rm} phút`;
+  return `約需要 ${days} 天又 ${rh} 小時 ${rm} 分鐘 / Cần khoảng ${days} ngày ${rh} giờ ${rm} phút`;
 }
 function estimatedPullSeconds(lengthSetting,speedSetting){
   if(!(lengthSetting>0) || !(speedSetting>0)) return 0;
