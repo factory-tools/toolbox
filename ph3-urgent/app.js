@@ -1,4 +1,4 @@
-// PH3 V34：沿用 V33，優化 Excel 提示、同 MSK 群組底色、分檔完整判斷欄與目前狀況統計。
+// PH3 V36：沿用 V35；批量加天一律排除週日，GCN 新增外發廠商分配／篩選／Excel。
 const HEADERS=[
 "Tổ 組"," loại đơn 單別","KH 客戶","Mã đơn 訂單號碼","NET 筆","Ngày ĐĐH 訂單日期","Mã SP 料號","Màu 色號","QC 寬度","Độ dài 型號","ĐV 單位","SL 數量","TD 進度參考","Tên SP (SQ) 生管品名","Ghi chú ĐĐH 訂單備注","Ghi chú ĐĐH 摘要","KH YC 客戶要求日期","Ngày 93 HC 織造完工日","Ngày 94 HC 染色完工日","Ngày 95 HC 上漿完工日","Ngày 96 HC 束頭完工日","Ngày PH3 HC PH3完工日","Ngày 99 NK 99入庫日"
 ];
@@ -8,6 +8,8 @@ const MSK_HEADER="MSK網版";
 const PRINT_TYPE_HEADER="印刷類型 / Loại in";
 const PRINT_COLOR_HEADER="印刷色 / Màu in";
 const PROD_MODES=["機印 / In máy","手印 / In tay","GCN"];
+const GCN_VENDOR_HEADER="GCN廠商 / Nhà GCN";
+const GCN_VENDORS=["PTT","KIM HUNG","HTH","BH"];
 const AUTO_MODE_RULES={TD:"手印 / In tay",MD:"機印 / In máy",MPW:"機印 / In máy",SPW:"手印 / In tay"};
 const MSK_TYPE_RULES={
   TD:"手印 / IN TAY",MD:"機印 / IN MÁY",MPW:"機印 / IN MÁY",SPW:"手印 / IN TAY",
@@ -30,6 +32,7 @@ const dirtyKeys=new Set();
 const dirtyDateKeys=new Set();
 const dirtyModeKeys=new Set();
 const dirtyAnalysisKeys=new Set();
+const dirtyVendorKeys=new Set();
 const selectedKeys=new Set();
 const issueKeys=new Map(); // 本次畫面操作發現的日期異常：key -> 訊息
 
@@ -53,7 +56,7 @@ function blockIfUnsaved(actionText){
   return true;
 }
 function syncDirtyKey(key){
-  if(dirtyDateKeys.has(key)||dirtyModeKeys.has(key)||dirtyAnalysisKeys.has(key))dirtyKeys.add(key); else dirtyKeys.delete(key);
+  if(dirtyDateKeys.has(key)||dirtyModeKeys.has(key)||dirtyAnalysisKeys.has(key)||dirtyVendorKeys.has(key))dirtyKeys.add(key); else dirtyKeys.delete(key);
 }
 function markDateDirty(key){dirtyDateKeys.add(key);dirtyKeys.add(key)}
 function productionModeLabel(v){return PROD_MODES.includes(String(v||""))?String(v):""}
@@ -66,6 +69,7 @@ function productionModeColorClass(v){
   if(v==="GCN")return "mode-gcn";
   return "mode-unassigned";
 }
+function gcnVendorLabel(v){const x=String(v||"").trim().toUpperCase();return GCN_VENDORS.find(a=>a.toUpperCase()===x)||""}
 function shortDate(v){const x=fmt(v);if(!x)return "—";const m=x.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?`${Number(m[2])}/${Number(m[3])}`:x}
 
 function cleanMskCode(v){return String(v||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
@@ -143,19 +147,21 @@ function applyProductionModeDraft(o,newMode){
       mode:o.production_mode||"",prevMode:o.previous_production_mode||"",
       ph3:o.ph3_date||null,w99:o.warehouse99_date||null,
       prevPh3:o.prev_ph3_date||null,prev99:o.prev_99_date||null,
-      needs:o.needs_reply,wasDateDirty:dirtyDateKeys.has(o.unique_key)
+      needs:o.needs_reply,vendor:o.gcn_vendor||null,wasDateDirty:dirtyDateKeys.has(o.unique_key),wasVendorDirty:dirtyVendorKeys.has(o.unique_key)
     };
   }
   const snap=o._modeEditSnapshot, saved=snap.mode||"";
   if(newMode===saved){
     o.production_mode=snap.mode||null;o.previous_production_mode=snap.prevMode||null;
-    o.ph3_date=snap.ph3;o.warehouse99_date=snap.w99;o.prev_ph3_date=snap.prevPh3;o.prev_99_date=snap.prev99;o.needs_reply=snap.needs;
+    o.ph3_date=snap.ph3;o.warehouse99_date=snap.w99;o.prev_ph3_date=snap.prevPh3;o.prev_99_date=snap.prev99;o.needs_reply=snap.needs;o.gcn_vendor=snap.vendor;
     dirtyModeKeys.delete(o.unique_key);
+    if(snap.wasVendorDirty)dirtyVendorKeys.add(o.unique_key);else dirtyVendorKeys.delete(o.unique_key);
     if(snap.wasDateDirty)dirtyDateKeys.add(o.unique_key);else dirtyDateKeys.delete(o.unique_key);
     delete o._modeEditSnapshot;syncDirtyKey(o.unique_key);return;
   }
   o.production_mode=newMode||null;
   dirtyModeKeys.add(o.unique_key);dirtyKeys.add(o.unique_key);
+  if(newMode!=="GCN" && o.gcn_vendor){o.gcn_vendor=null;dirtyVendorKeys.add(o.unique_key);}
   if(saved && newMode!==saved){
     o.previous_production_mode=saved;
     if(o.ph3_date)o.prev_ph3_date=o.ph3_date;
@@ -207,7 +213,7 @@ function statusText(o){
 function searchableText(o){
   const arr=dbToArray(o).map(v=>fmt(v));
   const p=latestUpstream(o);
-  return [...arr,primaryMsk(o),mskPrintType(o),printColorText(o),mskSuggestedMode(o),chaseState(o).label,productionModeShort(o.production_mode),productionModeShort(o.previous_production_mode),p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
+  return [...arr,primaryMsk(o),mskPrintType(o),printColorText(o),mskSuggestedMode(o),chaseState(o).label,productionModeShort(o.production_mode),gcnVendorLabel(o.gcn_vendor),productionModeShort(o.previous_production_mode),p.label,fmt(p.date),fmt(prevPh3(o)),fmt(prev99(o)),ph3Days(o)??"",statusText(o),lastReplyUser(o)].join(" | ").toLowerCase();
 }
 function autoFitWorksheet(ws,{min=7,max=42,padding=2}={}){
   ws.columns.forEach(col=>{
@@ -384,6 +390,7 @@ function filtered(){
         g=$("fItem").value.trim().toLowerCase(),
         st=$("fStatus").value,
         modeFilter=$("fMode")?.value||"",
+        vendorFilter=$("fGcnVendor")?.value||"",
         prevDate=$("fPrevDate").value,
         scope=$("workScope").value,
         batchId=selectedBatchId(),
@@ -403,6 +410,7 @@ function filtered(){
     if(prevDate && prev!==prevDate)return false;
     if(modeFilter==="unassigned"&&productionModeLabel(o.production_mode))return false;
     if(modeFilter&&modeFilter!=="unassigned"&&productionModeLabel(o.production_mode)!==modeFilter)return false;
+    if(vendorFilter&&gcnVendorLabel(o.gcn_vendor)!==vendorFilter)return false;
     if(st==="need"&&!o.needs_reply)return false;
     if(st==="changed"&&!(o.changed_fields||[]).length)return false;
     if(st==="had"&&!o.ever_replied)return false;
@@ -461,6 +469,7 @@ const WEB_COLUMNS=[
   ...HEADERS.slice(16,21).map((h,j)=>({kind:"data",idx:j+16,label:h,width:[82,84,84,84,84][j]||72})),
   // 生產方式右側固定接 MSK網版、印刷色，方便分配時直接一起看。
   {kind:"mode",label:PROD_MODE_HEADER,width:164},
+  {kind:"gcnVendor",label:GCN_VENDOR_HEADER,width:112},
   {kind:"msk",label:MSK_HEADER,width:150},
   {kind:"printType",label:PRINT_TYPE_HEADER,width:170},
   {kind:"printColor",label:PRINT_COLOR_HEADER,width:118},
@@ -587,6 +596,12 @@ function render(){
         const cur=productionModeLabel(o.production_mode), old=productionModeLabel(o.previous_production_mode);
         content=`<div class="mode-cell-wrap"><label class="row-select" title="勾選此訂單做批量分配 / Chọn đơn này để phân công hàng loạt"><input type="checkbox" class="row-pick" data-key="${esc(o.unique_key)}" ${selectedKeys.has(o.unique_key)?"checked":""}><span class="sr-only">選 / Chọn</span></label><select class="cell-mode ${productionModeColorClass(cur)}" title="選擇生產方式 / Chọn hình thức sản xuất" data-key="${esc(o.unique_key)}"><option value="">未分配 / Chưa phân công</option>${PROD_MODES.map(m=>`<option value="${esc(m)}" ${cur===m?"selected":""}>${esc(productionModeOptionText(m))}</option>`).join("")}</select></div>`+
           (old&&old!==cur?`<div class="mode-prev">原 / Trước: ${esc(productionModeShort(old))}</div>`:"");
+      }else if(c.kind==="gcnVendor"){
+        cls="progress c-gcnvendor";
+        const curMode=productionModeLabel(o.production_mode), vendor=gcnVendorLabel(o.gcn_vendor);
+        if(dirtyVendorKeys.has(o.unique_key))cls+=" draftcell";
+        if(curMode==="GCN") content=`<select class="cell-gcn-vendor" data-key="${esc(o.unique_key)}" title="選擇外發廠商 / Chọn nhà gia công"><option value="">請選廠商 / Chọn nhà</option>${GCN_VENDORS.map(v=>`<option value="${esc(v)}" ${vendor===v?"selected":""}>${esc(v)}</option>`).join("")}</select>`;
+        else content='<span class="muted">—</span>';
       }else if(c.kind==="prevStage"){
         cls="progress c-prevstage";content=`${esc(prev.label)} ${esc(fmt(prev.date))}`;
       }else if(c.kind==="prevPh3"){
@@ -603,6 +618,7 @@ function render(){
         const chase=chaseState(o);
         let status=`<span class="badge ${chase.cls}">${esc(chase.label)}</span> `+(o.needs_reply?'<span class="badge b-red">待回覆 / Cần trả lời</span>':'<span class="badge b-green">已回覆 / Đã trả lời</span>');
         if(!o.production_mode)status+=' <span class="badge b-orange">未分配 / Chưa phân công</span>';
+        if(productionModeLabel(o.production_mode)==="GCN"&&!gcnVendorLabel(o.gcn_vendor))status+=' <span class="badge b-red">GCN未選廠商 / Chưa chọn nhà GCN</span>';
         if(needsManualMsk(o))status+=' <span class="badge b-red">MSK需手動判斷 / Cần phân biệt MSK</span>';
         if(o.previous_production_mode&&o.production_mode&&o.previous_production_mode!==o.production_mode)status+=` <span class="badge b-orange">原 ${esc(productionModeShort(o.previous_production_mode))} → ${esc(productionModeShort(o.production_mode))}</span>`;
         if((o.changed_fields||[]).length){
@@ -627,6 +643,7 @@ function render(){
   grid.innerHTML=h+"</tbody>";
   grid.querySelectorAll(".cell-date").forEach(inp=>inp.addEventListener("change",saveDirectCell));
   grid.querySelectorAll(".cell-mode").forEach(inp=>inp.addEventListener("change",saveDirectMode));
+  grid.querySelectorAll(".cell-gcn-vendor").forEach(inp=>inp.addEventListener("change",saveGcnVendor));
   grid.querySelectorAll(".cell-msk-edit").forEach(inp=>inp.addEventListener("change",saveManualMsk));
   grid.querySelectorAll(".cell-color-edit").forEach(inp=>inp.addEventListener("change",saveManualPrintColor));
   grid.querySelectorAll(".row-pick").forEach(inp=>inp.addEventListener("change",e=>{
@@ -758,10 +775,20 @@ function selectVisibleRows(){
 function bulkAssignMode(mode){
   const keys=[...selectedKeys];
   if(!keys.length){$("replyMsg").innerHTML='<span class="warn">請先勾選訂單 / Hãy chọn đơn hàng trước</span>';return}
+  const vendor=mode==="GCN"?gcnVendorLabel($("bulkGcnVendor")?.value):"";
+  if(mode==="GCN"&&!vendor){$("replyMsg").innerHTML='<span class="bad">請先選擇 GCN 外發廠商（PTT / KIM HUNG / HTH / BH）/ Hãy chọn nhà GCN trước</span>';return}
   let n=0;
-  keys.forEach(key=>{const o=rows.find(x=>x.unique_key===key);if(!o)return;applyProductionModeDraft(o,mode);n++});
-  $("replyMsg").innerHTML=`<span class="warn">已批量指定 ${n} 筆為「${esc(productionModeShort(mode))}」，尚未儲存，請按「儲存目前修改」 / Đã phân công ${n} dòng, chưa lưu; hãy bấm “Lưu thay đổi”</span>`;
+  keys.forEach(key=>{const o=rows.find(x=>x.unique_key===key);if(!o)return;applyProductionModeDraft(o,mode);if(mode==="GCN"){o.gcn_vendor=vendor;dirtyVendorKeys.add(key);dirtyKeys.add(key)}else if(o.gcn_vendor){o.gcn_vendor=null;dirtyVendorKeys.add(key);dirtyKeys.add(key)}n++});
+  $("replyMsg").innerHTML=`<span class="warn">已批量指定 ${n} 筆為「${esc(productionModeShort(mode))}」${vendor?`－${esc(vendor)}`:""}，尚未儲存 / Đã phân công ${n} dòng, chưa lưu</span>`;
   render();updateActionState();updateBulkModeState();
+}
+
+function saveGcnVendor(e){
+  const key=e.target.dataset.key,o=rows.find(x=>x.unique_key===key);if(!o)return;
+  const v=gcnVendorLabel(e.target.value);
+  o.gcn_vendor=v||null;dirtyVendorKeys.add(key);dirtyKeys.add(key);
+  $("replyMsg").innerHTML='<span class="warn">GCN 廠商已暫存，請按「儲存目前修改」 / Nhà GCN đã tạm lưu, hãy bấm Lưu thay đổi</span>';
+  render();
 }
 
 function saveDirectMode(e){
@@ -833,10 +860,10 @@ async function calcBulkReply(){
     const prev=latestUpstream(o).date;
     const ph3=addDaysExcludeSunday(prev,add);
     o.ph3_date=ph3;
-    o.warehouse99_date=calendarAdd(ph3,3);
+    o.warehouse99_date=addDaysExcludeSunday(ph3,3);
     markDateDirty(o.unique_key);
   }
-  $("replyMsg").innerHTML=`<span class="warn">已計算 ${data.length} 筆但尚未儲存：PH3=前站+${add}天（週日不算），99=PH3+3天 / Đã tính ${data.length} dòng nhưng chưa lưu</span>`;
+  $("replyMsg").innerHTML=`<span class="warn">已計算 ${data.length} 筆但尚未儲存：PH3=前站+${add}天、99=PH3+3天（兩者週日都不算） / Đã tính ${data.length} dòng nhưng chưa lưu</span>`;
   render();
 }
 
@@ -861,6 +888,7 @@ async function saveDraftReplies(){
   const payload=[];
   const modePayload=[];
   const analysisPayload=[];
+  const vendorPayload=[];
   const invalid=[];
   for(const key of dirtyDateKeys){
     const o=rows.find(x=>x.unique_key===key);
@@ -876,10 +904,18 @@ async function saveDraftReplies(){
     const o=rows.find(x=>x.unique_key===key);if(!o)continue;
     analysisPayload.push({unique_key:key,manual_msk:manualMsk(o)||null,manual_print_color:String(o.manual_print_color||"").trim()||null});
   }
+  for(const key of dirtyVendorKeys){
+    const o=rows.find(x=>x.unique_key===key);if(!o)continue;
+    const mode=productionModeLabel(o.production_mode),vendor=gcnVendorLabel(o.gcn_vendor);
+    if(mode==="GCN"&&!vendor){invalid.push(`${key}: GCN 未選外發廠商 / Chưa chọn nhà GCN`);continue}
+    vendorPayload.push({unique_key:key,gcn_vendor:mode==="GCN"?vendor:null});
+  }
+  // 即使這次只改生產方式，也檢查 GCN 必須有廠商。
   for(const key of dirtyModeKeys){
     const o=rows.find(x=>x.unique_key===key);if(!o)continue;
     const mode=productionModeLabel(o.production_mode);
     if(!mode){invalid.push(`${key}: 未選擇生產方式 / Chưa chọn hình thức sản xuất`);continue}
+    if(mode==="GCN"&&!gcnVendorLabel(o.gcn_vendor)){invalid.push(`${key}: GCN 未選外發廠商 / Chưa chọn nhà GCN`);continue}
     modePayload.push({unique_key:key,production_mode:mode});
   }
 
@@ -890,7 +926,7 @@ async function saveDraftReplies(){
 
   $("replyMsg").textContent="儲存中… / Đang lưu…";
   try{
-    let modeUpdated=0,dateUpdated=0,analysisUpdated=0,late99=0,over7=0;
+    let modeUpdated=0,vendorUpdated=0,dateUpdated=0,analysisUpdated=0,late99=0,over7=0;
     if(analysisPayload.length){
       const {data,error}=await sb.rpc("ph3_update_analysis_overrides",{p_rows:analysisPayload});
       if(error)throw new Error(`MSK／印刷色儲存失敗 / Lưu MSK/màu in thất bại：${error.message}`);
@@ -901,13 +937,18 @@ async function saveDraftReplies(){
       if(error)throw new Error(`生產方式儲存失敗 / Lưu hình thức sản xuất thất bại：${error.message}`);
       modeUpdated=Number(data?.updated||modePayload.length);
     }
+    if(vendorPayload.length){
+      const {data,error}=await sb.rpc("ph3_update_gcn_vendors",{p_rows:vendorPayload});
+      if(error)throw new Error(`GCN廠商儲存失敗 / Lưu nhà GCN thất bại：${error.message}`);
+      vendorUpdated=Number(data?.updated||vendorPayload.length);
+    }
     if(payload.length){
       const {data,error}=await sb.rpc("ph3_import_replies",{p_rows:payload});
       if(error)throw error;
       dateUpdated=Number(data?.updated||payload.length);late99=Number(data?.late99||0);over7=Number(data?.over7||0);
     }
-    dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();dirtyAnalysisKeys.clear();
-    $("replyMsg").innerHTML=`<span class="ok">已儲存：MSK／印刷色 ${analysisUpdated} 筆、生產方式 ${modeUpdated} 筆、交期 ${dateUpdated} 筆 / Đã lưu: MSK/màu ${analysisUpdated}, hình thức ${modeUpdated}, ngày giao ${dateUpdated}</span>`+
+    dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();dirtyAnalysisKeys.clear();dirtyVendorKeys.clear();
+    $("replyMsg").innerHTML=`<span class="ok">已儲存：MSK／印刷色 ${analysisUpdated} 筆、生產方式 ${modeUpdated} 筆、GCN廠商 ${vendorUpdated} 筆、交期 ${dateUpdated} 筆 / Đã lưu: MSK/màu ${analysisUpdated}, hình thức ${modeUpdated}, nhà GCN ${vendorUpdated}, ngày giao ${dateUpdated}</span>`+
       (late99?` <span class="warn">；99晚於客需 ${late99} 筆 / ${late99} dòng 99 trễ hơn KH</span>`:"")+
       (over7?` <span class="warn">；PH3超過7天 ${over7} 筆 / PH3 >7 ngày: ${over7}</span>`:"");
     await loadAll();
@@ -946,6 +987,7 @@ function excelDerivedColor(kind){
 function excelDerivedBodyColor(kind){
   // 生產方式可編輯欄用淡黃；系統提示/參考欄維持淡藍。
   if(kind==="mode")return "FFFFF2CC";
+  if(kind==="gcnVendor")return "FFFCE4D6";
   return ["printType","printColor","prevStage","prevPh3","prev99","days","status","lastReply"].includes(kind)?"FFEAF2FF":null;
 }
 
@@ -1079,7 +1121,7 @@ async function downloadCurrent(){
     guide.addRow(["1", "淡黃色且藍框欄位：填寫 PH3完工日、99入庫日 / Ô vàng viền xanh: nhập ngày PH3 và ngày 99"]);
     guide.addRow(["2", "日期格式 yyyy/mm/dd / Định dạng ngày yyyy/mm/dd"]);
     guide.addRow(["3", "狀態、PH3工段天數、前工段等欄位由公式自動判斷，請勿修改 / Trạng thái, số ngày PH3 và công đoạn trước được tính tự động"]);
-    guide.addRow(["4", "生產方式可依需要修改；修改後回填系統會重新判斷 / Có thể đổi hình thức sản xuất khi cần"]);
+    guide.addRow(["4", "生產方式可依需要修改；若選 GCN，請同時選 PTT／KIM HUNG／HTH／BH；回填系統會重新判斷 / Có thể đổi hình thức; nếu chọn GCN hãy chọn nhà gia công"]);
     guide.getColumn(1).width=6;guide.getColumn(2).width=100;guide.getRow(1).font={bold:true,size:14};
 
     const headers=WEB_COLUMNS.map(c=>c.label);
@@ -1102,6 +1144,7 @@ async function downloadCurrent(){
         else if(c.kind==="printType")values.push(mskPrintType(o));
         else if(c.kind==="printColor")values.push(printColorText(o));
         else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
+        else if(c.kind==="gcnVendor")values.push(gcnVendorLabel(o.gcn_vendor));
         else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
         else if(c.kind==="prevPh3")values.push(prevPh3(o)?dateObj(prevPh3(o)):"");
         else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
@@ -1188,7 +1231,7 @@ async function downloadCurrent(){
       else headerColor=excelDerivedColor(col.kind)||"FF548235";
       c.fill={type:"pattern",pattern:"solid",fgColor:{argb:headerColor}};
     });
-    // Excel 回填時只需要修改 PH3 與 99 兩欄：用醒目藍色表頭 + 淡黃色資料格標示，避免改錯欄。
+    // Excel 回填主要填 PH3 / 99；生產方式與 GCN 廠商亦可依需要調整。
     const editColPh3=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===21)+1;
     const editCol99=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===22)+1;
     [editColPh3,editCol99].forEach(ci=>{
@@ -1208,6 +1251,14 @@ async function downloadCurrent(){
       for(let rr=2;rr<=ws.rowCount;rr++){
         const cell=ws.getCell(rr,editColMode);cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
         cell.dataValidation={type:"list",allowBlank:true,formulae:['"機印 / In máy,手印 / In tay,GCN"'],showErrorMessage:true,errorTitle:"請選擇清單 / Chọn từ danh sách",error:"只能選機印 / In máy、手印 / In tay、GCN"};
+      }
+    }
+    const editColVendor=WEB_COLUMNS.findIndex(c=>c.kind==="gcnVendor")+1;
+    if(editColVendor>0){
+      const head=ws.getCell(1,editColVendor);head.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFC65911"}};head.font={bold:true,color:{argb:"FFFFFFFF"},size:10};
+      for(let rr=2;rr<=ws.rowCount;rr++){
+        const cell=ws.getCell(rr,editColVendor);cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
+        cell.dataValidation={type:"list",allowBlank:true,formulae:['"PTT,KIM HUNG,HTH,BH"'],showErrorMessage:true,errorTitle:"請選 GCN 廠商 / Chọn nhà GCN",error:"只能選 PTT、KIM HUNG、HTH、BH"};
       }
     }
     WEB_COLUMNS.forEach((c,i)=>ws.getColumn(i+1).width=Math.max(7,Math.min(24,Math.round(c.width/9.4))));
@@ -1299,6 +1350,7 @@ async function buildResponsibilityWorkbook(mode,data){
   guide.addRow(["2", "只需填寫 PH3完工日、99入庫日；日期格式 yyyy/mm/dd / Chỉ nhập ngày PH3 và ngày 99; định dạng yyyy/mm/dd"]);
   guide.addRow(["3", "同一 MSK 會用同一列底色，且同 MSK＋同印刷色已排在一起 / Cùng MSK dùng cùng màu hàng; cùng MSK + màu in được xếp gần nhau"]);
   guide.addRow(["4", "前工段、PH3工段天數、狀態、上次回覆等由系統/公式判斷，請勿修改 / Công đoạn trước, số ngày PH3, trạng thái, lần trả lời trước được hệ thống tính"]);
+  if(mode==="GCN")guide.addRow(["5", "GCN廠商為系統已分配廠商，請勿修改 / Nhà GCN đã được hệ thống phân công, không sửa"]);
   guide.getColumn(1).width=6;guide.getColumn(2).width=110;guide.getRow(1).font={bold:true,size:14};
   const meta=wb.addWorksheet("__PH3_META");meta.addRow(["TYPE","RESPONSIBILITY"]);meta.addRow(["MODE",mode]);meta.state="veryHidden";
 
@@ -1317,6 +1369,7 @@ async function buildResponsibilityWorkbook(mode,data){
       else if(c.kind==="printType")values.push(mskPrintType(o));
       else if(c.kind==="printColor")values.push(printColorText(o));
       else if(c.kind==="mode")values.push(productionModeLabel(o.production_mode));
+      else if(c.kind==="gcnVendor")values.push(gcnVendorLabel(o.gcn_vendor));
       else if(c.kind==="prevStage")values.push(`${prev.label} ${fmt(prev.date)}`.trim());
       else if(c.kind==="prevPh3")values.push(prevPh3(o)?dateObj(prevPh3(o)):"");
       else if(c.kind==="prev99")values.push(prev99(o)?dateObj(prev99(o)):"");
@@ -1348,16 +1401,19 @@ async function buildResponsibilityWorkbook(mode,data){
     const changes=new Set(o.changed_fields||[]);
     [16,17,18,19,20].forEach(i=>{if(changes.has(COLNAMES[i])){const ci=WEB_COLUMNS.findIndex(c=>c.kind==="data"&&c.idx===i)+1;if(ci>0){r.getCell(ci).fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFB3B3"}};r.getCell(ci).font={color:{argb:"FF7F0000"},bold:true}}}});
 
-    // PH3/99 可填欄不用大註解：以粗藍框標示，底色沿用 MSK 群組色。
+    // PH3/99 是分流 Excel 需要人工填寫的欄位：統一淡黃色底色＋藍框，一眼即可辨識。
     [colPh3,col99].forEach(ci=>{
-      const cell=r.getCell(ci);cell.border={left:{style:"medium",color:{argb:"FF2F75B5"}},right:{style:"medium",color:{argb:"FF2F75B5"}}};cell.numFmt="yyyy/m/d";
+      const cell=r.getCell(ci);
+      cell.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFFFF2CC"}};
+      cell.border={left:{style:"medium",color:{argb:"FF2F75B5"}},right:{style:"medium",color:{argb:"FF2F75B5"}}};
+      cell.numFmt="yyyy/m/d";
     });
     r.getCell(colPh3).dataValidation={type:"custom",allowBlank:true,formulae:[`OR(${ph}${rn}="",MAX(${upstreamRange})=0,${ph}${rn}>=MAX(${upstreamRange}))`],showErrorMessage:true,errorStyle:"stop",errorTitle:"PH3日期錯誤 / Lỗi ngày PH3",error:"PH3完工日不能早於前工段日期 / Ngày PH3 không được sớm hơn công đoạn trước"};
     r.getCell(col99).dataValidation={type:"custom",allowBlank:true,formulae:[`OR(${w}${rn}="",${ph}${rn}="",${w}${rn}>=${ph}${rn})`],showErrorMessage:true,errorStyle:"stop",errorTitle:"99日期錯誤 / Lỗi ngày 99",error:"99入庫日不能早於PH3完工日 / Ngày 99 không được sớm hơn ngày PH3"};
   });
 
   ws.views=[{state:"frozen",xSplit:5,ySplit:1}];ws.autoFilter={from:{row:1,column:1},to:{row:Math.max(1,ws.rowCount),column:WEB_COLUMNS.length}};
-  ws.getRow(1).height=42;ws.getRow(1).eachCell((c,i)=>{c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};const col=WEB_COLUMNS[i-1];let fill="FF548235";if(col.kind==="mode")fill="FF7030A0";else if(col.kind==="data"&&(col.idx===21||col.idx===22))fill="FF2F75B5";else if(col.kind==="printColor")fill="FF4472C4";else fill=(col.kind==="data")?excelHeaderColorByOriginalIndex(col.idx+1):(excelDerivedColor(col.kind)||"FF548235");c.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}}});
+  ws.getRow(1).height=42;ws.getRow(1).eachCell((c,i)=>{c.font={bold:true,color:{argb:"FFFFFFFF"},size:10};c.alignment={vertical:"middle",horizontal:"center",wrapText:true};const col=WEB_COLUMNS[i-1];let fill="FF548235";if(col.kind==="mode")fill="FF7030A0";else if(col.kind==="gcnVendor")fill="FFC65911";else if(col.kind==="data"&&(col.idx===21||col.idx===22))fill="FF2F75B5";else if(col.kind==="printColor")fill="FF4472C4";else fill=(col.kind==="data")?excelHeaderColorByOriginalIndex(col.idx+1):(excelDerivedColor(col.kind)||"FF548235");c.fill={type:"pattern",pattern:"solid",fgColor:{argb:fill}}});
   WEB_COLUMNS.forEach((c,i)=>ws.getColumn(i+1).width=Math.max(7,Math.min(30,Math.round(c.width/9.4))));
   for(let rr=2;rr<=ws.rowCount;rr++){ws.getRow(rr).height=22;WEB_COLUMNS.forEach((c,i)=>{if(c.kind==="data"&&[5,16,17,18,19,20,21,22].includes(c.idx))ws.getCell(rr,i+1).numFmt="yyyy/m/d"})}
 
@@ -1381,6 +1437,8 @@ async function downloadSplitFiles(){
     const data=exportData();if(!data.length){$("replyMsg").innerHTML='<span class="warn">目前沒有可下載資料 / Không có dữ liệu để tải</span>';return}
     const unassigned=data.filter(o=>!productionModeLabel(o.production_mode));
     if(unassigned.length){$("replyMsg").innerHTML=`<span class="bad">⚠ 還有 ${unassigned.length} 筆未選生產方式，請先完成機印／手印／GCN 分配並儲存，再下載三份交期檔 / Còn ${unassigned.length} dòng chưa phân công.</span>`;return}
+    const missingVendor=data.filter(o=>productionModeLabel(o.production_mode)==="GCN"&&!gcnVendorLabel(o.gcn_vendor));
+    if(missingVendor.length){$("replyMsg").innerHTML=`<span class="bad">⚠ 還有 ${missingVendor.length} 筆 GCN 未選外發廠商，請先選 PTT／KIM HUNG／HTH／BH / Còn ${missingVendor.length} dòng GCN chưa chọn nhà gia công.</span>`;return}
     const stamp=todayYMD().replaceAll("-","");
     const names={"機印 / In máy":`PH3_機印_In máy_${stamp}.xlsx`,"手印 / In tay":`PH3_手印_In tay_${stamp}.xlsx`,"GCN":`PH3_GCN_${stamp}.xlsx`};
     for(const mode of PROD_MODES){
@@ -1463,7 +1521,7 @@ async function refillExcel(){
       if(a.length<2){continue}
       const headers=a[0].map(x=>String(x??"").trim());
       const find=n=>headers.indexOf(n);
-      const idxCustomer=find(HEADERS[2]),idxOrder=find(HEADERS[3]),idxNet=find(HEADERS[4]),idxPh3=find(HEADERS[21]),idx99=find(HEADERS[22]),idxMode=find(PROD_MODE_HEADER);
+      const idxCustomer=find(HEADERS[2]),idxOrder=find(HEADERS[3]),idxNet=find(HEADERS[4]),idxPh3=find(HEADERS[21]),idx99=find(HEADERS[22]),idxMode=find(PROD_MODE_HEADER),idxVendor=find(GCN_VENDOR_HEADER);
       const missing=[[idxCustomer,HEADERS[2]],[idxOrder,HEADERS[3]],[idxNet,HEADERS[4]],[idxPh3,HEADERS[21]],[idx99,HEADERS[22]]].filter(x=>x[0]<0);
       if(missing.length){issues.push(`${file.name}：缺少 ${missing.map(x=>`「${x[1]}」`).join("、")} / Thiếu cột`);continue}
       const upstreamIdx=[17,18,19,20].map(i=>find(HEADERS[i]));
@@ -1474,37 +1532,44 @@ async function refillExcel(){
         const key=[customer,order,net].join("|");if(seenKeys.has(key)){issues.push(`${file.name} 第 ${excelRow} 列：重複資料 ${key} / Dữ liệu trùng`);continue}seenKeys.add(key);
         const o=rows.find(x=>x.unique_key===key);if(!o){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：系統找不到此筆 / Không tìm thấy`);continue}
         const fileMode=idxMode>=0?productionModeLabel(r[idxMode]):"";
+        const fileVendor=idxVendor>=0?gcnVendorLabel(r[idxVendor]):"";
+        if(!expectedMode && fileMode==="GCN" && !fileVendor){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：選 GCN 時必須選外發廠商 PTT／KIM HUNG／HTH／BH / Chọn GCN phải chọn nhà gia công`);continue}
         if(expectedMode){
           if(!fileMode||fileMode!==expectedMode){issues.push(`${file.name} 第 ${excelRow} 列：生產方式被修改或不符（應為 ${expectedMode}）/ Hình thức sản xuất không đúng`);continue}
           if(productionModeLabel(o.production_mode)!==expectedMode){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：此單目前已改分配為 ${productionModeShort(o.production_mode)}，不能再使用舊的 ${expectedMode} 回覆；請重新下載新單位檔案 / Đơn đã đổi bộ phận, không thể dùng file cũ`);continue}
+          if(expectedMode==="GCN" && (!fileVendor||fileVendor!==gcnVendorLabel(o.gcn_vendor))){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：GCN廠商不符或被修改（系統：${gcnVendorLabel(o.gcn_vendor)||"未選"}）/ Nhà GCN không đúng`);continue}
         }
         const rawPh3=r[idxPh3],raw99=r[idx99],ph3=rawPh3===""||rawPh3==null?"":excelDate(rawPh3),w99=raw99===""||raw99==null?"":excelDate(raw99);
         if(rawPh3!==""&&rawPh3!=null&&!ph3){issues.push(`${file.name} 第 ${excelRow} 列：PH3 日期格式錯誤 ${rawPh3} / Sai ngày PH3`);continue}
         if(raw99!==""&&raw99!=null&&!w99){issues.push(`${file.name} 第 ${excelRow} 列：99 日期格式錯誤 ${raw99} / Sai ngày 99`);continue}
         const prevDates=[];let badPrev=false;upstreamIdx.forEach(ci=>{if(ci<0)return;const raw=r[ci];if(raw===""||raw==null)return;const d=excelDate(raw);if(!d)badPrev=true;else prevDates.push(d)});if(badPrev){issues.push(`${file.name} 第 ${excelRow} 列：前工段日期格式錯誤 / Sai ngày công đoạn trước`);continue}
         prevDates.sort();const prev=prevDates.at(-1)||"";if(ph3&&prev&&ph3<prev){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：PH3 早於前工段 / PH3 sớm hơn công đoạn trước`);continue}if(w99&&ph3&&w99<ph3){issues.push(`${file.name} 第 ${excelRow} 列（${key}）：99 早於 PH3 / 99 sớm hơn PH3`);continue}
-        staged.push({o,key,ph3:ph3||null,w99:w99||null,newMode:expectedMode?productionModeLabel(o.production_mode):(idxMode>=0?fileMode:productionModeLabel(o.production_mode)),expectedMode,file:file.name});
+        staged.push({o,key,ph3:ph3||null,w99:w99||null,newMode:expectedMode?productionModeLabel(o.production_mode):(idxMode>=0?fileMode:productionModeLabel(o.production_mode)),newVendor:expectedMode?gcnVendorLabel(o.gcn_vendor):(fileMode==="GCN"?fileVendor:""),expectedMode,file:file.name});
       }
     }
     if(issues.length){showProblems(`發現 ${issues.length} 個問題，為避免部分資料誤寫，本次完全沒有回填 / Phát hiện ${issues.length} lỗi; chưa nhập dữ liệu`,issues);$("refillFile").value="";return}
-    let appliedDates=0,appliedModes=0;
+    let appliedDates=0,appliedModes=0,appliedVendors=0;
     staged.forEach(x=>{
       const oldMode=productionModeLabel(x.o.production_mode),newMode=productionModeLabel(x.newMode);
-      if(!x.expectedMode&&newMode&&newMode!==oldMode){applyProductionModeDraft(x.o,newMode);appliedModes++;return}
+      if(!x.expectedMode&&newMode!==oldMode){applyProductionModeDraft(x.o,newMode);appliedModes++}
+      if(!x.expectedMode){
+        const desired=newMode==="GCN"?gcnVendorLabel(x.newVendor):"";
+        if(gcnVendorLabel(x.o.gcn_vendor)!==desired){x.o.gcn_vendor=desired||null;dirtyVendorKeys.add(x.key);dirtyKeys.add(x.key);appliedVendors++}
+      }
       const oldPh3=String(x.o.ph3_date||"").slice(0,10),old99=String(x.o.warehouse99_date||"").slice(0,10);
       if(oldPh3!==String(x.ph3||"")||old99!==String(x.w99||"")){x.o.ph3_date=x.ph3;x.o.warehouse99_date=x.w99;markDateDirty(x.key);issueKeys.delete(x.key);appliedDates++}
     });
-    if(!appliedDates&&!appliedModes){$("replyMsg").innerHTML=`<span class="warn">Excel 檢查通過，但沒有任何變更 / Excel hợp lệ nhưng không có thay đổi</span>`;$("refillFile").value="";render();return}
-    $("replyMsg").innerHTML=`<span class="warn">✓ 已彙總 ${files.length} 份 Excel：交期 ${appliedDates} 筆、生產方式 ${appliedModes} 筆已帶回畫面，但<strong>尚未儲存</strong>。請確認後按「儲存目前修改」 / Đã gộp ${files.length} file; <strong>chưa lưu</strong>.</span>`;$("refillFile").value="";render();
+    if(!appliedDates&&!appliedModes&&!appliedVendors){$("replyMsg").innerHTML=`<span class="warn">Excel 檢查通過，但沒有任何變更 / Excel hợp lệ nhưng không có thay đổi</span>`;$("refillFile").value="";render();return}
+    $("replyMsg").innerHTML=`<span class="warn">✓ 已彙總 ${files.length} 份 Excel：交期 ${appliedDates} 筆、生產方式 ${appliedModes} 筆、GCN廠商 ${appliedVendors} 筆已帶回畫面，但<strong>尚未儲存</strong>。請確認後按「儲存目前修改」 / Đã gộp ${files.length} file; <strong>chưa lưu</strong>.</span>`;$("refillFile").value="";render();
   }catch(err){console.error(err);$("replyMsg").innerHTML=`<span class="bad">回填失敗 / Nhập lại thất bại：${esc(err.message||err)}</span>`;$("refillFile").value=""}
 }
 
 $("loginBtn").onclick=login;$("password").addEventListener("keydown",e=>{if(e.key==="Enter")login()});$("logoutBtn").onclick=logout;if($("createAccountsBtn"))$("createAccountsBtn").onclick=createAccountsBulk;$("refreshBtn").onclick=async()=>{
   if(dirtyKeys.size && !confirm(`尚有 ${dirtyKeys.size} 筆未儲存，重新整理會放棄這些修改。確定要重新整理嗎？\nCòn ${dirtyKeys.size} dòng chưa lưu. Làm mới sẽ bỏ các thay đổi. Tiếp tục?`))return;
-  dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();dirtyAnalysisKeys.clear();issueKeys.clear();await loadAll()
+  dirtyKeys.clear();dirtyDateKeys.clear();dirtyModeKeys.clear();dirtyAnalysisKeys.clear();dirtyVendorKeys.clear();issueKeys.clear();await loadAll()
 };$("importBtn").onclick=()=>{if(blockIfUnsaved("匯入新資料 / nhập dữ liệu mới"))return;importFiles()};if($("downloadTemplateBtn"))$("downloadTemplateBtn").onclick=downloadBlankTemplate;$("calcReplyBtn").onclick=calcBulkReply;$("saveReplyBtn").onclick=saveDraftReplies;$("downloadBtn").onclick=downloadCurrent;$("downloadMailBtn").onclick=downloadMailReady;if($("downloadSplitBtn"))$("downloadSplitBtn").onclick=downloadSplitFiles;if($("selectVisibleBtn"))$("selectVisibleBtn").onclick=selectVisibleRows;if($("bulkMachineBtn"))$("bulkMachineBtn").onclick=()=>bulkAssignMode(PROD_MODES[0]);if($("bulkHandBtn"))$("bulkHandBtn").onclick=()=>bulkAssignMode(PROD_MODES[1]);if($("bulkGcnBtn"))$("bulkGcnBtn").onclick=()=>bulkAssignMode(PROD_MODES[2]);updateBulkModeState();
 ["fAllSearch","fCustomer","fOrder","fItem"].forEach(id=>$(id)?.addEventListener("input",render));
-["fStatus","fMode","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
+["fStatus","fMode","fGcnVendor","fPrevDate","workScope"].forEach(id=>$(id).addEventListener("change",()=>{updateBatchInfo();render()}));
 $("batchSelect").addEventListener("change",()=>{updateBatchInfo();$("workScope").value="latest";render()});
 $("refillFile").addEventListener("change",refillExcel);
 $("freezeCols").addEventListener("change",applyFrozenColumns);

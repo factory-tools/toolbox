@@ -250,6 +250,7 @@ body{overflow-x:hidden}
 .cell-mode.mode-machine{background:#dbeafe!important;color:#1e3a8a!important;border-color:#93c5fd!important;font-weight:900}
 .cell-mode.mode-hand{background:#fef3c7!important;color:#92400e!important;border-color:#fcd34d!important;font-weight:900}
 .cell-mode.mode-gcn{background:#ede9fe!important;color:#5b21b6!important;border-color:#c4b5fd!important;font-weight:900}
+.cell-gcn-vendor{width:100%;height:29px;padding:3px 5px;border:1px solid #f0a35b;border-radius:6px;background:#fff7ed;color:#9a3412;font-weight:900;font-size:11px}
 .change-detail{margin-top:3px;padding-top:3px;border-top:1px dashed #d98b8b;font-size:9px;line-height:1.15;color:#8b0000;font-weight:900;white-space:normal}.change-detail span{font-size:8px;font-weight:700}
 .compact-help-only{font-size:10px;color:#64748b;cursor:help}
 @media(max-width:1450px){.ribbon-controls{grid-template-columns:minmax(130px,.7fr) minmax(170px,.9fr) minmax(130px,.68fr) minmax(140px,.72fr) minmax(240px,1.35fr) max-content!important}}
@@ -373,6 +374,7 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
       <button type="button" class="btn outline compact-btn" id="bulkMachineBtn">機印 / In máy</button>
       <button type="button" class="btn outline compact-btn" id="bulkHandBtn">手印 / In tay</button>
       <button type="button" class="btn outline compact-btn" id="bulkGcnBtn">外發GCN</button>
+      <select id="bulkGcnVendor" title="批量指定 GCN 廠商 / Chọn nhà GCN hàng loạt" style="height:32px;border:1px solid #f0a35b;border-radius:6px;padding:4px 7px;background:#fff7ed;font-weight:800"><option value="">選 GCN 廠商 / Chọn nhà</option><option value="PTT">PTT</option><option value="KIM HUNG">KIM HUNG</option><option value="HTH">HTH</option><option value="BH">BH</option></select>
       <span class="compact-help-only" title="勾選生產方式欄左側方框，可一次指定多筆；修改後仍要按儲存 / Đánh dấu ô bên trái cột hình thức để phân công nhiều dòng; sau đó vẫn phải bấm Lưu">ⓘ 批量說明 / Hướng dẫn</span>
     </div></div>
 
@@ -392,6 +394,7 @@ A003,Nguyễn Văn A,Abc123456"></textarea>
       <label class="r-field"><span>訂單號碼 / Mã đơn</span><input id="fOrder" placeholder="訂單號碼 / Mã đơn"></label>
       <label class="r-field"><span>料號 / Mã SP</span><input id="fItem" placeholder="料號 / Mã SP"></label>
       <label class="r-field"><span>前工段日期 / Ngày công đoạn trước</span><select id="fPrevDate"><option value="">全部日期 / Tất cả ngày</option></select></label>
+      <label class="r-field"><span>GCN廠商 / Nhà GCN</span><select id="fGcnVendor"><option value="">全部 / Tất cả</option><option value="PTT">PTT</option><option value="KIM HUNG">KIM HUNG</option><option value="HTH">HTH</option><option value="BH">BH</option></select></label>
     </div>
     <div id="replyMsg" class="msg ribbon-reply-msg"></div>
   </div>
