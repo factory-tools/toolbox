@@ -296,6 +296,24 @@ if($('machineModePc')){
 // 標準參數由「報價標準參數表 Excel」維護，再由程式更新；網頁僅檢視，不直接修改。
 const QUOTE_STANDARD_HISTORY=[
   {
+    version:'2026/08/25',
+    note:'更新手印/K3排帶標準與特殊排料；新增機印報價 / Cập nhật tiêu chuẩn xếp dây In tay/K3, xếp liệu đặc biệt và báo giá In máy',
+    layers:{
+      WATER:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}],
+      SILICONE:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}]
+    },
+    strips:{
+      HAND:[{width:6,strips:30},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
+      K3:[{width:6,strips:30},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}]
+    },
+    tableLength:{HAND:25,K3:29},
+    sides:2,
+    special:{
+      SHOELACE:{qtyPerTable:1500,unit:'PAIR',workers:4,layHours:8,temp:false},
+      PIECE:{qtyPerTable:5000,unit:'PC',workers:4,layHours:4,temp:false}
+    }
+  },
+  {
     version:'2026/08/21',
     note:'新增鞋帶／單片特殊排料試用標準 / Thêm tiêu chuẩn thử nghiệm cho dây giày / miếng rời',
     layers:{
@@ -332,8 +350,9 @@ let quoteUnit='PC';
 let quoteStandardsMode='current';
 let quoteStripsAuto=true;
 let quoteStripsManual=false;
+let quoteMachineStroke=1;
 function quoteInkName(v){return v==='SILICONE'?'SILICONE':'水性 / Mực nước';}
-function quoteMethodName(v){return v==='K3'?'K3':'手印 / In tay';}
+function quoteMethodName(v){return v==='MACHINE'?'機印 / In máy':v==='K3'?'K3':'手印 / In tay';}
 function quoteLayoutName(v){return v==='SHOELACE'?'鞋帶 / Dây giày':v==='PIECE'?'單片 / Miếng rời':'一般長帶 / Dây dài thông thường';}
 function quoteFindRule(ink,layers,std=QUOTE_STANDARD){return (std.layers[ink]||[]).find(r=>layers>=Number(r.min)&&layers<=Number(r.max));}
 function quoteEscape(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -369,13 +388,34 @@ function quoteSetUnit(unit){
   $('quotePcLengthField').classList.toggle('hidden',unit!=='PC'||($('quoteLayoutType')&&$('quoteLayoutType').value!=='NORMAL'));
   calcQuoteCapacity();
 }
+function setQuoteMachineStroke(stroke){
+  quoteMachineStroke=stroke;
+  document.querySelectorAll('.quote-machine-stroke-btn').forEach(btn=>btn.classList.toggle('active',Number(btn.dataset.stroke)===stroke));
+  calcQuoteCapacity();
+}
 function updateQuoteTableLength(){
   const m=$('quoteMethod').value;
+  const isMachine=m==='MACHINE';
+  ['quoteLayoutField','quoteInkField','quoteWidthField','quoteStripsField','quotePcLengthField','quoteLayersField','quoteTableLengthField'].forEach(id=>{if($(id))$(id).classList.toggle('hidden',isMachine);});
+  if($('quoteMachineFields'))$('quoteMachineFields').classList.toggle('hidden',!isMachine);
+  if($('quoteAlert'))$('quoteAlert').classList.toggle('hidden',isMachine);
+  if(isMachine){
+    if($('quoteUnitToggle'))$('quoteUnitToggle').classList.add('hidden');
+    if($('quoteSpecialFields'))$('quoteSpecialFields').classList.add('hidden');
+    ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
+    ['quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
+    calcQuoteCapacity();return;
+  }
+  ['quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
+  ['quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
   $('quoteTableLength').value=QUOTE_STANDARD.tableLength[m]|| (m==='K3'?29:25);
   $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 29Y，可修改本次報價 / K3 mặc định 29Y, có thể sửa cho lần này':'手印預設 25Y，可修改本次報價 / In tay mặc định 25Y, có thể sửa cho lần này';
+  updateQuoteLayoutUI();
   quoteApplyStripSuggestion(true);
 }
 function updateQuoteLayoutUI(){
+  const method=$('quoteMethod').value;
+  if(method==='MACHINE'){calcQuoteCapacity();return;}
   const layout=$('quoteLayoutType').value,isSpecial=layout!=='NORMAL',isPiece=layout==='PIECE',sp=QUOTE_STANDARD.special&&QUOTE_STANDARD.special[layout];
   ['quoteWidthField','quoteStripsField','quoteTableLengthField','quotePcLengthField'].forEach(id=>{if($(id))$(id).classList.toggle('hidden',isSpecial);});
   if($('quoteUnitToggle'))$('quoteUnitToggle').classList.toggle('hidden',isSpecial);
@@ -387,9 +427,12 @@ function updateQuoteLayoutUI(){
     $('quoteSpecialTitle').textContent=layout==='SHOELACE'?'鞋帶排帶標準 / Tiêu chuẩn xếp dây giày':'單片排料標準 / Tiêu chuẩn xếp miếng rời';
     $('quoteSpecialQty').textContent=`${fmt(sp.qtyPerTable,0)} ${sp.unit==='PAIR'?'雙 / đôi':'PC'}`;
     $('quoteSpecialWorkers').textContent=`${fmt(sp.workers,0)} 人 / người`;
-    $('quoteSpecialLayHours').textContent=`${fmt(sp.layHours,2)} H`;
+    $('quoteSpecialLayHours').textContent=`${fmt(sp.layHours,2)} H / giờ`;
   }
-  if(!isSpecial)$('quotePcLengthField').classList.toggle('hidden',quoteUnit!=='PC');
+  if(!isSpecial){
+    $('quotePcLengthField').classList.toggle('hidden',quoteUnit!=='PC');
+    if($('quoteUnitToggle'))$('quoteUnitToggle').classList.remove('hidden');
+  }
   calcQuoteCapacity();
 }
 function calcQuoteCapacity(){
@@ -397,6 +440,21 @@ function calcQuoteCapacity(){
   const method=$('quoteMethod').value,ink=$('quoteInk').value,layout=$('quoteLayoutType')?$('quoteLayoutType').value:'NORMAL',layerRaw=$('quoteLayers').value.trim(),layers=layerRaw===''?NaN:Number(layerRaw);
   const inkLabel=quoteInkName(ink),rule=Number.isFinite(layers)?quoteFindRule(ink,layers):null;
   $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${QUOTE_STANDARD.version}`;
+  if(method==='MACHINE'){
+    const patterns=Number($('quoteMachinePatterns').value),lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,strips=1;
+    const pullLength=(patterns>0&&lengthMm>0)?patterns*lengthMm*10:0;
+    if($('quoteMachinePullLength'))$('quoteMachinePullLength').textContent=pullLength>0?fmt(pullLength,0):'—';
+    const pullSec=estimatedPullSeconds(pullLength,pullSpeed),printSec=MACHINE_STROKE_SECONDS[quoteMachineStroke]||0,cycleSec=pullSec+printSec;
+    const framesHour=cycleSec>0?3600/cycleSec:0,perHour=(patterns>0?patterns*strips*framesHour:0),cap8=perHour*8,cap12=perHour*12;
+    $('quoteWhatYouAreQuoting').textContent=`目前：機印｜1條｜${quoteMachineStroke}刀｜速度 200 / Hiện tại: In máy｜1 sợi｜${quoteMachineStroke} gạt｜tốc độ 200`;
+    $('quoteMachineHour').textContent=perHour>0?`${fmt(perHour,0)} PC/H`:'—';
+    $('quoteMachine12').textContent=cap12>0?`${fmt(cap12,0)} PC`:'—';
+    $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} PC`:'—';
+    $('quoteCapacity8Alt').textContent=perHour>0?`固定 1 條計算 / Cố định tính 1 sợi`:'請輸入每行圖案數與長度 / Vui lòng nhập số hình mỗi hàng và chiều dài';
+    if(patterns>0&&lengthMm>0&&perHour>0)$('quoteFormula').textContent=`建議拉帶長度 = ${fmt(patterns,0)} × ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；速度固定 200、固定 1 條、${quoteMachineStroke}刀 / Chiều dài kéo đề nghị = số hình × chiều dài × 10; tốc độ cố định 200, cố định 1 sợi, ${quoteMachineStroke} gạt. 每小時 / mỗi giờ ${fmt(perHour,0)} PC；8H ${fmt(cap8,0)} PC；12H ${fmt(cap12,0)} PC。`;
+    else $('quoteFormula').textContent='請輸入每行圖案數與長度（MM）；其餘固定值不可修改。 / Vui lòng nhập số hình trong 1 hàng và chiều dài (MM); các giá trị cố định không được điều chỉnh.';
+    return;
+  }
   if(layout!=='NORMAL'){
     const sp=QUOTE_STANDARD.special&&QUOTE_STANDARD.special[layout];
     const pieceLen=Number($('quotePieceLength')?$('quotePieceLength').value:0);
@@ -410,13 +468,13 @@ function calcQuoteCapacity(){
     $('quoteWhatYouAreQuoting').textContent=`目前：${quoteMethodName(method)}｜${quoteLayoutName(layout)}｜${inkLabel}${Number.isFinite(layers)?'｜'+fmt(layers,0)+'層':''} / Hiện tại: ${quoteMethodName(method)}｜${quoteLayoutName(layout)}｜${inkLabel}`;
     $('quoteTotalStrips').textContent='特殊排料 / Xếp liệu đặc biệt';
     $('quotePerTable').textContent=qty>0?`${fmt(qty,0)} ${unit}${yPerTable>0?'（≈ '+fmt(yPerTable,2)+' Y）':''}`:'—';
-    $('quoteTables12').textContent=printHours>0?`${fmt(printHours,2)} H / 桌印刷`:'—';
+    $('quoteTables12').textContent=printHours>0?`${fmt(printHours,2)} H / 桌印刷 / giờ in mỗi bàn`:'—';
     $('quoteTables8').textContent=totalHours>0?`${fmt(8/totalHours,2)} 桌 / bàn`:'—';
-    $('quoteTotalHours').textContent=totalHours>0?`${fmt(totalHours,2)} H（${fmt(layHours,2)}+${fmt(printHours,2)}）`:'—';
+    $('quoteTotalHours').textContent=totalHours>0?`${fmt(totalHours,2)} H / giờ（${fmt(layHours,2)}+${fmt(printHours,2)}）`:'—';
     $('quoteCapacity12').textContent=cap12>0?`${fmt(cap12,0)} ${unit}`:'—';
     $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} ${unit}`:'—';
     if(layout==='PIECE')$('quoteCapacity8Alt').textContent=pieceLen>0?`單片 ${fmt(pieceLen,0)} mm；每桌約 ${fmt(yPerTable,2)} Y / 8H完整產能按 PC 計`:'請輸入單片長度（mm） / Nhập chiều dài miếng (mm)';
-    else $('quoteCapacity8Alt').textContent=`排帶 ${fmt(workers,0)}人 × ${fmt(layHours,2)}H = ${fmt(workers*layHours,0)} 人時/桌`;
+    else $('quoteCapacity8Alt').textContent=`排料 ${fmt(workers,0)}人 × ${fmt(layHours,2)}H = ${fmt(workers*layHours,0)} 人時/桌 / Xếp liệu ${fmt(workers,0)} người × ${fmt(layHours,2)}H = ${fmt(workers*layHours,0)} giờ-người/bàn`;
     if(!sp)$('quoteFormula').textContent='目前沒有特殊排料標準 / Chưa có tiêu chuẩn xếp liệu đặc biệt.';
     else if(!Number.isFinite(layers)||!(layers>0))$('quoteFormula').textContent='請輸入層數；特殊排料需把「排料時間 + 印刷時間」一起計入完整產能。 / Vui lòng nhập số lớp; năng suất hoàn chỉnh = thời gian xếp liệu + thời gian in.';
     else if(layout==='PIECE'&&!(pieceLen>0))$('quoteFormula').textContent='單片請輸入本次長度（mm）。長度不寫入固定標準，只用於本次換算。 / Miếng rời: nhập chiều dài (mm) cho lần này; không lưu vào tiêu chuẩn cố định.';
@@ -454,11 +512,11 @@ function quoteStripTable(title,rows){
 function quoteSpecialTable(std){
   const sp=std.special||{},shoe=sp.SHOELACE,piece=sp.PIECE;
   if(!shoe&&!piece)return '';
-  const row=(name,x,unit)=>x?`<tr><td>${name}</td><td>${fmt(x.qtyPerTable,0)} ${unit}</td><td>${fmt(x.workers,0)} 人</td><td>${fmt(x.layHours,2)} H</td><td>${x.temp?'暫定 / Tạm thời':'正式 / Chính thức'}</td></tr>`:'';
-  return `<div class="quote-standard-section"><b>特殊排料標準 / Tiêu chuẩn xếp liệu đặc biệt</b><div class="table-scroll"><table class="quote-settings-table quote-special-standard-table"><thead><tr><th>類型<br>Loại</th><th>每桌標準量<br>SL / bàn</th><th>排料人數<br>Số người</th><th>排料時間<br>Giờ xếp liệu</th><th>狀態<br>Trạng thái</th></tr></thead><tbody>${row('鞋帶 / Dây giày',shoe,'雙')}${row('單片 / Miếng rời',piece,'PC')}</tbody></table></div><div class="quote-standard-explain"><b>完整產品怎麼算 / Cách tính sản phẩm hoàn chỉnh</b><br>一般長帶：完成仍包含「排帶 + 印刷」，但因目前排帶很快，所以沿用舊算法、不另外加排帶時間。<br>鞋帶／單片：排料很耗時，必須把排料時間加進去。<br><b>總完成時間 = 排料時間 + 印刷時間</b>；<b>8H完整產能 = 每桌標準量 ÷ 總完成時間 × 8</b>；12H同理。<br><span class="temp">⚠ 目前試用：鞋帶、單片皆先用 1300、4人、6H；特殊排料印刷時間暫以「層數 = H/桌」顯示（例：12層=12H），待現場確認正式標準後再更新。</span><br>單片長度（mm）每次報價手動輸入，不納入固定標準；只用於本次 PC ↔ Y 換算。<br><br>Dây dài: vẫn gồm xếp liệu + in, nhưng thời gian xếp ngắn nên giữ cách tính cũ. Dây giày/miếng rời: phải cộng thời gian xếp liệu. <b>Tổng thời gian = giờ xếp liệu + giờ in.</b> Chiều dài miếng nhập theo từng lần báo giá, không lưu vào tiêu chuẩn cố định.</div></div>`;
+  const row=(name,x,unit)=>x?`<tr><td>${name}</td><td>${fmt(x.qtyPerTable,0)} ${unit}</td><td>${fmt(x.workers,0)} 人 / người</td><td>${fmt(x.layHours,2)} H / giờ</td><td>${x.temp?'暫定 / Tạm thời':'正式 / Chính thức'}</td></tr>`:'';
+  return `<div class="quote-standard-section"><b>特殊排料標準 / Tiêu chuẩn xếp liệu đặc biệt</b><div class="table-scroll"><table class="quote-settings-table quote-special-standard-table"><thead><tr><th>類型<br>Loại</th><th>每桌標準量<br>SL / bàn</th><th>排料人數<br>Số người</th><th>排料時間<br>Giờ xếp liệu</th><th>狀態<br>Trạng thái</th></tr></thead><tbody>${row('鞋帶 / Dây giày',shoe,'雙 / đôi')}${row('單片 / Miếng rời',piece,'PC')}</tbody></table></div><div class="quote-standard-explain"><b>完整產品怎麼算 / Cách tính sản phẩm hoàn chỉnh</b><br>一般長帶：完成仍包含「排帶 + 印刷」，但因目前排帶很快，所以沿用舊算法、不另外加排帶時間。<br>鞋帶／單片：排料很耗時，必須把排料時間加進去。<br><b>總完成時間 = 排料時間 + 印刷時間</b>；<b>8H完整產能 = 每桌標準量 ÷ 總完成時間 × 8</b>；12H同理。<br><span class="temp">目前標準：鞋帶 1500雙、4人、8H；單片 5000PC、4人、4H。特殊排料印刷時間目前以「層數 = H/桌」計算（例：12層=12H）。 / Tiêu chuẩn hiện tại: dây giày 1500 đôi, 4 người, 8H; miếng rời 5000 PC, 4 người, 4H. Thời gian in xếp liệu đặc biệt hiện tính theo số lớp = giờ/bàn.</span><br>單片長度（mm）每次報價手動輸入，不納入固定標準；只用於本次 PC ↔ Y 換算。<br><br>Dây dài: vẫn gồm xếp liệu + in, nhưng thời gian xếp ngắn nên giữ cách tính cũ. Dây giày/miếng rời: phải cộng thời gian xếp liệu. <b>Tổng thời gian = giờ xếp liệu + giờ in.</b> Chiều dài miếng nhập theo từng lần báo giá, không lưu vào tiêu chuẩn cố định.</div></div>`;
 }
 function quoteSnapshotHtml(std,showHeader=true){
-  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b></div></div>`;
+  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>固定 1 條 / Cố định 1 sợi｜速度 200 / Tốc độ 200</b></div></div>`;
 }
 function renderQuoteStandards(){
   if(!$('quoteStandardsContent'))return;
@@ -479,11 +537,12 @@ if($('quoteUnitPc')){
     if(quoteStripsManual){$('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';$('quoteStrips').focus();$('quoteStrips').select();}
     else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
   });
-  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  document.querySelectorAll('.quote-machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setQuoteMachineStroke(Number(btn.dataset.stroke))));
   $('quoteStandardsBtn').addEventListener('click',openQuoteStandards);$('quoteStandardsClose').addEventListener('click',closeQuoteStandards);
   $('quoteStandardsPanel').addEventListener('click',e=>{if(e.target===$('quoteStandardsPanel'))closeQuoteStandards();});
   $('quoteCurrentTab').addEventListener('click',()=>{quoteStandardsMode='current';renderQuoteStandards();});$('quoteHistoryTab').addEventListener('click',()=>{quoteStandardsMode='history';renderQuoteStandards();});
-  quoteSetUnit('PC');updateQuoteTableLength();updateQuoteLayoutUI();renderQuoteStandards();
+  setQuoteMachineStroke(1);quoteSetUnit('PC');updateQuoteTableLength();updateQuoteLayoutUI();renderQuoteStandards();
 }
 
 

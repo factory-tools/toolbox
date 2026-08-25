@@ -57,7 +57,7 @@
 
 <div class="machine-section-title">機台實際參數 / Thông số thực tế của máy</div>
 <div class="machine-inputs">
-<div class="field machine-field machine-stroke-field"><span class="zh">刮印刀數</span><span class="vi">Số lần gạt mực</span><div class="machine-stroke" role="group" aria-label="刮印刀數"><button type="button" class="machine-stroke-btn active" data-stroke="1">1刀 / 1 lần<br><small>5秒 / 5 giây</small></button><button type="button" class="machine-stroke-btn" data-stroke="2">2刀 / 2 lần<br><small>12秒 / 12 giây</small></button><button type="button" class="machine-stroke-btn" data-stroke="3">3刀 / 3 lần<br><small>17秒 / 17 giây</small></button></div></div>
+<div class="field machine-field machine-stroke-field"><span class="zh">刮印刀數</span><span class="vi">Số lần gạt mực</span><div class="machine-stroke" role="group" aria-label="刮印刀數"><button type="button" class="machine-stroke-btn active" data-stroke="1">1刀 / 1 gạt<br><small>5秒 / 5 giây</small></button><button type="button" class="machine-stroke-btn" data-stroke="2">2刀 / 2 gạt<br><small>12秒 / 12 giây</small></button><button type="button" class="machine-stroke-btn" data-stroke="3">3刀 / 3 gạt<br><small>17秒 / 17 giây</small></button></div></div>
 <label class="field machine-field emphasis-field"><span id="machinePullLengthLabelZh" class="zh">建議拉帶長度設定值（可微調）</span><span id="machinePullLengthLabelVi" class="vi">Giá trị chiều dài kéo dây đề nghị（có thể chỉnh）</span><input id="machinePullLength" type="number" inputmode="decimal" min="0" step="any" value="3080"><small id="machinePullLengthHint" class="machine-field-hint">PC：單個長度 × 每行圖案數 × 10，自動帶入後可微調 / PC: chiều dài × số hình × 10, có thể chỉnh lại</small></label>
 <label class="field machine-field"><span class="zh">拉帶速度設定值</span><span class="vi">Giá trị cài đặt tốc độ kéo dây</span><input id="machinePullSpeed" type="number" inputmode="decimal" min="0" step="any" value="320"></label>
 <label class="field machine-field"><span class="zh">每日可印時間（小時）</span><span class="vi">Số giờ in mỗi ngày</span><input id="machineHoursPerDay" type="number" inputmode="decimal" min="0" step="any" value="12"></label>
@@ -84,20 +84,31 @@
 <section id="quoteCapacityPage" class="page"><div class="card quote-cap-card">
 <button class="back-btn compact-back" data-page="homePage">← 返回 / Trở về</button>
 <div class="quote-cap-head"><div><h1>報價標準產能</h1><p class="subtitle">Năng suất chuẩn báo giá</p></div><button id="quoteStandardsBtn" class="quote-settings-btn" type="button">📋 檢視標準 / Xem tiêu chuẩn</button></div>
-<div class="quote-alert"><b>請先確認你要報 PC 還是 Y</b><span>Vui lòng xác nhận đơn vị báo giá là PC hay Y trước khi tính.</span></div>
+<div id="quoteAlert" class="quote-alert"><b>請先確認你要報 PC 還是 Y</b><span>Vui lòng xác nhận đơn vị báo giá là PC hay Y trước khi tính.</span></div>
 <div id="quoteUnitToggle" class="quote-unit-toggle" role="group" aria-label="報價單位"><button id="quoteUnitPc" class="quote-unit-btn active" type="button">PC</button><button id="quoteUnitY" class="quote-unit-btn" type="button">Y</button></div>
 <div class="quote-input-grid">
-<label class="field quote-field"><span class="zh">生產方式</span><span class="vi">Phương pháp sản xuất</span><select id="quoteMethod"><option value="HAND">手印 / In tay</option><option value="K3">K3</option></select></label>
-<label class="field quote-field"><span class="zh">排料類型</span><span class="vi">Kiểu xếp liệu</span><select id="quoteLayoutType"><option value="NORMAL">一般長帶 / Dây dài thông thường</option><option value="SHOELACE">鞋帶 / Dây giày</option><option value="PIECE">單片 / Miếng rời</option></select></label>
-<label class="field quote-field"><span class="zh">油墨種類</span><span class="vi">Loại mực</span><select id="quoteInk"><option value="WATER">水性 / Mực nước</option><option value="SILICONE">SILICONE</option></select></label>
+<label class="field quote-field"><span class="zh">生產方式</span><span class="vi">Phương pháp sản xuất</span><select id="quoteMethod"><option value="HAND">手印 / In tay</option><option value="K3">K3</option><option value="MACHINE">機印 / In máy</option></select></label>
+<label id="quoteLayoutField" class="field quote-field"><span class="zh">排料類型</span><span class="vi">Kiểu xếp liệu</span><select id="quoteLayoutType"><option value="NORMAL">一般長帶 / Dây dài thông thường</option><option value="SHOELACE">鞋帶 / Dây giày</option><option value="PIECE">單片 / Miếng rời</option></select></label>
+<label id="quoteInkField" class="field quote-field"><span class="zh">油墨種類</span><span class="vi">Loại mực</span><select id="quoteInk"><option value="WATER">水性 / Mực nước</option><option value="SILICONE">SILICONE</option></select></label>
 <label id="quoteWidthField" class="field quote-field"><span class="zh">帶寬（mm）</span><span class="vi">Khổ dây (mm)</span><input id="quoteWidth" type="number" inputmode="decimal" min="0" step="any" value="25"></label>
 <div id="quoteStripsField" class="field quote-field auto-strip-field"><span class="zh">單邊排帶條數（自動）</span><span class="vi">Tổng số sợi 1 bên bàn (tự động)</span><div class="quote-strip-row"><input id="quoteStrips" type="number" inputmode="numeric" min="1" step="1" readonly><button id="quoteStripsEditBtn" class="quote-edit-btn" type="button">特殊調整<br><small>Điều chỉnh</small></button></div><small id="quoteStripsHint">依寬度自動帶入 / Tự động theo khổ dây</small></div>
 <label id="quotePcLengthField" class="field quote-field"><span class="zh">每 PC 長度（mm）</span><span class="vi">Chiều dài mỗi PC (mm)</span><input id="quotePcLength" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 / VD: 95"></label>
-<label class="field quote-field emphasis-field"><span class="zh">總層數</span><span class="vi">Tổng số lớp</span><input id="quoteLayers" type="number" inputmode="numeric" min="0" step="1" placeholder="例如 / VD: 6"></label>
+<label id="quoteLayersField" class="field quote-field emphasis-field"><span class="zh">總層數</span><span class="vi">Tổng số lớp</span><input id="quoteLayers" type="number" inputmode="numeric" min="0" step="1" placeholder="例如 / VD: 6"></label>
 <label id="quoteTableLengthField" class="field quote-field"><span class="zh">可用桌長（Y）</span><span class="vi">Chiều dài bàn dùng được (Y)</span><input id="quoteTableLength" type="number" inputmode="decimal" min="0" step="any" value="25"><small id="quoteTableLengthHint">手印預設 25Y，可修改 / In tay mặc định 25Y, có thể sửa</small></label>
 </div>
+<div id="quoteMachineFields" class="quote-machine-box hidden">
+  <div class="quote-machine-head"><b>機印報價參數 / Thông số báo giá in máy</b><span>固定 1 條計算 / Cố định tính 1 sợi</span></div>
+  <div class="quote-input-grid">
+    <label class="field quote-field emphasis-field"><span class="zh">每行圖案數</span><span class="vi">Số hình trong 1 hàng</span><input id="quoteMachinePatterns" type="number" inputmode="numeric" min="1" step="1" value="2"></label>
+    <label class="field quote-field"><span class="zh">長度（MM）</span><span class="vi">Chiều dài (MM)</span><input id="quoteMachineLength" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 / VD: 95"></label>
+    <div class="field quote-field quote-locked-field"><span class="zh">印刷條數</span><span class="vi">Số dây in</span><b>1 條 / 1 sợi</b><small>固定值，請勿修改 / Giá trị cố định, không điều chỉnh</small></div>
+    <div class="field quote-field machine-stroke-field"><span class="zh">刮印刀數</span><span class="vi">Số lần gạt mực</span><div class="machine-stroke quote-machine-stroke" role="group" aria-label="刮印刀數 / Số lần gạt mực"><button type="button" class="quote-machine-stroke-btn active" data-stroke="1">1刀 / 1 gạt</button><button type="button" class="quote-machine-stroke-btn" data-stroke="2">2刀 / 2 gạt</button><button type="button" class="quote-machine-stroke-btn" data-stroke="3">3刀 / 3 gạt</button></div></div>
+    <div class="field quote-field quote-locked-field"><span class="zh">拉帶速度設定值</span><span class="vi">Giá trị cài đặt tốc độ kéo dây</span><b>200</b><small>固定值，請勿修改 / Giá trị cố định, không điều chỉnh</small></div>
+    <div class="field quote-field quote-locked-field"><span class="zh">建議拉帶長度設定值</span><span class="vi">Giá trị chiều dài kéo dây đề nghị</span><b id="quoteMachinePullLength">—</b><small>每行圖案數 × 長度（MM）× 10，自動計算，請勿修改 / Số hình × chiều dài (MM) × 10, tự động tính, không điều chỉnh</small></div>
+  </div>
+</div>
 <div id="quoteSpecialFields" class="quote-special-box hidden">
-  <div class="quote-special-head"><b id="quoteSpecialTitle">特殊排料 / Xếp liệu đặc biệt</b><span>⚠ 暫定標準 / Tiêu chuẩn tạm thời</span></div>
+  <div class="quote-special-head"><b id="quoteSpecialTitle">特殊排料 / Xếp liệu đặc biệt</b><span>目前標準 / Tiêu chuẩn hiện tại</span></div>
   <div class="quote-special-grid">
     <div><span>每桌標準量<br>SL tiêu chuẩn / bàn</span><b id="quoteSpecialQty">—</b></div>
     <div><span>排料人數<br>Số người xếp liệu</span><b id="quoteSpecialWorkers">—</b></div>
@@ -107,12 +118,14 @@
 </div>
 <div id="quoteWhatYouAreQuoting" class="quote-what">目前：手印｜水性｜PC / Hiện tại: In tay｜Mực nước｜PC</div>
 <div class="quote-results">
-<div class="quote-result"><span>單邊 / 整桌排帶條數<br>Sợi 1 bên / cả bàn</span><b id="quoteTotalStrips">—</b></div>
-<div class="quote-result"><span>每桌實際產量 / Sản lượng thực tế mỗi bàn</span><b id="quotePerTable">—</b></div>
-<div class="quote-result"><span>12H 標準桌數 / Số bàn chuẩn trong 12H</span><b id="quoteTables12">—</b></div>
-<div class="quote-result"><span>8H 可完成桌數 / Số bàn trong 8H</span><b id="quoteTables8">—</b></div>
+<div id="quoteTotalStripsResult" class="quote-result"><span>單邊 / 整桌排帶條數<br>Sợi 1 bên / cả bàn</span><b id="quoteTotalStrips">—</b></div>
+<div id="quotePerTableResult" class="quote-result"><span>每桌實際產量 / Sản lượng thực tế mỗi bàn</span><b id="quotePerTable">—</b></div>
+<div id="quoteTables12Result" class="quote-result"><span>12H 標準桌數 / Số bàn chuẩn trong 12H</span><b id="quoteTables12">—</b></div>
+<div id="quoteTables8Result" class="quote-result"><span>8H 可完成桌數 / Số bàn trong 8H</span><b id="quoteTables8">—</b></div>
 <div id="quoteTotalTimeResult" class="quote-result hidden"><span>每桌總完成時間 / Tổng thời gian hoàn tất 1 bàn</span><b id="quoteTotalHours">—</b></div>
 <div id="quoteCapacity12Result" class="quote-result hidden"><span>12H 完整產能 / Năng suất hoàn chỉnh 12H</span><b id="quoteCapacity12">—</b></div>
+<div id="quoteMachineHourResult" class="quote-result hidden"><span>每小時產能 / Năng suất mỗi giờ</span><b id="quoteMachineHour">—</b></div>
+<div id="quoteMachine12Result" class="quote-result hidden"><span>12H 產能 / Năng suất 12H</span><b id="quoteMachine12">—</b></div>
 <div class="quote-result primary quote-result-wide"><span>8H 報價產能 / Năng suất báo giá 8H</span><b id="quoteCapacity8">—</b><small id="quoteCapacity8Alt">—</small></div>
 </div>
 <div id="quoteFormula" class="quote-formula">請輸入層數 / Vui lòng nhập số lớp.</div>
