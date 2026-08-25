@@ -297,7 +297,7 @@ if($('machineModePc')){
 const QUOTE_STANDARD_HISTORY=[
   {
     version:'2026/08/25',
-    note:'更新手印/K3排帶標準與特殊排料；新增機印報價 / Cập nhật tiêu chuẩn xếp dây In tay/K3, xếp liệu đặc biệt và báo giá In máy',
+    note:'更新手印/K3排帶標準與特殊排料；機印報價改為可輸入條數並以 Y 計算 / Cập nhật tiêu chuẩn xếp dây In tay/K3, xếp liệu đặc biệt; báo giá In máy cho nhập số dây và tính theo Y',
     layers:{
       WATER:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}],
       SILICONE:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}]
@@ -441,18 +441,21 @@ function calcQuoteCapacity(){
   const inkLabel=quoteInkName(ink),rule=Number.isFinite(layers)?quoteFindRule(ink,layers):null;
   $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${QUOTE_STANDARD.version}`;
   if(method==='MACHINE'){
-    const patterns=Number($('quoteMachinePatterns').value),lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,strips=1;
+    const patterns=Number($('quoteMachinePatterns').value),lengthMm=Number($('quoteMachineLength').value),pullSpeed=200;
+    const stripsRaw=Number($('quoteMachineStrips').value),strips=Number.isInteger(stripsRaw)&&stripsRaw>=1?stripsRaw:0;
     const pullLength=(patterns>0&&lengthMm>0)?patterns*lengthMm*10:0;
     if($('quoteMachinePullLength'))$('quoteMachinePullLength').textContent=pullLength>0?fmt(pullLength,0):'—';
     const pullSec=estimatedPullSeconds(pullLength,pullSpeed),printSec=MACHINE_STROKE_SECONDS[quoteMachineStroke]||0,cycleSec=pullSec+printSec;
-    const framesHour=cycleSec>0?3600/cycleSec:0,perHour=(patterns>0?patterns*strips*framesHour:0),cap8=perHour*8,cap12=perHour*12;
-    $('quoteWhatYouAreQuoting').textContent=`目前：機印｜1條｜${quoteMachineStroke}刀｜速度 200 / Hiện tại: In máy｜1 sợi｜${quoteMachineStroke} gạt｜tốc độ 200`;
-    $('quoteMachineHour').textContent=perHour>0?`${fmt(perHour,0)} PC/H`:'—';
-    $('quoteMachine12').textContent=cap12>0?`${fmt(cap12,0)} PC`:'—';
-    $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} PC`:'—';
-    $('quoteCapacity8Alt').textContent=perHour>0?`固定 1 條計算 / Cố định tính 1 sợi`:'請輸入每行圖案數與長度 / Vui lòng nhập số hình mỗi hàng và chiều dài';
-    if(patterns>0&&lengthMm>0&&perHour>0)$('quoteFormula').textContent=`建議拉帶長度 = ${fmt(patterns,0)} × ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；速度固定 200、固定 1 條、${quoteMachineStroke}刀 / Chiều dài kéo đề nghị = số hình × chiều dài × 10; tốc độ cố định 200, cố định 1 sợi, ${quoteMachineStroke} gạt. 每小時 / mỗi giờ ${fmt(perHour,0)} PC；8H ${fmt(cap8,0)} PC；12H ${fmt(cap12,0)} PC。`;
-    else $('quoteFormula').textContent='請輸入每行圖案數與長度（MM）；其餘固定值不可修改。 / Vui lòng nhập số hình trong 1 hàng và chiều dài (MM); các giá trị cố định không được điều chỉnh.';
+    const framesHour=cycleSec>0?3600/cycleSec:0;
+    const yardsPerCycle=(patterns>0&&lengthMm>0&&strips>0)?patterns*lengthMm/914.4*strips:0;
+    const perHour=yardsPerCycle*framesHour,cap8=perHour*8,cap12=perHour*12;
+    $('quoteWhatYouAreQuoting').textContent=`目前：機印｜${strips>0?fmt(strips,0):'—'}條｜${quoteMachineStroke}刀｜速度 200｜Y / Hiện tại: In máy｜${strips>0?fmt(strips,0):'—'} sợi｜${quoteMachineStroke} gạt｜tốc độ 200｜Y`;
+    $('quoteMachineHour').textContent=perHour>0?`${fmt(perHour,2)} Y/H`:'—';
+    $('quoteMachine12').textContent=cap12>0?`${fmt(cap12,2)} Y`:'—';
+    $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,2)} Y`:'—';
+    $('quoteCapacity8Alt').textContent=perHour>0?`${fmt(strips,0)} 條同時印刷 / In cùng lúc ${fmt(strips,0)} sợi`:'請輸入每行圖案數、長度與印刷條數 / Vui lòng nhập số hình, chiều dài và số dây in';
+    if(patterns>0&&lengthMm>0&&strips>0&&perHour>0)$('quoteFormula').textContent=`建議拉帶長度 = ${fmt(patterns,0)} × ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；每循環碼數 = ${fmt(patterns,0)} × ${fmt(lengthMm,2)} ÷ 914.4 × ${fmt(strips,0)}條 = ${fmt(yardsPerCycle,3)} Y；速度固定 200、${quoteMachineStroke}刀。每小時 ${fmt(perHour,2)} Y；8H ${fmt(cap8,2)} Y；12H ${fmt(cap12,2)} Y。 / Chiều dài kéo đề nghị = số hình × chiều dài × 10; yard mỗi chu kỳ = số hình × chiều dài ÷ 914.4 × số dây; tốc độ cố định 200, ${quoteMachineStroke} gạt. Mỗi giờ ${fmt(perHour,2)} Y; 8H ${fmt(cap8,2)} Y; 12H ${fmt(cap12,2)} Y.`;
+    else $('quoteFormula').textContent='請輸入每行圖案數、長度（MM）與印刷條數；拉帶速度固定 200。 / Vui lòng nhập số hình trong 1 hàng, chiều dài (MM) và số dây in; tốc độ kéo dây cố định 200.';
     return;
   }
   if(layout!=='NORMAL'){
@@ -537,7 +540,7 @@ if($('quoteUnitPc')){
     if(quoteStripsManual){$('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';$('quoteStrips').focus();$('quoteStrips').select();}
     else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
   });
-  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
   document.querySelectorAll('.quote-machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setQuoteMachineStroke(Number(btn.dataset.stroke))));
   $('quoteStandardsBtn').addEventListener('click',openQuoteStandards);$('quoteStandardsClose').addEventListener('click',closeQuoteStandards);
   $('quoteStandardsPanel').addEventListener('click',e=>{if(e.target===$('quoteStandardsPanel'))closeQuoteStandards();});

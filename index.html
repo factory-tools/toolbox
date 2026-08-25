@@ -97,11 +97,11 @@
 <label id="quoteTableLengthField" class="field quote-field"><span class="zh">可用桌長（Y）</span><span class="vi">Chiều dài bàn dùng được (Y)</span><input id="quoteTableLength" type="number" inputmode="decimal" min="0" step="any" value="25"><small id="quoteTableLengthHint">手印預設 25Y，可修改 / In tay mặc định 25Y, có thể sửa</small></label>
 </div>
 <div id="quoteMachineFields" class="quote-machine-box hidden">
-  <div class="quote-machine-head"><b>機印報價參數 / Thông số báo giá in máy</b><span>固定 1 條計算 / Cố định tính 1 sợi</span></div>
+  <div class="quote-machine-head"><b>機印報價參數 / Thông số báo giá in máy</b><span>機印報價單位：Y（碼） / Đơn vị báo giá in máy: Y (yard)</span></div>
   <div class="quote-input-grid">
     <label class="field quote-field emphasis-field"><span class="zh">每行圖案數</span><span class="vi">Số hình trong 1 hàng</span><input id="quoteMachinePatterns" type="number" inputmode="numeric" min="1" step="1" value="2"></label>
     <label class="field quote-field"><span class="zh">長度（MM）</span><span class="vi">Chiều dài (MM)</span><input id="quoteMachineLength" type="number" inputmode="decimal" min="0" step="any" placeholder="例如 / VD: 95"></label>
-    <div class="field quote-field quote-locked-field"><span class="zh">印刷條數</span><span class="vi">Số dây in</span><b>1 條 / 1 sợi</b><small>固定值，請勿修改 / Giá trị cố định, không điều chỉnh</small></div>
+    <label class="field quote-field emphasis-field"><span class="zh">印刷條數</span><span class="vi">Số dây in</span><input id="quoteMachineStrips" type="number" inputmode="numeric" min="1" step="1" value="1"><small>同時印刷的帶子數量 / Số dây được in cùng lúc</small></label>
     <div class="field quote-field machine-stroke-field"><span class="zh">刮印刀數</span><span class="vi">Số lần gạt mực</span><div class="machine-stroke quote-machine-stroke" role="group" aria-label="刮印刀數 / Số lần gạt mực"><button type="button" class="quote-machine-stroke-btn active" data-stroke="1">1刀 / 1 gạt</button><button type="button" class="quote-machine-stroke-btn" data-stroke="2">2刀 / 2 gạt</button><button type="button" class="quote-machine-stroke-btn" data-stroke="3">3刀 / 3 gạt</button></div></div>
     <div class="field quote-field quote-locked-field"><span class="zh">拉帶速度設定值</span><span class="vi">Giá trị cài đặt tốc độ kéo dây</span><b>200</b><small>固定值，請勿修改 / Giá trị cố định, không điều chỉnh</small></div>
     <div class="field quote-field quote-locked-field"><span class="zh">建議拉帶長度設定值</span><span class="vi">Giá trị chiều dài kéo dây đề nghị</span><b id="quoteMachinePullLength">—</b><small>每行圖案數 × 長度（MM）× 10，自動計算，請勿修改 / Số hình × chiều dài (MM) × 10, tự động tính, không điều chỉnh</small></div>
