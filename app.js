@@ -367,7 +367,7 @@ function quoteDipUpdateDepthFields(){
   calcQuoteCapacity();
 }
 function quoteDipCalc(){
-  const pre=$('quoteDipPre').value,type=$('quoteDipType').value,ink=$('quoteDipInk').value,size=Number($('quoteDipSize').value),dips=Number($('quoteDipTimes').value),colors=Number($('quoteDipColors').value)||1,hourPc=Number($('quoteDipHourPc').value),batches=Number($('quoteDipWasteBatches').value);
+  const pre=$('quoteDipPre').value,type=$('quoteDipType').value,ink=$('quoteDipInk').value,size=Number($('quoteDipSize').value),dips=Number($('quoteDipTimes').value),colors=Number($('quoteDipColors').value)||1,hourPc=Number($('quoteDipHourPc').value),baseLayers=Number($('quoteDipBaseLayers').value)||0,colorLayers=Number($('quoteDipColorLayers').value)||0,topLayers=Number($('quoteDipTopLayers').value)||0,batches=(baseLayers>0?1:0)+(colorLayers>0?1:0)+(topLayers>0?1:0);
   const ref=quoteDipFindReference(pre,type,ink,size,dips);
   let single=0;
   if(ref&&size>0&&ref[2]>0&&ref[5]>0){for(let i=1;i<=colors;i++){const depth=Number($('quoteDipDepth'+i)?.value);if(depth>0)single+=Number(ref[6])*(size/Number(ref[2]))*(depth/Number(ref[5]));}}
@@ -377,7 +377,7 @@ function quoteDipCalc(){
   const wastePerPc=cap4>0?wasteTotalKg*1000/cap4:0;
   const totalInk=pcInk+wastePerPc;
   const cap8=hourPc>0?hourPc*8:0;
-  $('quoteWhatYouAreQuoting').textContent=`目前：浸染｜${type}｜${ink}｜${colors}色｜PC / Hiện tại: Nhúng sơn｜${type}｜${ink}｜${colors} màu｜PC`;
+  $('quoteWhatYouAreQuoting').textContent=`目前：浸染｜${type}｜${ink}｜${colors}色｜打底${fmt(baseLayers,0)}層／顏色${fmt(colorLayers,0)}層／蓋面${fmt(topLayers,0)}層｜PC / Hiện tại: Nhúng sơn｜${type}｜${ink}｜${colors} màu｜lót ${fmt(baseLayers,0)} lớp／màu ${fmt(colorLayers,0)} lớp／phủ ${fmt(topLayers,0)} lớp｜PC`;
   $('quoteDipReference').textContent=ref?`參考實驗：${fmt(ref[2],2)}mm｜${fmt(ref[5],2)}mm深｜${fmt(ref[6],3)}g/單頭累計（泡${dips}次） / Thử tham khảo: ${fmt(ref[2],2)}mm｜sâu ${fmt(ref[5],2)}mm｜${fmt(ref[6],3)}g/1 đầu tích lũy (${dips} lần)`:'找不到完全符合「前加工＋帶型＋墨種＋浸染次數」的實驗 / Không tìm thấy dữ liệu thử phù hợp.';
   $('quoteDipSingleHead').textContent=ref?`${fmt(single,3)} g/頭`:'—';
   $('quoteDipPcInk').textContent=ref?`${fmt(pcInk,3)} g/PC`:'—';
@@ -385,7 +385,7 @@ function quoteDipCalc(){
   $('quoteDipTotalInk').textContent=ref&&cap4>0?`${fmt(totalInk,3)} g/PC`:'—';
   $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} PC`:'—';
   $('quoteCapacity8Alt').textContent=hourPc>0?`${fmt(hourPc,0)} PC/H；1PC=2頭 / 1PC=2 đầu`:'請輸入每小時可完成PC / Nhập PC hoàn thành mỗi giờ';
-  if(ref&&cap4>0)$('quoteFormula').textContent=`產品耗墨：單頭 ${fmt(single,3)}g × 2頭 = ${fmt(pcInk,3)}g/PC；固定報廢：${fmt(batches,0)}批 × 10KG ÷ (${fmt(hourPc,0)} PC/H × 4H) = ${fmt(wastePerPc,3)}g/PC；報價總耗墨 = ${fmt(totalInk,3)}g/PC。 / Mực SP: ${fmt(single,3)}g/đầu × 2; mực bỏ: ${fmt(batches,0)} mẻ × 10KG ÷ (${fmt(hourPc,0)} PC/H × 4H); tổng = ${fmt(totalInk,3)}g/PC.`;
+  if(ref&&cap4>0)$('quoteFormula').textContent=`產品耗墨：單頭 ${fmt(single,3)}g × 2頭 = ${fmt(pcInk,3)}g/PC；報廢批次自動判定：打底 ${fmt(baseLayers,0)}層${baseLayers>0?'→1批':'→0批'}、顏色 ${fmt(colorLayers,0)}層${colorLayers>0?'→1批':'→0批'}、蓋面 ${fmt(topLayers,0)}層${topLayers>0?'→1批':'→0批'}，共 ${fmt(batches,0)}批 × 10KG ÷ (${fmt(hourPc,0)} PC/H × 4H) = ${fmt(wastePerPc,3)}g/PC；報價總耗墨 = ${fmt(totalInk,3)}g/PC。 / Mực SP: ${fmt(single,3)}g/đầu × 2; số mẻ bỏ tự động: lót ${fmt(baseLayers,0)} lớp, màu ${fmt(colorLayers,0)} lớp, phủ ${fmt(topLayers,0)} lớp → ${fmt(batches,0)} mẻ × 10KG ÷ (${fmt(hourPc,0)} PC/H × 4H); tổng = ${fmt(totalInk,3)}g/PC.`;
   else $('quoteFormula').textContent='請確認實驗條件、各色浸泡深度與每小時產能。 / Vui lòng kiểm tra điều kiện thử, độ sâu từng màu và năng suất mỗi giờ.';
 }
 
@@ -571,8 +571,12 @@ function quoteSpecialTable(std){
   const row=(name,x,unit)=>x?`<tr><td>${name}</td><td>${fmt(x.qtyPerTable,0)} ${unit}</td><td>${fmt(x.workers,0)} 人 / người</td><td>${fmt(x.layHours,2)} H / giờ</td><td>${x.temp?'暫定 / Tạm thời':'正式 / Chính thức'}</td></tr>`:'';
   return `<div class="quote-standard-section"><b>特殊排料標準 / Tiêu chuẩn xếp liệu đặc biệt</b><div class="table-scroll"><table class="quote-settings-table quote-special-standard-table"><thead><tr><th>類型<br>Loại</th><th>每桌標準量<br>SL / bàn</th><th>排料人數<br>Số người</th><th>排料時間<br>Giờ xếp liệu</th><th>狀態<br>Trạng thái</th></tr></thead><tbody>${row('鞋帶 / Dây giày',shoe,'雙 / đôi')}${row('單片 / Miếng rời',piece,'PC')}</tbody></table></div><div class="quote-standard-explain"><b>完整產品怎麼算 / Cách tính sản phẩm hoàn chỉnh</b><br>一般長帶：完成仍包含「排帶 + 印刷」，但因目前排帶很快，所以沿用舊算法、不另外加排帶時間。<br>鞋帶／單片：排料很耗時，必須把排料時間加進去。<br><b>總完成時間 = 排料時間 + 印刷時間</b>；<b>8H完整產能 = 每桌標準量 ÷ 總完成時間 × 8</b>；12H同理。<br><span class="temp">目前標準：鞋帶 1500雙、4人、8H；單片 5000PC、4人、4H。特殊排料印刷時間目前以「層數 = H/桌」計算（例：12層=12H）。 / Tiêu chuẩn hiện tại: dây giày 1500 đôi, 4 người, 8H; miếng rời 5000 PC, 4 người, 4H. Thời gian in xếp liệu đặc biệt hiện tính theo số lớp = giờ/bàn.</span><br>單片長度（mm）每次報價手動輸入，不納入固定標準；只用於本次 PC ↔ Y 換算。<br><br>Dây dài: vẫn gồm xếp liệu + in, nhưng thời gian xếp ngắn nên giữ cách tính cũ. Dây giày/miếng rời: phải cộng thời gian xếp liệu. <b>Tổng thời gian = giờ xếp liệu + giờ in.</b> Chiều dài miếng nhập theo từng lần báo giá, không lưu vào tiêu chuẩn cố định.</div></div>`;
 }
+function quoteDipExperimentTable(){
+  const rows=QUOTE_DIP_EXPERIMENTS.map(r=>`<tr><td>${quoteEscape(r[0])}</td><td>${quoteEscape(r[1])}</td><td>${fmt(r[2],2)}</td><td>${quoteEscape(r[3])}</td><td>${fmt(r[4],0)}</td><td>${fmt(r[5],2)}</td><td>${fmt(r[6],3)}</td></tr>`).join('');
+  return `<div class="quote-standard-section"><details class="quote-history-item"><summary>浸染實驗標準 / Tiêu chuẩn thí nghiệm nhúng sơn（${QUOTE_DIP_EXPERIMENTS.length} 筆 / dòng）</summary><div class="quote-history-snapshot"><div class="quote-standard-explain">以下為報價自動比對使用的 0817 單頭實驗資料。系統依「前加工＋帶型＋墨種＋浸染次數」篩選，再抓寬度最接近的實驗。1 PC = 2頭。<br>Dữ liệu thử 0817 theo 1 đầu dùng để tự động đối chiếu báo giá. Hệ thống lọc theo gia công trước + loại dây + loại mực + số lần nhúng, sau đó chọn QC gần nhất. 1 PC = 2 đầu.</div><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>前加工<br>Gia công trước</th><th>帶型<br>Loại dây</th><th>寬度(MM)<br>QC (MM)</th><th>墨種<br>Loại mực</th><th>浸染次數<br>Số lần nhúng</th><th>實驗深度(mm)<br>Độ sâu thử (mm)</th><th>單頭累計耗墨(g)<br>Mực tích lũy/đầu (g)</th></tr></thead><tbody>${rows}</tbody></table></div></div></details></div>`;
+}
 function quoteSnapshotHtml(std,showHeader=true){
-  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數自行輸入 / Nhập số dây in｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜1 PC = 2頭 / 2 đầu｜每批固定報廢 10KG / mỗi mẻ bỏ 10KG｜標準分攤 4H / phân bổ 4H</b></div></div>`;
+  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數自行輸入 / Nhập số dây in｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜1 PC = 2頭 / 2 đầu｜打底／顏色／蓋面各有層數即各算1批10KG報廢 / mỗi nhóm lót-màu-phủ có lớp = 1 mẻ bỏ 10KG｜標準分攤 4H / phân bổ 4H</b></div></div>`;
 }
 function renderQuoteStandards(){
   if(!$('quoteStandardsContent'))return;
@@ -593,7 +597,7 @@ if($('quoteUnitPc')){
     if(quoteStripsManual){$('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';$('quoteStrips').focus();$('quoteStrips').select();}
     else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
   });
-  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips','quoteDipSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipWasteBatches'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips','quoteDipSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
   ['quoteDipPre','quoteDipType','quoteDipInk'].forEach(id=>{if($(id))$(id).addEventListener('change',calcQuoteCapacity);});
   if($('quoteDipColors'))$('quoteDipColors').addEventListener('change',quoteDipUpdateDepthFields);
   document.querySelectorAll('.quote-machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setQuoteMachineStroke(Number(btn.dataset.stroke))));

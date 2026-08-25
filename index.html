@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><link rel="manifest" href="manifest.json?v=20260825-bilingual-export-v37"><link rel="stylesheet" href="style.css?v=20260825-bilingual-export-v37"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><link rel="manifest" href="manifest.json?v=20260825-dip-layers-v38"><link rel="stylesheet" href="style.css?v=20260825-dip-layers-v38"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
 <section id="homePage" class="page active"><div class="card"><h1>工廠工具箱</h1><p class="subtitle">Hộp công cụ nhà máy</p><div class="tool-grid">
 <button class="tool-card" data-page="quantityPage"><span class="tool-icon">📦</span><span class="zh">數量推算工具</span><span class="vi">Công cụ ước tính số lượng</span></button>
 <button class="tool-card" data-page="printingPage"><span class="tool-icon">🖨️</span><span class="zh">批量印刷桌數試算</span><span class="vi">Tính số bàn in hàng loạt</span></button>
@@ -114,16 +114,18 @@
     <label class="field quote-field"><span class="zh">前加工</span><span class="vi">Gia công trước</span><select id="quoteDipPre"><option value="無前加工 / Không gia công trước">無前加工 / Không gia công trước</option></select></label>
     <label class="field quote-field"><span class="zh">帶型</span><span class="vi">Loại dây</span><select id="quoteDipType"><option value="扁帶 / Dây dẹt">扁帶 / Dây dẹt</option><option value="圓帶 / Dây tròn">圓帶 / Dây tròn</option><option value="打結/thắt nút">打結 / Thắt nút</option></select></label>
     <label class="field quote-field"><span class="zh">墨種</span><span class="vi">Loại mực</span><select id="quoteDipInk"><option value="WPU">WPU</option><option value="SILICONE">SILICONE</option></select></label>
-    <label class="field quote-field emphasis-field"><span class="zh">帶子尺寸（mm）</span><span class="vi">Kích thước dây (mm)</span><input id="quoteDipSize" type="number" min="0" step="any" value="6"></label>
+    <label class="field quote-field emphasis-field"><span class="zh">寬度（MM）</span><span class="vi">QC (MM)</span><input id="quoteDipSize" type="number" min="0" step="any" value="6"></label>
     <label class="field quote-field"><span class="zh">浸染次數</span><span class="vi">Số lần nhúng sơn</span><input id="quoteDipTimes" type="number" min="1" step="1" value="4"></label>
-    <label class="field quote-field"><span class="zh">顏色數量</span><span class="vi">Số lượng màu</span><select id="quoteDipColors"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label>
+    <label class="field quote-field"><span class="zh">顏色數量</span><span class="vi">Số lượng màu</span><select id="quoteDipColors"><option selected>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
     <label id="quoteDipDepth1Field" class="field quote-field"><span class="zh">顏色1浸泡深度（mm）</span><span class="vi">Độ sâu màu 1 (mm)</span><input id="quoteDipDepth1" type="number" min="0" step="any" value="20"></label>
     <label id="quoteDipDepth2Field" class="field quote-field"><span class="zh">顏色2浸泡深度（mm）</span><span class="vi">Độ sâu màu 2 (mm)</span><input id="quoteDipDepth2" type="number" min="0" step="any" value="10"></label>
     <label id="quoteDipDepth3Field" class="field quote-field hidden"><span class="zh">顏色3浸泡深度（mm）</span><span class="vi">Độ sâu màu 3 (mm)</span><input id="quoteDipDepth3" type="number" min="0" step="any"></label>
     <label id="quoteDipDepth4Field" class="field quote-field hidden"><span class="zh">顏色4浸泡深度（mm）</span><span class="vi">Độ sâu màu 4 (mm)</span><input id="quoteDipDepth4" type="number" min="0" step="any"></label>
     <label id="quoteDipDepth5Field" class="field quote-field hidden"><span class="zh">顏色5浸泡深度（mm）</span><span class="vi">Độ sâu màu 5 (mm)</span><input id="quoteDipDepth5" type="number" min="0" step="any"></label>
     <label class="field quote-field emphasis-field"><span class="zh">每小時可完成（PC/H）</span><span class="vi">Sản lượng hoàn thành mỗi giờ (PC/H)</span><input id="quoteDipHourPc" type="number" min="0" step="any" value="80"><small>1 PC = 兩個頭都完成 / 1 PC = hoàn thành 2 đầu</small></label>
-    <label class="field quote-field"><span class="zh">固定報廢批次</span><span class="vi">Số mẻ mực bỏ cố định</span><input id="quoteDipWasteBatches" type="number" min="0" step="1" value="3"><small>每批固定報廢 10KG / Mỗi mẻ bỏ cố định 10KG</small></label>
+    <label class="field quote-field"><span class="zh">打底層數</span><span class="vi">Số lớp lót</span><input id="quoteDipBaseLayers" type="number" min="0" step="1" value="0"></label>
+    <label class="field quote-field"><span class="zh">顏色層數</span><span class="vi">Số lớp màu</span><input id="quoteDipColorLayers" type="number" min="0" step="1" value="0"></label>
+    <label class="field quote-field"><span class="zh">蓋面層數</span><span class="vi">Số lớp phủ mặt</span><input id="quoteDipTopLayers" type="number" min="0" step="1" value="0"><small>打底／顏色／蓋面只要有層數，各算 1 批 10KG 報廢 / Mỗi nhóm có số lớp được tính 1 mẻ bỏ 10KG</small></label>
     <div class="field quote-field quote-locked-field"><span class="zh">標準分攤工時</span><span class="vi">Giờ chuẩn phân bổ</span><b>4 H</b><small>報價階段未知訂單量，固定用4H產量分攤 / Chưa biết SL đơn, phân bổ theo sản lượng 4H</small></div>
   </div>
   <div class="quote-dip-ref" id="quoteDipReference">等待條件 / Chờ điều kiện</div>
@@ -245,4 +247,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20260825-bilingual-export-v37"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20260825-dip-layers-v38"></script></body></html>
