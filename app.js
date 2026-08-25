@@ -578,7 +578,20 @@ function wipFindHeader(matrix){
   let best=null;for(let r=0;r<Math.min(matrix.length,40);r++){const row=matrix[r]||[],map={};row.forEach((v,i)=>{const k=wipNormHeader(v);if(k)map[k]=i;});const score=required.filter(k=>map[k]!=null).length;if(!best||score>best.score)best={row:r,map,score};}return best;
 }
 function wipExtractMsk(text){
-  const s=String(text||'').toUpperCase(),found=[];const re=/(?:^|[^A-Z0-9])(MPW|SPW|TD|MD|TT|MT|MY|MP|TK|MK)\s*[-:]?\s*([A-Z0-9]{3,})/g;let m;
+  const s=String(text||'').toUpperCase(),found=[];
+  // TT / MT 嚴格辨識：第1-2碼為 TT/MT，第3-4碼為年份，第5碼為月份 A-L。
+  // 年份接受 20 至目前年份+1，避免僅因文字中出現 TT/MT 就誤判為轉印。
+  const nowYear2=(new Date().getFullYear()+1)%100;
+  const transferRe=/(?:^|[^A-Z0-9])(TT|MT)\s*[-:]?\s*(\d{2})([A-L])([A-Z0-9]*)/g;let tm;
+  while((tm=transferRe.exec(s))){
+    const yy=Number(tm[2]);
+    if(yy>=20&&yy<=nowYear2){
+      const code=(tm[1]+tm[2]+tm[3]+tm[4]).replace(/[^A-Z0-9]/g,'');
+      if(code.length>=5)found.push({type:tm[1],code});
+    }
+  }
+  // 其他製程沿用原本辨識方式；TT / MT 不再走寬鬆規則。
+  const re=/(?:^|[^A-Z0-9])(MPW|SPW|TD|MD|MY|MP|TK|MK)\s*[-:]?\s*([A-Z0-9]{3,})/g;let m;
   while((m=re.exec(s))){const code=(m[1]+m[2]).replace(/[^A-Z0-9]/g,'');if(/\d/.test(code)&&code.length>=5)found.push({type:m[1],code});}
   const uniq=[],seen=new Set();found.forEach(x=>{const k=x.type+'|'+x.code;if(!seen.has(k)){seen.add(k);uniq.push(x);}});return uniq;
 }
