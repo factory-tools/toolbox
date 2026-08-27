@@ -296,16 +296,19 @@ if($('machineModePc')){
 // 標準參數由「報價標準參數表 Excel」維護，再由程式更新；網頁僅檢視，不直接修改。
 const QUOTE_STANDARD_HISTORY=[
   {
-    version:'2026/08/25',
-    note:'更新手印/K3、機印，新增浸染報價（0817單頭實驗、1PC=2頭、每批報廢10KG、4H分攤） / Cập nhật In tay/K3, In máy; thêm báo giá In nhúng theo dữ liệu thử 0817 (1 PC=2 đầu)',
+    version:'2026/08/27',
+    note:'更新手印／機印／K3排帶標準；機印新增QC與PC/Y切換；浸染新增有／無前加工、束頭QC標準與可調分攤工時 / Cập nhật tiêu chuẩn In tay/In máy/K3; thêm QC & PC/Y cho In máy; thêm gia công trước, QC đầu dây và giờ phân bổ có thể chỉnh cho nhúng sơn',
     layers:{
       WATER:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}],
       SILICONE:[{min:0,max:4,tables12:3},{min:5,max:8,tables12:2},{min:9,max:12,tables12:1.5},{min:13,max:16,tables12:1},{min:17,max:25,tables12:.5}]
     },
     strips:{
-      HAND:[{width:6,strips:30},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
-      K3:[{width:6,strips:30},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}]
+      HAND:[{width:6,strips:38},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
+      MACHINE:[{width:6,strips:10},{width:8,strips:10},{width:9,strips:10},{width:10,strips:10},{width:11,strips:10},{width:12,strips:10},{width:13,strips:8},{width:14,strips:8},{width:15,strips:8},{width:16,strips:7},{width:17,strips:7},{width:18,strips:7},{width:20,strips:7},{width:21,strips:7},{width:22,strips:7},{width:24,strips:7},{width:25,strips:6},{width:28,strips:6},{width:30,strips:4}],
+      K3:[{width:8,strips:42},{width:10,strips:35},{width:12,strips:30},{width:15,strips:24},{width:16,strips:21},{width:20,strips:19},{width:25,strips:15}]
     },
+    dipHeadQc:[{type:'扁帶 / Dây dẹt',bodyQc:4,headQc:2},{type:'圓帶 / Dây tròn',bodyQc:3,headQc:2}],
+    dipAllocHours:4,
     tableLength:{HAND:25,K3:29},
     sides:2,
     special:{
@@ -351,10 +354,37 @@ let quoteStandardsMode='current';
 let quoteStripsAuto=true;
 let quoteStripsManual=false;
 let quoteMachineStroke=1;
+let quoteMachineUnit='Y';
 // V35 浸染報價：以「浸染實驗總表0817.xlsm」單頭實驗資料為基準。
 const QUOTE_DIP_EXPERIMENTS=[["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",1,30.0,0.7],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",2,30.0,1.0999999999999999],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",3,30.0,1.4],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",4,30.0,1.9999999999999998],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",5,30.0,2.1999999999999993],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",1,30.0,0.6000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",2,30.0,1.0000000000000002],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",3,30.0,2.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",4,30.0,3.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",5,30.0,4.3],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",1,30.0,0.40000000000000013],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",2,30.0,0.7000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",3,30.0,1.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",4,30.0,1.6],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",5,30.0,2.1],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",1,30.0,0.3999999999999999],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",2,30.0,0.7999999999999998],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",3,30.0,1.7999999999999998],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",4,30.0,2.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",5,30.0,3.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",1,30.0,0.6],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",2,30.0,0.9],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",3,30.0,1.4],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",4,30.0,1.9],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",5,30.0,2.3],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",1,30.0,0.40000000000000013],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",2,30.0,1.0000000000000002],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",3,30.0,1.8000000000000003],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",4,30.0,3.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",5,30.0,4.1],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",1,30.0,0.19999999999999996],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",2,30.0,0.3999999999999999],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",3,30.0,0.6999999999999998],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",4,30.0,1.1],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",5,30.0,1.5000000000000002],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",1,30.0,0.40000000000000013],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",2,30.0,0.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",3,30.0,1.3],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",4,30.0,1.9000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",5,30.0,2.5],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",1,30.0,0.30000000000000004],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",2,30.0,0.6000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",3,30.0,0.9000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",4,30.0,1.3],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"WPU",5,30.0,1.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",1,30.0,0.5],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",2,30.0,0.9],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",3,30.0,1.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",4,30.0,1.7999999999999998],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",8.0,"SILICONE",5,30.0,2.9999999999999996],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",1,30.0,0.40000000000000013],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",2,30.0,0.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",3,30.0,1.5],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",4,30.0,2.2],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"WPU",5,30.0,3.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",1,30.0,0.5000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",2,30.0,0.9000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",3,30.0,1.7000000000000002],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",4,30.0,2.8000000000000003],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",9.0,"SILICONE",5,30.0,4.5],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",1,30.0,0.09999999999999998],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",2,30.0,0.30000000000000004],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",3,30.0,0.5000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",4,30.0,0.7000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"WPU",5,30.0,0.9999999999999999],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",1,30.0,0.10000000000000009],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",2,30.0,0.5000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",3,30.0,0.9000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",4,30.0,1.6],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",5.0,"SILICONE",5,30.0,2.4000000000000004],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"WPU",1,30.0,0.30000000000000004],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"WPU",2,30.0,0.6000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"WPU",3,30.0,0.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"WPU",4,30.0,1.1],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"WPU",5,30.0,1.5],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"SILICONE",1,30.0,0.40000000000000013],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"SILICONE",2,30.0,0.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"SILICONE",3,30.0,1.3],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"SILICONE",4,30.0,1.9000000000000001],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",7.0,"SILICONE",5,30.0,2.8],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",1,30.0,0.5],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",2,30.0,0.8999999999999999],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",3,30.0,1.1999999999999997],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",4,30.0,1.7999999999999996],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"WPU",5,30.0,2.1999999999999997],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",1,30.0,0.7],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",2,30.0,1.2],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",3,30.0,2.0],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",4,30.0,2.6999999999999997],["無前加工 / Không gia công trước","扁帶 / Dây dẹt",10.0,"SILICONE",5,30.0,3.6],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"WPU",1,30.0,0.5],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"WPU",2,30.0,0.7],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"WPU",3,30.0,0.9],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"WPU",4,30.0,1.2999999999999998],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"WPU",5,30.0,1.7999999999999998],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"SILICONE",1,30.0,0.30000000000000004],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"SILICONE",2,30.0,0.5000000000000001],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"SILICONE",3,30.0,0.9],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"SILICONE",4,30.0,1.1],["無前加工 / Không gia công trước","圓帶 / Dây tròn",4.0,"SILICONE",5,30.0,1.7],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"WPU",1,30.0,0.5],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"WPU",2,30.0,1.0],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"WPU",3,30.0,1.4],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"WPU",4,30.0,2.0],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"WPU",5,30.0,2.6],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"SILICONE",1,30.0,0.7000000000000002],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"SILICONE",2,30.0,1.6],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"SILICONE",3,30.0,2.2],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"SILICONE",4,30.0,3.3],["無前加工 / Không gia công trước","圓帶 / Dây tròn",8.0,"SILICONE",5,30.0,4.800000000000001],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"WPU",1,30.0,0.19999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"WPU",2,30.0,0.7999999999999998],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"WPU",3,30.0,1.0999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"WPU",4,30.0,1.4999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"WPU",5,30.0,1.9999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"SILICONE",1,30.0,0.30000000000000004],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"SILICONE",2,30.0,0.7000000000000002],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"SILICONE",3,30.0,1.3000000000000003],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"SILICONE",4,30.0,1.9000000000000004],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.0,"SILICONE",5,30.0,2.5000000000000004],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"WPU",1,30.0,0.19999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"WPU",2,30.0,0.3999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"WPU",3,30.0,0.5999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"WPU",4,30.0,0.9999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"WPU",5,30.0,1.6],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"SILICONE",1,30.0,0.09999999999999998],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"SILICONE",2,30.0,0.19999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"SILICONE",3,30.0,0.3999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"SILICONE",4,30.0,0.7],["無前加工 / Không gia công trước","圓帶 / Dây tròn",3.0,"SILICONE",5,30.0,1.1],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"WPU",1,30.0,0.5],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"WPU",2,30.0,1.0],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"WPU",3,30.0,1.4],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"WPU",4,30.0,2.0],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"WPU",5,30.0,2.5999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"SILICONE",1,30.0,0.5000000000000002],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"SILICONE",2,30.0,1.1000000000000003],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"SILICONE",3,30.0,1.6000000000000003],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"SILICONE",4,30.0,2.4000000000000004],["無前加工 / Không gia công trước","圓帶 / Dây tròn",7.0,"SILICONE",5,30.0,3.4000000000000004],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"WPU",1,30.0,0.5],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"WPU",2,30.0,0.8999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"WPU",3,30.0,1.2999999999999998],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"WPU",4,30.0,1.7999999999999998],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"WPU",5,30.0,2.4],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"SILICONE",1,30.0,0.19999999999999996],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"SILICONE",2,30.0,0.3999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"SILICONE",3,30.0,1.0999999999999999],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"SILICONE",4,30.0,1.8999999999999997],["無前加工 / Không gia công trước","圓帶 / Dây tròn",5.5,"SILICONE",5,30.0,3.3999999999999995],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"WPU",1,30.0,0.2],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"WPU",2,30.0,0.39999999999999997],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"WPU",3,30.0,0.5999999999999999],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"WPU",4,30.0,1.5],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"WPU",5,30.0,3.6],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"SILICONE",1,30.0,0.3],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"SILICONE",2,30.0,0.5999999999999999],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"SILICONE",3,30.0,1.4],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"SILICONE",4,30.0,2.1999999999999997],["無前加工 / Không gia công trước","打結/thắt nút",5.0,"SILICONE",5,30.0,3.3]];
 const QUOTE_DIP_WASTE_KG_PER_BATCH=10;
 const QUOTE_DIP_ALLOC_HOURS=4;
+function quoteDipFindHeadQc(type,bodyQc){
+  const rows=QUOTE_STANDARD.dipHeadQc||[];
+  return rows.find(r=>r.type===type&&Math.abs(Number(r.bodyQc)-Number(bodyQc))<1e-9)||null;
+}
+function quoteDipApplyHeadQc(){
+  if(!$('quoteDipHeadSize'))return;
+  const type=$('quoteDipType').value,body=Number($('quoteDipSize').value),r=quoteDipFindHeadQc(type,body);
+  if(r){$('quoteDipHeadSize').value=r.headQc;$('quoteDipHeadSizeHint').textContent='依正式束頭QC標準自動帶入 / Tự động theo tiêu chuẩn QC đầu dây';}
+  else{$('quoteDipHeadSize').value='';$('quoteDipHeadSizeHint').textContent='目前無對應標準，請手動確認束頭QC / Chưa có tiêu chuẩn phù hợp, vui lòng xác nhận QC đầu dây';}
+}
+function quoteMachineApplyStripStandard(){
+  if(!$('quoteMachineQc')||!$('quoteMachineStrips'))return;
+  const qc=Number($('quoteMachineQc').value),rows=QUOTE_STANDARD.strips.MACHINE||[];
+  const r=rows.find(x=>Math.abs(Number(x.width)-qc)<1e-9);
+  if(r){$('quoteMachineStrips').value=r.strips;$('quoteMachineStripsHint').textContent='依機印QC標準自動帶入 / Tự động theo tiêu chuẩn QC In máy';}
+  else{$('quoteMachineStripsHint').textContent='此QC沒有正式標準，可手動輸入印刷條數 / QC này chưa có tiêu chuẩn, có thể nhập số dây in';}
+}
+function quoteSetMachineUnit(unit){
+  quoteMachineUnit=unit;
+  if($('quoteMachineUnitPc'))$('quoteMachineUnitPc').classList.toggle('active',unit==='PC');
+  if($('quoteMachineUnitY'))$('quoteMachineUnitY').classList.toggle('active',unit==='Y');
+  const p=$('quoteMachinePatterns');
+  if(p){if(unit==='Y'){p.value=1;p.readOnly=true;}else{p.readOnly=false;if(!(Number(p.value)>0))p.value=1;}}
+  if($('quoteMachinePatternHint'))$('quoteMachinePatternHint').textContent=unit==='Y'?'Y 報價固定為 1，不計圖案數 / Báo giá Y cố định = 1, không tính số hình':'PC 報價請輸入每行實際圖案數 / Báo giá PC: nhập số hình thực tế trong 1 hàng';
+  calcQuoteCapacity();
+}
 function quoteDipFindReference(pre,type,ink,size,dips){
   const c=QUOTE_DIP_EXPERIMENTS.filter(r=>r[0]===pre&&r[1]===type&&r[3]===ink&&Number(r[4])===Number(dips));
   if(!c.length)return null;
@@ -367,17 +397,17 @@ function quoteDipUpdateDepthFields(){
   calcQuoteCapacity();
 }
 function quoteDipCalc(){
-  const pre=$('quoteDipPre').value,type=$('quoteDipType').value,ink=$('quoteDipInk').value,size=Number($('quoteDipSize').value),dips=Number($('quoteDipTimes').value),colors=Number($('quoteDipColors').value)||1,hourPc=Number($('quoteDipHourPc').value),baseLayers=Number($('quoteDipBaseLayers').value)||0,colorLayers=Number($('quoteDipColorLayers').value)||0,topLayers=Number($('quoteDipTopLayers').value)||0,batches=(baseLayers>0?1:0)+(colorLayers>0?1:0)+(topLayers>0?1:0);
+  const pre=$('quoteDipPre').value,type=$('quoteDipType').value,ink=$('quoteDipInk').value,bodySize=Number($('quoteDipSize').value),size=Number($('quoteDipHeadSize').value),dips=Number($('quoteDipTimes').value),colors=Number($('quoteDipColors').value)||1,hourPc=Number($('quoteDipHourPc').value),allocHours=Number($('quoteDipAllocHours').value)||Number(QUOTE_STANDARD.dipAllocHours)||QUOTE_DIP_ALLOC_HOURS,baseLayers=Number($('quoteDipBaseLayers').value)||0,colorLayers=Number($('quoteDipColorLayers').value)||0,topLayers=Number($('quoteDipTopLayers').value)||0,batches=(baseLayers>0?1:0)+(colorLayers>0?1:0)+(topLayers>0?1:0);
   const ref=quoteDipFindReference(pre,type,ink,size,dips);
   let single=0;
   if(ref&&size>0&&ref[2]>0&&ref[5]>0){for(let i=1;i<=colors;i++){const depth=Number($('quoteDipDepth'+i)?.value);if(depth>0)single+=Number(ref[6])*(size/Number(ref[2]))*(depth/Number(ref[5]));}}
   const pcInk=single*2;
-  const cap4=hourPc>0?hourPc*QUOTE_DIP_ALLOC_HOURS:0;
+  const cap4=hourPc>0?hourPc*allocHours:0;
   const wasteTotalKg=batches>0?batches*QUOTE_DIP_WASTE_KG_PER_BATCH:0;
   const wastePerPc=cap4>0?wasteTotalKg*1000/cap4:0;
   const totalInk=pcInk+wastePerPc;
   const cap8=hourPc>0?hourPc*8:0;
-  $('quoteWhatYouAreQuoting').textContent=`目前：浸染｜${type}｜${ink}｜${colors}色｜打底${fmt(baseLayers,0)}層／顏色${fmt(colorLayers,0)}層／蓋面${fmt(topLayers,0)}層｜PC / Hiện tại: Nhúng sơn｜${type}｜${ink}｜${colors} màu｜lót ${fmt(baseLayers,0)} lớp／màu ${fmt(colorLayers,0)} lớp／phủ ${fmt(topLayers,0)} lớp｜PC`;
+  $('quoteWhatYouAreQuoting').textContent=`目前：浸染｜${type}｜${ink}｜${colors}色｜帶身QC ${fmt(bodySize,2)}→束頭QC ${size>0?fmt(size,2):'—'}｜打底${fmt(baseLayers,0)}層／顏色${fmt(colorLayers,0)}層／蓋面${fmt(topLayers,0)}層｜PC / Hiện tại: Nhúng sơn｜${type}｜${ink}｜${colors} màu｜lót ${fmt(baseLayers,0)} lớp／màu ${fmt(colorLayers,0)} lớp／phủ ${fmt(topLayers,0)} lớp｜PC`;
   $('quoteDipReference').textContent=ref?`參考實驗：${fmt(ref[2],2)}mm｜${fmt(ref[5],2)}mm深｜${fmt(ref[6],3)}g/單頭累計（泡${dips}次） / Thử tham khảo: ${fmt(ref[2],2)}mm｜sâu ${fmt(ref[5],2)}mm｜${fmt(ref[6],3)}g/1 đầu tích lũy (${dips} lần)`:'找不到完全符合「前加工＋帶型＋墨種＋浸染次數」的實驗 / Không tìm thấy dữ liệu thử phù hợp.';
   $('quoteDipSingleHead').textContent=ref?`${fmt(single,3)} g/頭`:'—';
   $('quoteDipPcInk').textContent=ref?`${fmt(pcInk,3)} g/PC`:'—';
@@ -385,7 +415,7 @@ function quoteDipCalc(){
   $('quoteDipTotalInk').textContent=ref&&cap4>0?`${fmt(totalInk,3)} g/PC`:'—';
   $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} PC`:'—';
   $('quoteCapacity8Alt').textContent=hourPc>0?`${fmt(hourPc,0)} PC/H；1PC=2頭 / 1PC=2 đầu`:'請輸入每小時可完成PC / Nhập PC hoàn thành mỗi giờ';
-  if(ref&&cap4>0)$('quoteFormula').textContent=`產品耗墨：單頭 ${fmt(single,3)}g × 2頭 = ${fmt(pcInk,3)}g/PC；報廢批次自動判定：打底 ${fmt(baseLayers,0)}層${baseLayers>0?'→1批':'→0批'}、顏色 ${fmt(colorLayers,0)}層${colorLayers>0?'→1批':'→0批'}、蓋面 ${fmt(topLayers,0)}層${topLayers>0?'→1批':'→0批'}，共 ${fmt(batches,0)}批 × 10KG ÷ (${fmt(hourPc,0)} PC/H × 4H) = ${fmt(wastePerPc,3)}g/PC；報價總耗墨 = ${fmt(totalInk,3)}g/PC。 / Mực SP: ${fmt(single,3)}g/đầu × 2; số mẻ bỏ tự động: lót ${fmt(baseLayers,0)} lớp, màu ${fmt(colorLayers,0)} lớp, phủ ${fmt(topLayers,0)} lớp → ${fmt(batches,0)} mẻ × 10KG ÷ (${fmt(hourPc,0)} PC/H × 4H); tổng = ${fmt(totalInk,3)}g/PC.`;
+  if(ref&&cap4>0)$('quoteFormula').textContent=`產品耗墨：單頭 ${fmt(single,3)}g × 2頭 = ${fmt(pcInk,3)}g/PC；報廢批次自動判定：打底 ${fmt(baseLayers,0)}層${baseLayers>0?'→1批':'→0批'}、顏色 ${fmt(colorLayers,0)}層${colorLayers>0?'→1批':'→0批'}、蓋面 ${fmt(topLayers,0)}層${topLayers>0?'→1批':'→0批'}，共 ${fmt(batches,0)}批 × 10KG ÷ (${fmt(hourPc,0)} PC/H × ${fmt(allocHours,2)}H) = ${fmt(wastePerPc,3)}g/PC；報價總耗墨 = ${fmt(totalInk,3)}g/PC。 / Mực SP: ${fmt(single,3)}g/đầu × 2; số mẻ bỏ tự động: lót ${fmt(baseLayers,0)} lớp, màu ${fmt(colorLayers,0)} lớp, phủ ${fmt(topLayers,0)} lớp → ${fmt(batches,0)} mẻ × 10KG ÷ (${fmt(hourPc,0)} PC/H × ${fmt(allocHours,2)}H); tổng = ${fmt(totalInk,3)}g/PC.`;
   else $('quoteFormula').textContent='請確認實驗條件、各色浸泡深度與每小時產能。 / Vui lòng kiểm tra điều kiện thử, độ sâu từng màu và năng suất mỗi giờ.';
 }
 
@@ -399,6 +429,8 @@ function quoteEstimateStrips(method,width,std=QUOTE_STANDARD){
   if(!(width>0)||!rows.length)return null;
   const exact=rows.find(r=>Math.abs(Number(r.width)-width)<1e-9);
   if(exact)return {strips:Number(exact.strips),estimated:false};
+  // K3 新標準只有表內列出的規格才是正式值；空白規格不自行插值，避免把估算誤當標準。
+  if(method==='K3')return null;
   if(rows.length===1)return {strips:Math.max(1,Math.floor(Number(rows[0].strips)*Number(rows[0].width)/width)),estimated:true};
   let a,b;
   if(width<rows[0].width){a=rows[0];b=rows[1];}
@@ -439,6 +471,7 @@ function updateQuoteTableLength(){
   if($('quoteDipFields'))$('quoteDipFields').classList.toggle('hidden',!isDip);
   if($('quoteAlert'))$('quoteAlert').classList.toggle('hidden',isMachine||isDip);
   if(isDip){
+    if($('quoteMachineUnitToggle'))$('quoteMachineUnitToggle').classList.add('hidden');
     if($('quoteUnitToggle'))$('quoteUnitToggle').classList.add('hidden');
     if($('quoteSpecialFields'))$('quoteSpecialFields').classList.add('hidden');
     ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result','quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
@@ -448,11 +481,13 @@ function updateQuoteTableLength(){
   ['quoteDipSingleHeadResult','quoteDipPcInkResult','quoteDipWasteResult','quoteDipTotalInkResult'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
   if(isMachine){
     if($('quoteUnitToggle'))$('quoteUnitToggle').classList.add('hidden');
+    if($('quoteMachineUnitToggle'))$('quoteMachineUnitToggle').classList.remove('hidden');
     if($('quoteSpecialFields'))$('quoteSpecialFields').classList.add('hidden');
     ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
     ['quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
     calcQuoteCapacity();return;
   }
+  if($('quoteMachineUnitToggle'))$('quoteMachineUnitToggle').classList.add('hidden');
   ['quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
   ['quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
   $('quoteTableLength').value=QUOTE_STANDARD.tableLength[m]|| (m==='K3'?29:25);
@@ -494,21 +529,25 @@ function calcQuoteCapacity(){
   $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${QUOTE_STANDARD.version}`;
   if(method==='DIP'){quoteDipCalc();return;}
   if(method==='MACHINE'){
-    const patterns=Number($('quoteMachinePatterns').value),lengthMm=Number($('quoteMachineLength').value),pullSpeed=200;
+    const patterns=quoteMachineUnit==='Y'?1:Number($('quoteMachinePatterns').value),lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,qc=Number($('quoteMachineQc').value);
     const stripsRaw=Number($('quoteMachineStrips').value),strips=Number.isInteger(stripsRaw)&&stripsRaw>=1?stripsRaw:0;
     const pullLength=(patterns>0&&lengthMm>0)?patterns*lengthMm*10:0;
     if($('quoteMachinePullLength'))$('quoteMachinePullLength').textContent=pullLength>0?fmt(pullLength,0):'—';
     const pullSec=estimatedPullSeconds(pullLength,pullSpeed),printSec=MACHINE_STROKE_SECONDS[quoteMachineStroke]||0,cycleSec=pullSec+printSec;
     const framesHour=cycleSec>0?3600/cycleSec:0;
     const yardsPerCycle=(patterns>0&&lengthMm>0&&strips>0)?patterns*lengthMm/914.4*strips:0;
-    const perHour=yardsPerCycle*framesHour,cap8=perHour*8,cap12=perHour*12;
-    $('quoteWhatYouAreQuoting').textContent=`目前：機印｜${strips>0?fmt(strips,0):'—'}條｜${quoteMachineStroke}刀｜速度 200｜Y / Hiện tại: In máy｜${strips>0?fmt(strips,0):'—'} sợi｜${quoteMachineStroke} gạt｜tốc độ 200｜Y`;
-    $('quoteMachineHour').textContent=perHour>0?`${fmt(perHour,2)} Y/H`:'—';
-    $('quoteMachine12').textContent=cap12>0?`${fmt(cap12,2)} Y`:'—';
-    $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,2)} Y`:'—';
-    $('quoteCapacity8Alt').textContent=perHour>0?`${fmt(strips,0)} 條同時印刷 / In cùng lúc ${fmt(strips,0)} sợi`:'請輸入每行圖案數、長度與印刷條數 / Vui lòng nhập số hình, chiều dài và số dây in';
-    if(patterns>0&&lengthMm>0&&strips>0&&perHour>0)$('quoteFormula').textContent=`建議拉帶長度 = ${fmt(patterns,0)} × ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；每循環碼數 = ${fmt(patterns,0)} × ${fmt(lengthMm,2)} ÷ 914.4 × ${fmt(strips,0)}條 = ${fmt(yardsPerCycle,3)} Y；速度固定 200、${quoteMachineStroke}刀。每小時 ${fmt(perHour,2)} Y；8H ${fmt(cap8,2)} Y；12H ${fmt(cap12,2)} Y。 / Chiều dài kéo đề nghị = số hình × chiều dài × 10; yard mỗi chu kỳ = số hình × chiều dài ÷ 914.4 × số dây; tốc độ cố định 200, ${quoteMachineStroke} gạt. Mỗi giờ ${fmt(perHour,2)} Y; 8H ${fmt(cap8,2)} Y; 12H ${fmt(cap12,2)} Y.`;
-    else $('quoteFormula').textContent='請輸入每行圖案數、長度（MM）與印刷條數；拉帶速度固定 200。 / Vui lòng nhập số hình trong 1 hàng, chiều dài (MM) và số dây in; tốc độ kéo dây cố định 200.';
+    const pcPerCycle=(patterns>0&&strips>0)?patterns*strips:0;
+    const perHourY=yardsPerCycle*framesHour,perHourPc=pcPerCycle*framesHour;
+    const perHour=quoteMachineUnit==='PC'?perHourPc:perHourY,cap8=perHour*8,cap12=perHour*12;
+    $('quoteWhatYouAreQuoting').textContent=`目前：機印｜QC ${qc>0?fmt(qc,2):'—'}mm｜${strips>0?fmt(strips,0):'—'}條｜${quoteMachineStroke}刀｜${quoteMachineUnit} / Hiện tại: In máy｜QC ${qc>0?fmt(qc,2):'—'}mm｜${strips>0?fmt(strips,0):'—'} dây｜${quoteMachineStroke} gạt｜${quoteMachineUnit}`;
+    $('quoteMachineHour').textContent=perHour>0?`${fmt(perHour,quoteMachineUnit==='PC'?0:2)} ${quoteMachineUnit}/H`:'—';
+    $('quoteMachine12').textContent=cap12>0?`${fmt(cap12,quoteMachineUnit==='PC'?0:2)} ${quoteMachineUnit}`:'—';
+    $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,quoteMachineUnit==='PC'?0:2)} ${quoteMachineUnit}`:'—';
+    $('quoteCapacity8Alt').textContent=perHour>0?`${fmt(strips,0)} 條同時印刷 / In cùng lúc ${fmt(strips,0)} sợi`:'請輸入QC、長度與印刷條數 / Vui lòng nhập QC, chiều dài và số dây in';
+    if(patterns>0&&lengthMm>0&&strips>0&&perHour>0){
+      if(quoteMachineUnit==='PC')$('quoteFormula').textContent=`PC：每循環 ${fmt(patterns,0)}圖案 × ${fmt(strips,0)}條 = ${fmt(pcPerCycle,0)} PC；建議拉帶長度 ${fmt(patterns,0)} × ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；速度200、${quoteMachineStroke}刀 → ${fmt(perHourPc,0)} PC/H，8H ${fmt(cap8,0)} PC。 / PC: ${fmt(patterns,0)} hình × ${fmt(strips,0)} dây = ${fmt(pcPerCycle,0)} PC/chu kỳ; tốc độ 200, ${quoteMachineStroke} gạt → ${fmt(perHourPc,0)} PC/H.`;
+      else $('quoteFormula').textContent=`Y：每行圖案數固定1；每循環碼數 = ${fmt(lengthMm,2)} ÷ 914.4 × ${fmt(strips,0)}條 = ${fmt(yardsPerCycle,3)} Y；速度200、${quoteMachineStroke}刀 → ${fmt(perHourY,2)} Y/H，8H ${fmt(cap8,2)} Y。 / Y: số hình cố định = 1; yard/chu kỳ = chiều dài ÷ 914.4 × số dây; tốc độ 200, ${quoteMachineStroke} gạt.`;
+    } else $('quoteFormula').textContent='請輸入帶身QC、長度（MM）與印刷條數；PC模式需輸入每行圖案數，Y模式固定為1。 / Nhập QC thân dây, chiều dài (MM) và số dây in; chế độ PC nhập số hình, chế độ Y cố định = 1.';
     return;
   }
   if(layout!=='NORMAL'){
@@ -561,9 +600,15 @@ function quoteLayerTable(std){
   for(let i=0;i<n;i++){const w=water[i],s=sil[i];const min=w?w.min:(s?s.min:'—'),max=w?w.max:(s?s.max:'—');rows.push(`<tr><td>${min}</td><td>${max}</td><td>${w?fmt(w.tables12,2):'—'}</td><td>${s?fmt(s.tables12,2):'—'}</td></tr>`);}
   return `<div class="quote-standard-section"><b>層數產能 / Năng suất theo số lớp</b><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>最低層數<br>Số lớp nhỏ nhất</th><th>最高層數<br>Số lớp lớn nhất</th><th>水性 1人12H桌數<br>Mực nước: Bàn/người/12H</th><th>SILICONE 1人12H桌數<br>Bàn/người/12H</th></tr></thead><tbody>${rows.join('')}</tbody></table></div></div>`;
 }
-function quoteStripTable(title,rows){
+function quoteStripTable(title,rows,isMachine=false){
   const body=rows.length?rows.map(r=>`<tr><td>${fmt(r.width,2)}</td><td>${fmt(r.strips,0)}</td></tr>`).join(''):`<tr><td colspan="2">尚未建立標準 / Chưa có tiêu chuẩn</td></tr>`;
-  return `<div class="quote-standard-section"><b>${title}</b><table class="quote-settings-table"><thead><tr><th>帶寬 mm<br>Quy cách dây (mm)</th><th>單邊排帶條數<br>Tổng số sợi 1 bên bàn</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  const second=isMachine?'印刷條數<br>Số dây in':'單邊排帶條數<br>Tổng số sợi 1 bên bàn';
+  return `<div class="quote-standard-section"><b>${title}</b><table class="quote-settings-table"><thead><tr><th>帶身規格 (MM)<br>QC (MM)</th><th>${second}</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function quoteDipHeadQcTable(std){
+  const rows=std.dipHeadQc||[];
+  const body=rows.length?rows.map(r=>`<tr><td>${quoteEscape(r.type)}</td><td>${fmt(r.bodyQc,2)}</td><td>${fmt(r.headQc,2)}</td></tr>`).join(''):`<tr><td colspan="3">尚未建立完整標準 / Chưa có tiêu chuẩn đầy đủ</td></tr>`;
+  return `<div class="quote-standard-section"><b>浸染束頭規格標準 / Tiêu chuẩn QC đầu dây nhúng sơn</b><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>帶型<br>Loại dây</th><th>帶身QC<br>QC thân dây</th><th>束頭QC<br>QC đầu dây</th></tr></thead><tbody>${body}</tbody></table></div><div class="quote-standard-explain">目前已建立的正式對照先依現有標準顯示；後續可繼續補齊。 / Hiện hiển thị các đối chiếu tiêu chuẩn đã có; có thể bổ sung tiếp sau.</div></div>`;
 }
 function quoteSpecialTable(std){
   const sp=std.special||{},shoe=sp.SHOELACE,piece=sp.PIECE;
@@ -576,7 +621,7 @@ function quoteDipExperimentTable(){
   return `<div class="quote-standard-section"><details class="quote-history-item"><summary>浸染實驗標準 / Tiêu chuẩn thí nghiệm nhúng sơn（${QUOTE_DIP_EXPERIMENTS.length} 筆 / dòng）</summary><div class="quote-history-snapshot"><div class="quote-standard-explain">以下為報價自動比對使用的 0817 單頭實驗資料。系統依「前加工＋帶型＋墨種＋浸染次數」篩選，再抓寬度最接近的實驗。1 PC = 2頭。<br>Dữ liệu thử 0817 theo 1 đầu dùng để tự động đối chiếu báo giá. Hệ thống lọc theo gia công trước + loại dây + loại mực + số lần nhúng, sau đó chọn QC gần nhất. 1 PC = 2 đầu.</div><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>前加工<br>Gia công trước</th><th>帶型<br>Loại dây</th><th>寬度(MM)<br>QC (MM)</th><th>墨種<br>Loại mực</th><th>浸染次數<br>Số lần nhúng</th><th>實驗深度(mm)<br>Độ sâu thử (mm)</th><th>單頭累計耗墨(g)<br>Mực tích lũy/đầu (g)</th></tr></thead><tbody>${rows}</tbody></table></div></div></details></div>`;
 }
 function quoteSnapshotHtml(std,showHeader=true){
-  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數自行輸入 / Nhập số dây in｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜1 PC = 2頭 / 2 đầu｜打底／顏色／蓋面各有層數即各算1批10KG報廢 / mỗi nhóm lót-màu-phủ có lớp = 1 mẻ bỏ 10KG｜標準分攤 4H / phân bổ 4H</b></div></div>`;
+  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('機印 / In máy',std.strips.MACHINE||[],true)}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipHeadQcTable(std):''}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數依QC標準帶入 / Số dây theo QC｜PC/Y可切換 / chọn PC/Y｜Y時圖案數固定1 / Y cố định 1 hình｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜1 PC = 2頭 / 2 đầu｜打底／顏色／蓋面各有層數即各算1批10KG報廢 / mỗi nhóm lót-màu-phủ có lớp = 1 mẻ bỏ 10KG｜標準分攤 ${fmt(std.dipAllocHours||4,2)}H（本次可調） / phân bổ ${fmt(std.dipAllocHours||4,2)}H (có thể chỉnh)</b></div></div>`;
 }
 function renderQuoteStandards(){
   if(!$('quoteStandardsContent'))return;
@@ -591,20 +636,26 @@ if($('quoteUnitPc')){
   $('quoteMethod').addEventListener('change',updateQuoteTableLength);
   $('quoteLayoutType').addEventListener('change',updateQuoteLayoutUI);
   $('quoteWidth').addEventListener('input',()=>{quoteStripsAuto=true;quoteApplyStripSuggestion(true);});
+  if($('quoteMachineQc'))$('quoteMachineQc').addEventListener('input',()=>{quoteMachineApplyStripStandard();calcQuoteCapacity();});
+  if($('quoteMachineUnitPc'))$('quoteMachineUnitPc').addEventListener('click',()=>quoteSetMachineUnit('PC'));
+  if($('quoteMachineUnitY'))$('quoteMachineUnitY').addEventListener('click',()=>quoteSetMachineUnit('Y'));
+  if($('quoteDipSize'))$('quoteDipSize').addEventListener('input',()=>{quoteDipApplyHeadQc();calcQuoteCapacity();});
   $('quoteStrips').addEventListener('input',()=>{if(quoteStripsManual){quoteStripsAuto=false;calcQuoteCapacity();}});
   $('quoteStripsEditBtn').addEventListener('click',()=>{
     quoteStripsManual=!quoteStripsManual;$('quoteStrips').readOnly=!quoteStripsManual;$('quoteStripsEditBtn').classList.toggle('active',quoteStripsManual);
     if(quoteStripsManual){$('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';$('quoteStrips').focus();$('quoteStrips').select();}
     else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
   });
-  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips','quoteDipSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
-  ['quoteDipPre','quoteDipType','quoteDipInk'].forEach(id=>{if($(id))$(id).addEventListener('change',calcQuoteCapacity);});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips','quoteDipHeadSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipAllocHours','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  if($('quoteDipPre'))$('quoteDipPre').addEventListener('change',calcQuoteCapacity);
+  if($('quoteDipInk'))$('quoteDipInk').addEventListener('change',calcQuoteCapacity);
+  if($('quoteDipType'))$('quoteDipType').addEventListener('change',()=>{quoteDipApplyHeadQc();calcQuoteCapacity();});
   if($('quoteDipColors'))$('quoteDipColors').addEventListener('change',quoteDipUpdateDepthFields);
   document.querySelectorAll('.quote-machine-stroke-btn').forEach(btn=>btn.addEventListener('click',()=>setQuoteMachineStroke(Number(btn.dataset.stroke))));
   $('quoteStandardsBtn').addEventListener('click',openQuoteStandards);$('quoteStandardsClose').addEventListener('click',closeQuoteStandards);
   $('quoteStandardsPanel').addEventListener('click',e=>{if(e.target===$('quoteStandardsPanel'))closeQuoteStandards();});
   $('quoteCurrentTab').addEventListener('click',()=>{quoteStandardsMode='current';renderQuoteStandards();});$('quoteHistoryTab').addEventListener('click',()=>{quoteStandardsMode='history';renderQuoteStandards();});
-  setQuoteMachineStroke(1);quoteSetUnit('PC');updateQuoteTableLength();updateQuoteLayoutUI();renderQuoteStandards();
+  setQuoteMachineStroke(1);quoteSetMachineUnit('Y');quoteSetUnit('PC');quoteDipApplyHeadQc();updateQuoteTableLength();updateQuoteLayoutUI();renderQuoteStandards();
 }
 
 
