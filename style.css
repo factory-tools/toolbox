@@ -114,3 +114,18 @@
 
 /* V35 浸染報價 */
 .quote-dip-box{margin-top:7px;border:1px solid #8bb8a8;background:#f2fbf7;border-radius:10px;padding:8px}.quote-dip-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}.quote-dip-head b{color:#1f5f4d;font-size:12px}.quote-dip-head span{font-size:9px;font-weight:900;color:#4d7468}.quote-dip-ref{margin-top:6px;border-radius:8px;background:#fff;border:1px solid #c7ded6;padding:7px;text-align:center;color:#315f52;font-size:10px;font-weight:800;line-height:1.35}@media(max-width:640px){.quote-dip-box{padding:6px}.quote-dip-head{align-items:flex-start;flex-direction:column}.quote-dip-head b{font-size:10px}.quote-dip-head span,.quote-dip-ref{font-size:8px}}
+
+
+/* V40 報價標準產能：鎖定欄位、浸染分區與實驗範圍警示 */
+.quote-dip-section{margin:10px 0;padding:10px;border:1px solid #c8d9e8;border-radius:12px;background:rgba(255,255,255,.36)}
+.quote-dip-section-title{font-weight:800;color:#17365d;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid #d9e6ef}
+.quote-dip-color-section{border-color:#d7c9e8}
+.quote-dip-layer-section{border-color:#e5c7b9}
+.quote-dip-capacity-section{border-color:#bed8cf}
+.quote-dip-ref.ok{background:#eef8f2;border-color:#8bc3a2;color:#205c38}
+.quote-dip-ref.warn{background:#fff9df;border-color:#d9bd55;color:#6b5610}
+.quote-dip-ref.caution{background:#fff0db;border-color:#e3a04d;color:#7c4610}
+.quote-dip-ref.danger{background:#ffe9e9;border-color:#dc6a6a;color:#8b2424;font-weight:700}
+.quote-strip-row input[readonly]{background:#f2f5f8;color:#263746;cursor:not-allowed}
+.quote-edit-btn.active{outline:2px solid #d3982d;background:#fff4cc}
+@media (max-width:640px){.quote-dip-section{padding:8px}.quote-dip-section-title{font-size:14px}}
