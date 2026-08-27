@@ -419,9 +419,6 @@ function quoteSetMachineUnit(unit){
   quoteMachineUnit=unit;
   if($('quoteMachineUnitPc'))$('quoteMachineUnitPc').classList.toggle('active',unit==='PC');
   if($('quoteMachineUnitY'))$('quoteMachineUnitY').classList.toggle('active',unit==='Y');
-  const p=$('quoteMachinePatterns');
-  if(p){if(unit==='Y'){p.value=1;p.readOnly=true;}else{p.readOnly=false;if(!(Number(p.value)>0))p.value=1;}}
-  if($('quoteMachinePatternHint'))$('quoteMachinePatternHint').textContent=unit==='Y'?'Y 報價固定為 1，不計圖案數 / Báo giá Y cố định = 1, không tính số hình':'PC 報價請輸入每行實際圖案數 / Báo giá PC: nhập số hình thực tế trong 1 hàng';
   calcQuoteCapacity();
 }
 function quoteDipExperimentRows(pre,type,ink,dips){
@@ -438,19 +435,17 @@ function quoteDipResolveReference(pre,type,ink,size,dips){
   const refs=quoteDipGroupedReferences(pre,type,ink,dips);
   if(!refs.length)return {status:'NO_DATA',refs:[]};
   const min=refs[0].qc,max=refs[refs.length-1].qc,eps=1e-9;
-  const exact=refs.find(r=>Math.abs(r.qc-size)<eps);
-  if(exact)return {status:'EXACT',refs,min,max,ref:{...exact,sourceQc:exact.qc}};
-  if(size>=min&&size<=max){
-    let lo=refs[0],hi=refs[refs.length-1];
-    for(let i=0;i<refs.length-1;i++)if(size>refs[i].qc&&size<refs[i+1].qc){lo=refs[i];hi=refs[i+1];break;}
-    const t=(size-lo.qc)/(hi.qc-lo.qc);
-    return {status:'INTERPOLATED',refs,min,max,lo,hi,ref:{qc:size,sourceQc:size,depth:lo.depth+(hi.depth-lo.depth)*t,grams:lo.grams+(hi.grams-lo.grams)*t}};
+  if(size>max+eps)return {status:'BLOCKED',refs,min,max};
+  // 報價採「往上抓一級」的實驗值，不做QC內插：
+  // 小於等於最小實驗值 → 抓最小值；中間值與已命中的非最大QC → 抓下一個較大的實驗QC；最大QC → 抓最大值。
+  let chosen=refs[0];
+  if(size<=min+eps){chosen=refs[0];}
+  else if(size>=max-eps){chosen=refs[refs.length-1];}
+  else{
+    chosen=refs.find(r=>r.qc>size+eps)||refs[refs.length-1];
   }
-  const boundary=size<min?min:max;
-  const exceed=Math.abs(size-boundary)/boundary;
-  if(exceed>0.20+eps)return {status:'BLOCKED',refs,min,max,boundary,exceed};
-  const edge=size<min?refs[0]:refs[refs.length-1];
-  return {status:'EXTRAPOLATED',refs,min,max,boundary,exceed,ref:{...edge,sourceQc:edge.qc}};
+  const same=Math.abs(chosen.qc-size)<eps;
+  return {status:same?'EXACT_MAX':'ROUNDED_UP',refs,min,max,ref:{...chosen,sourceQc:chosen.qc},inputQc:size,usedQc:chosen.qc};
 }
 function quoteDipUpdateDepthFields(){
   const n=Number($('quoteDipColors')?.value)||1;
@@ -478,17 +473,17 @@ function quoteDipCalc(){
     $('quoteFormula').textContent='缺少實驗標準，不進行報價計算 / Thiếu tiêu chuẩn thử nghiệm, không tính báo giá.';return;
   }
   if(resolved.status==='BLOCKED'){
-    quoteDipClearResults();const pct=resolved.exceed*100;
-    if(refBox){refBox.classList.add('danger');refBox.textContent=`🔴 超出實驗標準範圍太多，已停止計算。實驗QC範圍 ${fmt(resolved.min,2)}–${fmt(resolved.max,2)} mm；本次 ${fmt(size,2)} mm；超出邊界 ${fmt(pct,1)}%（允許最多20%）。請先更新實驗標準。 / Vượt phạm vi thử nghiệm quá nhiều, đã dừng tính. Phạm vi ${fmt(resolved.min,2)}–${fmt(resolved.max,2)} mm; QC lần này ${fmt(size,2)} mm; vượt ${fmt(pct,1)}% (tối đa 20%). Vui lòng cập nhật tiêu chuẩn thử.`;}
-    $('quoteFormula').textContent='為避免低估報價，超出實驗邊界20%以上時禁止計算。 / Để tránh báo giá thấp, hệ thống không tính khi vượt biên dữ liệu thử trên 20%.';return;
+    quoteDipClearResults();
+    if(refBox){refBox.classList.add('danger');refBox.textContent=`🔴 本次 QC ${fmt(size,2)} mm 已超過此條件目前最大實驗 QC ${fmt(resolved.max,2)} mm，必須重新實驗並更新標準後才能報價。 / QC lần này ${fmt(size,2)} mm vượt QC thử nghiệm lớn nhất hiện có ${fmt(resolved.max,2)} mm. Phải thử lại và cập nhật tiêu chuẩn trước khi báo giá.`;}
+    $('quoteFormula').textContent='超過目前實驗最大QC，不進行報價計算。 / Vượt QC thử nghiệm lớn nhất hiện tại, hệ thống không tính báo giá.';return;
   }
   let single=0;
-  if(ref&&size>0&&ref.sourceQc>0&&ref.depth>0){for(let i=1;i<=colors;i++){const depth=Number($('quoteDipDepth'+i)?.value);if(depth>0)single+=Number(ref.grams)*(size/Number(ref.sourceQc))*(depth/Number(ref.depth));}}
+  if(ref&&ref.depth>0){for(let i=1;i<=colors;i++){const depth=Number($('quoteDipDepth'+i)?.value);if(depth>0)single+=Number(ref.grams)*(depth/Number(ref.depth));}}
   const pcInk=single*2,capAlloc=hourPc>0?hourPc*allocHours:0,wasteTotalKg=batches>0?batches*QUOTE_DIP_WASTE_KG_PER_BATCH:0,wastePerPc=capAlloc>0?wasteTotalKg*1000/capAlloc:0,totalInk=pcInk+wastePerPc,cap8=hourPc>0?hourPc*8:0;
   let refText='';
-  if(resolved.status==='EXACT'){if(refBox)refBox.classList.add('ok');refText=`✅ QC完全符合實驗：${fmt(size,2)}mm｜平均單頭累計 ${fmt(ref.grams,3)}g（${ref.count||1}筆實驗） / QC khớp dữ liệu thử: ${fmt(size,2)}mm｜TB ${fmt(ref.grams,3)}g/đầu`;}
-  else if(resolved.status==='INTERPOLATED'){if(refBox)refBox.classList.add('warn');refText=`🟡 實驗區間內換算：本次 ${fmt(size,2)}mm，介於 ${fmt(resolved.lo.qc,2)}–${fmt(resolved.hi.qc,2)}mm；以兩側實驗內插估算。實驗總範圍 ${fmt(resolved.min,2)}–${fmt(resolved.max,2)}mm。 / Nội suy trong phạm vi thử nghiệm: ${fmt(size,2)}mm giữa ${fmt(resolved.lo.qc,2)}–${fmt(resolved.hi.qc,2)}mm.`;}
-  else {if(refBox)refBox.classList.add('caution');refText=`🟠 已超出實驗範圍但仍在允許20%內：實驗 ${fmt(resolved.min,2)}–${fmt(resolved.max,2)}mm；本次 ${fmt(size,2)}mm；超出 ${fmt(resolved.exceed*100,1)}%。請確認後報價。 / Ngoài phạm vi thử nhưng vẫn trong giới hạn 20%: vượt ${fmt(resolved.exceed*100,1)}%. Vui lòng kiểm tra trước khi báo giá.`;}
+  const usedQc=resolved.usedQc||ref.sourceQc;
+  if(refBox)refBox.classList.add(Math.abs(usedQc-size)<1e-9?'ok':'warn');
+  refText=`📌 本次計算 QC：${fmt(size,2)} mm → 使用實驗 QC：${fmt(usedQc,2)} mm｜${ink}｜浸染 ${fmt(dips,0)} 次｜單頭累計 ${fmt(ref.grams,3)} g（${ref.count||1}筆平均）。${usedQc>size?' 為避免低估，採用下一級較大的實驗QC。':''} / QC tính lần này: ${fmt(size,2)} mm → dùng dữ liệu thử QC ${fmt(usedQc,2)} mm｜${ink}｜${fmt(dips,0)} lần nhúng｜${fmt(ref.grams,3)} g/đầu.`;
   if(refBox)refBox.textContent=refText;
   $('quoteDipSingleHead').textContent=`${fmt(single,3)} g/頭`;$('quoteDipPcInk').textContent=`${fmt(pcInk,3)} g/PC`;$('quoteDipWaste').textContent=capAlloc>0?`${fmt(wastePerPc,3)} g/PC`:'—';$('quoteDipTotalInk').textContent=capAlloc>0?`${fmt(totalInk,3)} g/PC`:'—';$('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} PC`:'—';$('quoteCapacity8Alt').textContent=hourPc>0?`${fmt(hourPc,0)} PC/H；1PC=2頭 / 1PC=2 đầu`:'請輸入每小時可完成PC / Nhập PC hoàn thành mỗi giờ';
   if(capAlloc>0)$('quoteFormula').textContent=`產品耗墨：單頭 ${fmt(single,3)}g × 2頭 = ${fmt(pcInk,3)}g/PC；報廢批次：打底${baseLayers>0?'1':'0'}批＋顏色${colorLayers>0?'1':'0'}批＋蓋面${topLayers>0?'1':'0'}批＝${fmt(batches,0)}批 × 10KG ÷ (${fmt(hourPc,0)} PC/H × ${fmt(allocHours,2)}H) = ${fmt(wastePerPc,3)}g/PC；報價總耗墨 ${fmt(totalInk,3)}g/PC。 / Mực SP ${fmt(single,3)}g/đầu ×2; mực bỏ ${fmt(batches,0)} mẻ ×10KG ÷ (${fmt(hourPc,0)} PC/H × ${fmt(allocHours,2)}H); tổng ${fmt(totalInk,3)}g/PC.`;
@@ -604,7 +599,7 @@ function calcQuoteCapacity(){
   $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${QUOTE_STANDARD.version}`;
   if(method==='DIP'){quoteDipCalc();return;}
   if(method==='MACHINE'){
-    const patterns=quoteMachineUnit==='Y'?1:Number($('quoteMachinePatterns').value),lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,qc=Number($('quoteMachineQc').value);
+    const patterns=1,lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,qc=Number($('quoteMachineQc').value);
     const stripsRaw=Number($('quoteMachineStrips').value),strips=Number.isInteger(stripsRaw)&&stripsRaw>=1?stripsRaw:0;
     const pullLength=(patterns>0&&lengthMm>0)?patterns*lengthMm*10:0;
     if($('quoteMachinePullLength'))$('quoteMachinePullLength').textContent=pullLength>0?fmt(pullLength,0):'—';
@@ -620,9 +615,9 @@ function calcQuoteCapacity(){
     $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,quoteMachineUnit==='PC'?0:2)} ${quoteMachineUnit}`:'—';
     $('quoteCapacity8Alt').textContent=perHour>0?`${fmt(strips,0)} 條同時印刷 / In cùng lúc ${fmt(strips,0)} sợi`:'請輸入QC、長度與印刷條數 / Vui lòng nhập QC, chiều dài và số dây in';
     if(patterns>0&&lengthMm>0&&strips>0&&perHour>0){
-      if(quoteMachineUnit==='PC')$('quoteFormula').textContent=`PC：每循環 ${fmt(patterns,0)}圖案 × ${fmt(strips,0)}條 = ${fmt(pcPerCycle,0)} PC；建議拉帶長度 ${fmt(patterns,0)} × ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；速度200、${quoteMachineStroke}刀 → ${fmt(perHourPc,0)} PC/H，8H ${fmt(cap8,0)} PC。 / PC: ${fmt(patterns,0)} hình × ${fmt(strips,0)} dây = ${fmt(pcPerCycle,0)} PC/chu kỳ; tốc độ 200, ${quoteMachineStroke} gạt → ${fmt(perHourPc,0)} PC/H.`;
-      else $('quoteFormula').textContent=`Y：每行圖案數固定1；每循環碼數 = ${fmt(lengthMm,2)} ÷ 914.4 × ${fmt(strips,0)}條 = ${fmt(yardsPerCycle,3)} Y；速度200、${quoteMachineStroke}刀 → ${fmt(perHourY,2)} Y/H，8H ${fmt(cap8,2)} Y。 / Y: số hình cố định = 1; yard/chu kỳ = chiều dài ÷ 914.4 × số dây; tốc độ 200, ${quoteMachineStroke} gạt.`;
-    } else $('quoteFormula').textContent='請輸入帶身QC、長度（MM）與印刷條數；PC模式需輸入每行圖案數，Y模式固定為1。 / Nhập QC thân dây, chiều dài (MM) và số dây in; chế độ PC nhập số hình, chế độ Y cố định = 1.';
+      if(quoteMachineUnit==='PC')$('quoteFormula').textContent=`PC：圖案數固定由系統視為1，不需輸入；每循環 ${fmt(strips,0)}條 = ${fmt(pcPerCycle,0)} PC；建議拉帶長度 ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；速度200、${quoteMachineStroke}刀 → ${fmt(perHourPc,0)} PC/H，8H ${fmt(cap8,0)} PC。 / PC: hệ thống cố định 1 hình, không cần nhập; ${fmt(strips,0)} dây = ${fmt(pcPerCycle,0)} PC/chu kỳ.`;
+      else $('quoteFormula').textContent=`Y：每循環碼數 = ${fmt(lengthMm,2)} ÷ 914.4 × ${fmt(strips,0)}條 = ${fmt(yardsPerCycle,3)} Y；速度200、${quoteMachineStroke}刀 → ${fmt(perHourY,2)} Y/H，8H ${fmt(cap8,2)} Y。 / Y: yard/chu kỳ = chiều dài ÷ 914.4 × số dây; tốc độ 200, ${quoteMachineStroke} gạt.`;
+    } else $('quoteFormula').textContent='請輸入帶身QC、長度（MM）與印刷條數。圖案數由系統固定為1，不需輸入。 / Nhập QC thân dây, chiều dài (MM) và số dây in. Hệ thống cố định số hình = 1, không cần nhập.';
     return;
   }
   if(layout!=='NORMAL'){
@@ -692,18 +687,32 @@ function quoteSpecialTable(std){
   const row=(name,x,unit)=>x?`<tr><td>${name}</td><td>${fmt(x.qtyPerTable,0)} ${unit}</td><td>${fmt(x.workers,0)} 人 / người</td><td>${fmt(x.layHours,2)} H / giờ</td><td>${x.temp?'暫定 / Tạm thời':'正式 / Chính thức'}</td></tr>`:'';
   return `<div class="quote-standard-section"><b>特殊排料標準 / Tiêu chuẩn xếp liệu đặc biệt</b><div class="table-scroll"><table class="quote-settings-table quote-special-standard-table"><thead><tr><th>類型<br>Loại</th><th>每桌標準量<br>SL / bàn</th><th>排料人數<br>Số người</th><th>排料時間<br>Giờ xếp liệu</th><th>狀態<br>Trạng thái</th></tr></thead><tbody>${row('鞋帶 / Dây giày',shoe,'雙 / đôi')}${row('單片 / Miếng rời',piece,'PC')}</tbody></table></div><div class="quote-standard-explain"><b>完整產品怎麼算 / Cách tính sản phẩm hoàn chỉnh</b><br>一般長帶：完成仍包含「排帶 + 印刷」，但因目前排帶很快，所以沿用舊算法、不另外加排帶時間。<br>鞋帶／單片：排料很耗時，必須把排料時間加進去。<br><b>總完成時間 = 排料時間 + 印刷時間</b>；<b>8H完整產能 = 每桌標準量 ÷ 總完成時間 × 8</b>；12H同理。<br><span class="temp">目前標準：鞋帶 1500雙、4人、8H；單片 5000PC、4人、4H。特殊排料印刷時間目前以「層數 = H/桌」計算（例：12層=12H）。 / Tiêu chuẩn hiện tại: dây giày 1500 đôi, 4 người, 8H; miếng rời 5000 PC, 4 người, 4H. Thời gian in xếp liệu đặc biệt hiện tính theo số lớp = giờ/bàn.</span><br>單片長度（mm）每次報價手動輸入，不納入固定標準；只用於本次 PC ↔ Y 換算。<br><br>Dây dài: vẫn gồm xếp liệu + in, nhưng thời gian xếp ngắn nên giữ cách tính cũ. Dây giày/miếng rời: phải cộng thời gian xếp liệu. <b>Tổng thời gian = giờ xếp liệu + giờ in.</b> Chiều dài miếng nhập theo từng lần báo giá, không lưu vào tiêu chuẩn cố định.</div></div>`;
 }
+function quoteDipExperimentSortedRows(){
+  return QUOTE_DIP_EXPERIMENTS.slice().sort((a,b)=>String(a[0]).localeCompare(String(b[0]))||String(a[1]).localeCompare(String(b[1]))||String(a[3]).localeCompare(String(b[3]))||Number(a[2])-Number(b[2])||Number(a[4])-Number(b[4]));
+}
+function quoteDipExperimentTableRows(filters={}){
+  return quoteDipExperimentSortedRows().filter(r=>(!filters.pre||filters.pre==='ALL'||r[0]===filters.pre)&&(!filters.type||filters.type==='ALL'||r[1]===filters.type)&&(!filters.ink||filters.ink==='ALL'||r[3]===filters.ink)&&(!filters.dips||filters.dips==='ALL'||String(r[4])===String(filters.dips))).map(r=>`<tr><td>${quoteEscape(r[0])}</td><td>${quoteEscape(r[1])}</td><td>${fmt(r[2],2)}</td><td>${quoteEscape(r[3])}</td><td>${fmt(r[4],0)}</td><td>${fmt(r[5],2)}</td><td>${fmt(r[6],3)}</td></tr>`).join('');
+}
+function quoteDipExperimentOptions(idx){
+  const vals=[...new Set(QUOTE_DIP_EXPERIMENTS.map(r=>String(r[idx])))].sort((a,b)=>idx===4?Number(a)-Number(b):a.localeCompare(b));
+  return '<option value="ALL">全部 / Tất cả</option>'+vals.map(v=>`<option value="${quoteEscape(v)}">${quoteEscape(v)}</option>`).join('');
+}
 function quoteDipExperimentTable(){
-  const rows=QUOTE_DIP_EXPERIMENTS.map(r=>`<tr><td>${quoteEscape(r[0])}</td><td>${quoteEscape(r[1])}</td><td>${fmt(r[2],2)}</td><td>${quoteEscape(r[3])}</td><td>${fmt(r[4],0)}</td><td>${fmt(r[5],2)}</td><td>${fmt(r[6],3)}</td></tr>`).join('');
-  return `<div class="quote-standard-section"><details class="quote-history-item"><summary>浸染實驗標準 / Tiêu chuẩn thí nghiệm nhúng sơn（${QUOTE_DIP_EXPERIMENTS.length} 筆 / dòng）</summary><div class="quote-history-snapshot"><div class="quote-standard-explain">以下為報價自動比對使用的 0817 單頭實驗資料。系統依帶型＋墨種＋浸染次數比對；無前加工使用帶身QC，有前加工先換算束頭QC。QC落在實驗範圍內可用兩側數據內插；超出邊界20%以內可估算並警示，超過20%停止計算並要求更新標準。1 PC = 2頭。<br>Hệ thống đối chiếu theo loại dây + mực + số lần nhúng; không gia công dùng QC thân dây, có gia công dùng QC đầu dây. QC trong phạm vi được nội suy; vượt biên ≤20% có cảnh báo, >20% dừng tính và yêu cầu cập nhật tiêu chuẩn. 1 PC = 2 đầu.</div><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>前加工<br>Gia công trước</th><th>帶型<br>Loại dây</th><th>寬度(MM)<br>QC (MM)</th><th>墨種<br>Loại mực</th><th>浸染次數<br>Số lần nhúng</th><th>實驗深度(mm)<br>Độ sâu thử (mm)</th><th>單頭累計耗墨(g)<br>Mực tích lũy/đầu (g)</th></tr></thead><tbody>${rows}</tbody></table></div></div></details></div>`;
+  return `<div class="quote-standard-section"><details class="quote-history-item"><summary>浸染實驗標準 / Tiêu chuẩn thí nghiệm nhúng sơn（${QUOTE_DIP_EXPERIMENTS.length} 筆 / dòng）</summary><div class="quote-history-snapshot"><div class="quote-standard-explain">報價不再做QC內插。系統依帶型＋墨種＋浸染次數篩選後，採用「下一級較大的實驗QC」：低於最小值抓最小實驗QC；例如本次6mm抓7mm、7mm抓8mm；超過目前最大實驗QC則必須重新實驗並更新標準。下方可用篩選快速找資料。<br>Không nội suy QC. Hệ thống chọn QC thử nghiệm lớn hơn kế tiếp; thấp hơn mức nhỏ nhất dùng mức nhỏ nhất, vượt QC thử nghiệm lớn nhất thì phải thử lại và cập nhật tiêu chuẩn.</div><div class="quote-exp-filters"><label>前加工 / Gia công trước<select id="quoteExpPre">${quoteDipExperimentOptions(0)}</select></label><label>帶型 / Loại dây<select id="quoteExpType">${quoteDipExperimentOptions(1)}</select></label><label>墨種 / Loại mực<select id="quoteExpInk">${quoteDipExperimentOptions(3)}</select></label><label>浸染次數 / Số lần nhúng<select id="quoteExpDips">${quoteDipExperimentOptions(4)}</select></label></div><div id="quoteExpCount" class="quote-exp-count"></div><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>前加工<br>Gia công trước</th><th>帶型<br>Loại dây</th><th>寬度(MM)<br>QC (MM)</th><th>墨種<br>Loại mực</th><th>浸染次數<br>Số lần nhúng</th><th>實驗深度(mm)<br>Độ sâu thử (mm)</th><th>單頭累計耗墨(g)<br>Mực tích lũy/đầu (g)</th></tr></thead><tbody id="quoteExpBody">${quoteDipExperimentTableRows()}</tbody></table></div></div></details></div>`;
+}
+function bindQuoteDipExperimentFilters(){
+  const ids=['quoteExpPre','quoteExpType','quoteExpInk','quoteExpDips'];if(!ids.every(id=>$(id)))return;
+  const apply=()=>{const f={pre:$('quoteExpPre').value,type:$('quoteExpType').value,ink:$('quoteExpInk').value,dips:$('quoteExpDips').value};const rows=quoteDipExperimentSortedRows().filter(r=>(f.pre==='ALL'||r[0]===f.pre)&&(f.type==='ALL'||r[1]===f.type)&&(f.ink==='ALL'||r[3]===f.ink)&&(f.dips==='ALL'||String(r[4])===String(f.dips)));$('quoteExpBody').innerHTML=quoteDipExperimentTableRows(f)||'<tr><td colspan="7">沒有符合條件的實驗資料 / Không có dữ liệu phù hợp</td></tr>';if($('quoteExpCount'))$('quoteExpCount').textContent=`顯示 ${rows.length} / ${QUOTE_DIP_EXPERIMENTS.length} 筆 / Hiển thị ${rows.length} / ${QUOTE_DIP_EXPERIMENTS.length} dòng`;};
+  ids.forEach(id=>$(id).addEventListener('change',apply));apply();
 }
 function quoteSnapshotHtml(std,showHeader=true){
-  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('機印 / In máy',std.strips.MACHINE||[],true)}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipHeadQcTable(std):''}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數依QC標準帶入 / Số dây theo QC｜PC/Y可切換 / chọn PC/Y｜Y時圖案數固定1 / Y cố định 1 hình｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜無前加工用帶身QC；有前加工用束頭QC / không gia công dùng QC thân, có gia công dùng QC đầu｜區間內可內插；超出邊界>20%禁止計算 / nội suy trong phạm vi; vượt biên >20% dừng tính｜1 PC = 2頭 / 2 đầu｜標準分攤 ${fmt(std.dipAllocHours||4,2)}H（本次可調） / phân bổ ${fmt(std.dipAllocHours||4,2)}H (có thể chỉnh)</b></div></div>`;
+  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('機印 / In máy',std.strips.MACHINE||[],true)}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipHeadQcTable(std):''}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印桌長 / Chiều dài bàn In tay：<b>${std.tableLength.HAND}Y</b>　｜　K3：<b>${std.tableLength.K3}Y</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數依QC標準帶入 / Số dây theo QC｜PC/Y可切換 / chọn PC/Y｜圖案數不需輸入 / không cần nhập số hình｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜無前加工用帶身QC；有前加工用束頭QC / không gia công dùng QC thân, có gia công dùng QC đầu｜採下一級較大實驗QC；超過最大實驗QC必須重測 / dùng QC thử nghiệm lớn hơn kế tiếp; vượt QC lớn nhất phải thử lại｜1 PC = 2頭 / 2 đầu｜標準分攤 ${fmt(std.dipAllocHours||4,2)}H（本次可調） / phân bổ ${fmt(std.dipAllocHours||4,2)}H (có thể chỉnh)</b></div></div>`;
 }
 function renderQuoteStandards(){
   if(!$('quoteStandardsContent'))return;
   if(quoteStandardsMode==='current')$('quoteStandardsContent').innerHTML=quoteSnapshotHtml(QUOTE_STANDARD,true);
   else $('quoteStandardsContent').innerHTML=QUOTE_STANDARD_HISTORY.map((std,i)=>`<details class="quote-history-item" ${i===0?'open':''}><summary>${quoteEscape(std.version)}　${quoteEscape(std.note)}</summary><div class="quote-history-snapshot">${quoteSnapshotHtml(std,false)}</div></details>`).join('');
-  $('quoteCurrentTab').classList.toggle('active',quoteStandardsMode==='current');$('quoteHistoryTab').classList.toggle('active',quoteStandardsMode==='history');
+  $('quoteCurrentTab').classList.toggle('active',quoteStandardsMode==='current');$('quoteHistoryTab').classList.toggle('active',quoteStandardsMode==='history');bindQuoteDipExperimentFilters();
 }
 function openQuoteStandards(){quoteStandardsMode='current';renderQuoteStandards();$('quoteStandardsPanel').classList.remove('hidden');}
 function closeQuoteStandards(){$('quoteStandardsPanel').classList.add('hidden');}
@@ -722,7 +731,7 @@ if($('quoteUnitPc')){
     if(quoteStripsManual){$('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';$('quoteStrips').focus();$('quoteStrips').select();}
     else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
   });
-  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips','quoteDipHeadSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipAllocHours','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteMachineLength','quoteMachineStrips','quoteDipHeadSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipAllocHours','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
   if($('quoteDipPre'))$('quoteDipPre').addEventListener('change',quoteDipUpdatePreUi);
   if($('quoteDipInk'))$('quoteDipInk').addEventListener('change',calcQuoteCapacity);
   if($('quoteDipType'))$('quoteDipType').addEventListener('change',()=>{if(quoteDipIsPreprocessed())quoteDipApplyHeadQc(true);calcQuoteCapacity();});

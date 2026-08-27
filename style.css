@@ -129,3 +129,12 @@
 .quote-strip-row input[readonly]{background:#f2f5f8;color:#263746;cursor:not-allowed}
 .quote-edit-btn.active{outline:2px solid #d3982d;background:#fff4cc}
 @media (max-width:640px){.quote-dip-section{padding:8px}.quote-dip-section-title{font-size:14px}}
+
+/* V41 報價標準產能：浸染實驗提示與篩選 */
+.quote-dip-section .quote-dip-ref{margin:7px 0 0;padding:10px 12px;font-size:13px;line-height:1.45;text-align:left;font-weight:900;grid-column:1/-1}
+.quote-dip-ref.danger{font-size:14px;border-width:2px}
+.quote-exp-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}
+.quote-exp-filters label{display:flex;flex-direction:column;gap:3px;font-size:9px;font-weight:800;color:#475569}
+.quote-exp-filters select{min-height:34px;border:1px solid #b8c6d3;border-radius:7px;background:#fff;padding:4px;font-size:11px;color:#17365d}
+.quote-exp-count{margin:4px 0 6px;text-align:right;font-size:9px;color:#64748b;font-weight:800}
+@media(max-width:640px){.quote-dip-section .quote-dip-ref{font-size:11px;padding:8px}.quote-dip-ref.danger{font-size:12px}.quote-exp-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.quote-exp-filters select{font-size:10px}}
