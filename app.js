@@ -576,7 +576,7 @@ function updateQuoteLayoutUI(){
   ['quoteWidthField','quoteStripsField','quoteTableLengthField','quotePcLengthField'].forEach(id=>{if($(id))$(id).classList.toggle('hidden',isSpecial);});
   if($('quoteUnitToggle'))$('quoteUnitToggle').classList.toggle('hidden',isSpecial);
   $('quoteSpecialFields').classList.toggle('hidden',!isSpecial);
-  $('quotePieceLengthField').classList.toggle('hidden',!isPiece);
+  $('quotePieceLengthField').classList.toggle('hidden',!(isPiece&&method==='HAND'));
   if($('quoteHandPieceFields'))$('quoteHandPieceFields').classList.toggle('hidden',!(isPiece&&method==='HAND'));
   if($('quoteK3PieceFields'))$('quoteK3PieceFields').classList.toggle('hidden',!(isPiece&&method==='K3'));
   $('quoteTotalTimeResult').classList.toggle('hidden',!isSpecial||isPiece);
