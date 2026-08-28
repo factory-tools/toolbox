@@ -296,14 +296,14 @@ if($('machineModePc')){
 // 標準參數由「報價標準參數表 Excel」維護，再由程式更新；網頁僅檢視，不直接修改。
 const QUOTE_STANDARD_HISTORY=[
   {
-    version:'2026/08/27',
+    version:'2026/08/28',
     note:'更新手印／機印／K3標準；機印QC自動鎖定條數與PC/Y；浸染前加工束頭QC、分區排版、實驗範圍保護；層數產能改為0–20層逐層標準 / Cập nhật tiêu chuẩn In tay/In máy/K3; khóa tự động số dây theo QC & PC/Y; cập nhật QC đầu dây, bố cục nhúng sơn, bảo vệ phạm vi thử nghiệm và tiêu chuẩn năng suất từng lớp 0–20',
     layers:{
       WATER:[{min:0,max:0,tables12:2.5},{min:1,max:1,tables12:2.5},{min:2,max:2,tables12:2.5},{min:3,max:3,tables12:2.5},{min:4,max:4,tables12:2.5},{min:5,max:5,tables12:2.375},{min:6,max:6,tables12:2.25},{min:7,max:7,tables12:2.125},{min:8,max:8,tables12:2},{min:9,max:9,tables12:1.875},{min:10,max:10,tables12:1.75},{min:11,max:11,tables12:1.625},{min:12,max:12,tables12:1.5},{min:13,max:13,tables12:1.375},{min:14,max:14,tables12:1.25},{min:15,max:15,tables12:1.125},{min:16,max:16,tables12:1},{min:17,max:17,tables12:0.875},{min:18,max:18,tables12:0.75},{min:19,max:19,tables12:0.625},{min:20,max:20,tables12:0.5}],
       SILICONE:[{min:0,max:0,tables12:2.5},{min:1,max:1,tables12:2.5},{min:2,max:2,tables12:2.5},{min:3,max:3,tables12:2.5},{min:4,max:4,tables12:2.5},{min:5,max:5,tables12:2.375},{min:6,max:6,tables12:2.25},{min:7,max:7,tables12:2.125},{min:8,max:8,tables12:2},{min:9,max:9,tables12:1.875},{min:10,max:10,tables12:1.75},{min:11,max:11,tables12:1.625},{min:12,max:12,tables12:1.5},{min:13,max:13,tables12:1.375},{min:14,max:14,tables12:1.25},{min:15,max:15,tables12:1.125},{min:16,max:16,tables12:1},{min:17,max:17,tables12:0.875},{min:18,max:18,tables12:0.75},{min:19,max:19,tables12:0.625},{min:20,max:20,tables12:0.5}]
     },
     strips:{
-      HAND:[{width:6,strips:38},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
+      HAND:[{width:6,strips:30},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7}],
       MACHINE:[{width:6,strips:10},{width:8,strips:10},{width:9,strips:10},{width:10,strips:10},{width:11,strips:10},{width:12,strips:10},{width:13,strips:8},{width:14,strips:8},{width:15,strips:8},{width:16,strips:7},{width:17,strips:7},{width:18,strips:7},{width:20,strips:7},{width:21,strips:7},{width:22,strips:7},{width:24,strips:7},{width:25,strips:6},{width:28,strips:6},{width:30,strips:4}],
       K3:[{width:8,strips:42},{width:10,strips:35},{width:12,strips:30},{width:15,strips:24},{width:16,strips:21},{width:20,strips:19},{width:25,strips:15}]
     },
@@ -544,7 +544,7 @@ function updateQuoteTableLength(){
     if($('quoteMachineUnitToggle'))$('quoteMachineUnitToggle').classList.add('hidden');
     if($('quoteUnitToggle'))$('quoteUnitToggle').classList.add('hidden');
     if($('quoteSpecialFields'))$('quoteSpecialFields').classList.add('hidden');
-    ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result','quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
+    ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteCapacity12StdResult','quoteTables8Result','quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
     ['quoteDipSingleHeadResult','quoteDipPcInkResult','quoteDipWasteResult','quoteDipTotalInkResult'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
     quoteUnit='PC';quoteDipUpdateDepthFields();return;
   }
@@ -553,13 +553,13 @@ function updateQuoteTableLength(){
     if($('quoteUnitToggle'))$('quoteUnitToggle').classList.add('hidden');
     if($('quoteMachineUnitToggle'))$('quoteMachineUnitToggle').classList.remove('hidden');
     if($('quoteSpecialFields'))$('quoteSpecialFields').classList.add('hidden');
-    ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
+    ['quoteTotalTimeResult','quoteCapacity12Result','quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteCapacity12StdResult','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
     ['quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
     calcQuoteCapacity();return;
   }
   if($('quoteMachineUnitToggle'))$('quoteMachineUnitToggle').classList.add('hidden');
   ['quoteMachineHourResult','quoteMachine12Result'].forEach(id=>{if($(id))$(id).classList.add('hidden');});
-  ['quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
+  ['quoteTotalStripsResult','quotePerTableResult','quoteTables12Result','quoteCapacity12StdResult','quoteTables8Result'].forEach(id=>{if($(id))$(id).classList.remove('hidden');});
   $('quoteTableLength').value=QUOTE_STANDARD.tableLength[m]|| (m==='K3'?29:25);
   $('quoteTableLengthHint').textContent=m==='K3'?'K3 預設 29Y，可修改本次報價 / K3 mặc định 29Y, có thể sửa cho lần này':'手印預設 25Y，可修改本次報價 / In tay mặc định 25Y, có thể sửa cho lần này';
   updateQuoteLayoutUI();
@@ -658,12 +658,17 @@ function calcQuoteCapacity(){
   const tables8=rule?Number(rule.tables12)*8/12:0;
   $('quoteTables8').textContent=tables8>0?`${fmt(tables8,2)} 桌 / bàn`:'—';
   const capY=perTableY*tables8,capPc=perTablePc*tables8;
+  const cap12Y=perTableY*(rule?Number(rule.tables12):0),cap12Pc=perTablePc*(rule?Number(rule.tables12):0);
+  if($('quoteCapacity12Std')){
+    if(quoteUnit==='PC') $('quoteCapacity12Std').textContent=(cap12Pc>0&&pcLen>0)?`${fmt(cap12Pc,0)} PC`:(cap12Y>0?`${fmt(cap12Y,2)} Y`:'—');
+    else $('quoteCapacity12Std').textContent=cap12Y>0?`${fmt(cap12Y,2)} Y`:'—';
+  }
   if(quoteUnit==='PC'){$('quoteCapacity8').textContent=(capPc>0&&pcLen>0)?`${fmt(capPc,0)} PC`:'—';$('quoteCapacity8Alt').textContent=capY>0?`≈ ${fmt(capY,2)} Y / 8H`:'—';}
   else{$('quoteCapacity8').textContent=capY>0?`${fmt(capY,2)} Y`:'—';$('quoteCapacity8Alt').textContent=capY>0?'Y 報價不需輸入 PC 長度 / Báo giá Y không cần chiều dài PC':'—';}
   if(!(oneSide>0)||!(tableY>0))$('quoteFormula').textContent='目前無法取得排帶條數，請檢查寬度標準 / Không thể lấy số sợi, vui lòng kiểm tra tiêu chuẩn khổ dây.';
   else if(!rule)$('quoteFormula').textContent=`目前 ${inkLabel} 標準沒有涵蓋 ${Number.isFinite(layers)?fmt(layers,0):'—'} 層。 / Tiêu chuẩn ${inkLabel} hiện chưa bao gồm ${Number.isFinite(layers)?fmt(layers,0):'—'} lớp.`;
   else if(quoteUnit==='PC'&&!(pcLen>0))$('quoteFormula').textContent='報 PC 必須輸入每 PC 長度（mm） / Báo giá PC phải nhập chiều dài mỗi PC (mm).';
-  else $('quoteFormula').textContent=`一般長帶排帶時間很短，目前維持原算法：單邊 ${fmt(oneSide,0)}條 × ${sides}邊 × 桌長 ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/桌；${fmt(layers,0)}層 → ${fmt(rule.tables12,2)}桌/12H → ${fmt(tables8,2)}桌/8H。 / Dây dài giữ nguyên cách tính hiện tại; thời gian xếp sợi ngắn nên tạm bỏ qua.`;
+  else $('quoteFormula').innerHTML=`<b>計算關係 / Quan hệ tính toán：</b><br>① 每1桌 / 1 bàn = ${fmt(oneSide,0)}條 × ${sides}邊 × ${fmt(tableY,2)}Y = <b>${fmt(perTableY,2)}Y</b><br>② 12H = ${fmt(rule.tables12,2)}桌 × ${fmt(perTableY,2)}Y = <b>${fmt(cap12Y,2)}Y</b><br>③ 8H桌數 = ${fmt(rule.tables12,2)} × 8 ÷ 12 = ${fmt(tables8,2)}桌；8H產能 = ${fmt(tables8,2)} × ${fmt(perTableY,2)}Y = <b>${fmt(capY,2)}Y</b><br><span>1 bàn = ${fmt(perTableY,2)}Y; 12H = ${fmt(rule.tables12,2)} bàn = ${fmt(cap12Y,2)}Y; 8H = ${fmt(tables8,2)} bàn = ${fmt(capY,2)}Y.</span>`;
 }
 function quoteLayerTable(std){
   const water=std.layers.WATER||[],sil=std.layers.SILICONE||[],keys=[...new Set([...water.flatMap(r=>{const a=[];for(let x=Number(r.min);x<=Number(r.max);x++)a.push(x);return a;}),...sil.flatMap(r=>{const a=[];for(let x=Number(r.min);x<=Number(r.max);x++)a.push(x);return a;})])].sort((a,b)=>a-b);
