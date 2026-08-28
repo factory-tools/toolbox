@@ -296,11 +296,11 @@ if($('machineModePc')){
 // 標準參數由「報價標準參數表 Excel」維護，再由程式更新；網頁僅檢視，不直接修改。
 const QUOTE_STANDARD_HISTORY=[
   {
-    version:'2026/08/28',
-    note:'更新報價欄位中越文、提示放大；機印PC/Y長度名稱分流；手印新增86MM=3條；手印/K3單片改用實際排版參數計算 / Cập nhật tên trường Trung-Việt, phóng to hướng dẫn; tách tên độ dài In máy PC/Y; thêm In tay 86MM=3 sợi; tính miếng rời In tay/K3 theo bố trí thực tế',
+    version:'2026/08/28-V45',
+    note:'新增21–30層延伸標準：從20層0.5桌/12H起，每增加1層以前一層×98%；延續V44機印PC每行圖案數與單片新算法 / Thêm chuẩn mở rộng 21–30 lớp: từ lớp 20 = 0,5 bàn/12H, mỗi lớp tiếp theo = lớp trước × 98%; tiếp tục V44.',
     layers:{
-      WATER:[{min:0,max:0,tables12:2.5},{min:1,max:1,tables12:2.5},{min:2,max:2,tables12:2.5},{min:3,max:3,tables12:2.5},{min:4,max:4,tables12:2.5},{min:5,max:5,tables12:2.375},{min:6,max:6,tables12:2.25},{min:7,max:7,tables12:2.125},{min:8,max:8,tables12:2},{min:9,max:9,tables12:1.875},{min:10,max:10,tables12:1.75},{min:11,max:11,tables12:1.625},{min:12,max:12,tables12:1.5},{min:13,max:13,tables12:1.375},{min:14,max:14,tables12:1.25},{min:15,max:15,tables12:1.125},{min:16,max:16,tables12:1},{min:17,max:17,tables12:0.875},{min:18,max:18,tables12:0.75},{min:19,max:19,tables12:0.625},{min:20,max:20,tables12:0.5}],
-      SILICONE:[{min:0,max:0,tables12:2.5},{min:1,max:1,tables12:2.5},{min:2,max:2,tables12:2.5},{min:3,max:3,tables12:2.5},{min:4,max:4,tables12:2.5},{min:5,max:5,tables12:2.375},{min:6,max:6,tables12:2.25},{min:7,max:7,tables12:2.125},{min:8,max:8,tables12:2},{min:9,max:9,tables12:1.875},{min:10,max:10,tables12:1.75},{min:11,max:11,tables12:1.625},{min:12,max:12,tables12:1.5},{min:13,max:13,tables12:1.375},{min:14,max:14,tables12:1.25},{min:15,max:15,tables12:1.125},{min:16,max:16,tables12:1},{min:17,max:17,tables12:0.875},{min:18,max:18,tables12:0.75},{min:19,max:19,tables12:0.625},{min:20,max:20,tables12:0.5}]
+      WATER:[{min:0,max:0,tables12:2.5},{min:1,max:1,tables12:2.5},{min:2,max:2,tables12:2.5},{min:3,max:3,tables12:2.5},{min:4,max:4,tables12:2.5},{min:5,max:5,tables12:2.375},{min:6,max:6,tables12:2.25},{min:7,max:7,tables12:2.125},{min:8,max:8,tables12:2},{min:9,max:9,tables12:1.875},{min:10,max:10,tables12:1.75},{min:11,max:11,tables12:1.625},{min:12,max:12,tables12:1.5},{min:13,max:13,tables12:1.375},{min:14,max:14,tables12:1.25},{min:15,max:15,tables12:1.125},{min:16,max:16,tables12:1},{min:17,max:17,tables12:0.875},{min:18,max:18,tables12:0.75},{min:19,max:19,tables12:0.625},{min:20,max:20,tables12:0.5},{min:21,max:21,tables12:0.49},{min:22,max:22,tables12:0.4802},{min:23,max:23,tables12:0.470596},{min:24,max:24,tables12:0.46118408},{min:25,max:25,tables12:0.4519603984},{min:26,max:26,tables12:0.442921190432},{min:27,max:27,tables12:0.434062766623},{min:28,max:28,tables12:0.425381511291},{min:29,max:29,tables12:0.416873881065},{min:30,max:30,tables12:0.408536403444}],
+      SILICONE:[{min:0,max:0,tables12:2.5},{min:1,max:1,tables12:2.5},{min:2,max:2,tables12:2.5},{min:3,max:3,tables12:2.5},{min:4,max:4,tables12:2.5},{min:5,max:5,tables12:2.375},{min:6,max:6,tables12:2.25},{min:7,max:7,tables12:2.125},{min:8,max:8,tables12:2},{min:9,max:9,tables12:1.875},{min:10,max:10,tables12:1.75},{min:11,max:11,tables12:1.625},{min:12,max:12,tables12:1.5},{min:13,max:13,tables12:1.375},{min:14,max:14,tables12:1.25},{min:15,max:15,tables12:1.125},{min:16,max:16,tables12:1},{min:17,max:17,tables12:0.875},{min:18,max:18,tables12:0.75},{min:19,max:19,tables12:0.625},{min:20,max:20,tables12:0.5},{min:21,max:21,tables12:0.49},{min:22,max:22,tables12:0.4802},{min:23,max:23,tables12:0.470596},{min:24,max:24,tables12:0.46118408},{min:25,max:25,tables12:0.4519603984},{min:26,max:26,tables12:0.442921190432},{min:27,max:27,tables12:0.434062766623},{min:28,max:28,tables12:0.425381511291},{min:29,max:29,tables12:0.416873881065},{min:30,max:30,tables12:0.408536403444}]
     },
     strips:{
       HAND:[{width:6,strips:38},{width:8,strips:30},{width:9,strips:28},{width:10,strips:26},{width:11,strips:24},{width:12,strips:22},{width:13,strips:20},{width:14,strips:20},{width:15,strips:18},{width:16,strips:17},{width:17,strips:16},{width:18,strips:15},{width:20,strips:14},{width:21,strips:13},{width:22,strips:13},{width:24,strips:12},{width:25,strips:11},{width:28,strips:10},{width:30,strips:10},{width:36,strips:8},{width:40,strips:8},{width:45,strips:7},{width:86,strips:3}],
@@ -419,9 +419,10 @@ function quoteSetMachineUnit(unit){
   quoteMachineUnit=unit;
   if($('quoteMachineUnitPc'))$('quoteMachineUnitPc').classList.toggle('active',unit==='PC');
   if($('quoteMachineUnitY'))$('quoteMachineUnitY').classList.toggle('active',unit==='Y');
+  if($('quoteMachinePatternsField'))$('quoteMachinePatternsField').classList.toggle('hidden',unit!=='PC');
   if($('quoteMachineLengthZh'))$('quoteMachineLengthZh').textContent=unit==='PC'?'每 PC 長度（mm）':'網版圖案總長度（MM）';
   if($('quoteMachineLengthVi'))$('quoteMachineLengthVi').textContent=unit==='PC'?'Độ dài mỗi PC (mm)':'Tổng độ dài hình trên khuôn (MM)';
-  if($('quoteMachinePullHint'))$('quoteMachinePullHint').textContent=unit==='PC'?'每 PC 長度 × 10，自動計算，請勿修改 / Độ dài mỗi PC × 10, tự động tính, không điều chỉnh':'網版圖案總長度 × 10，自動計算，請勿修改 / Tổng độ dài hình trên khuôn × 10, tự động tính, không điều chỉnh';
+  if($('quoteMachinePullHint'))$('quoteMachinePullHint').textContent=unit==='PC'?'每 PC 長度 × 每行圖案數 × 10，自動計算，請勿修改 / Độ dài mỗi PC × số hình trong 1 hàng × 10, tự động tính, không điều chỉnh':'網版圖案總長度 × 10，自動計算，請勿修改 / Tổng độ dài hình trên khuôn × 10, tự động tính, không điều chỉnh';
   calcQuoteCapacity();
 }
 function quoteDipExperimentRows(pre,type,ink,dips){
@@ -496,6 +497,14 @@ function quoteInkName(v){return v==='SILICONE'?'SILICONE':'水性 / Mực nướ
 function quoteMethodName(v){return v==='DIP'?'浸染 / Nhúng sơn':v==='MACHINE'?'機印 / In máy':v==='K3'?'K3':'手印 / In tay';}
 function quoteLayoutName(v){return v==='SHOELACE'?'鞋帶 / Dây giày':v==='PIECE'?'單片 / Miếng rời':'一般長帶 / Dây dài thông thường';}
 function quoteFindRule(ink,layers,std=QUOTE_STANDARD){return (std.layers[ink]||[]).find(r=>layers>=Number(r.min)&&layers<=Number(r.max));}
+function quoteLayerSourceText(layers){
+  if(!Number.isFinite(Number(layers)))return '';
+  const n=Number(layers);
+  if(n<=4)return '0–4層依現場固定標準2.5桌/12H / Lớp 0–4 theo chuẩn hiện trường cố định 2,5 bàn/12H';
+  if(n<=20)return '5–20層依現場逐層標準表 / Lớp 5–20 theo bảng tiêu chuẩn hiện trường từng lớp';
+  if(n<=30){const precise=.5*Math.pow(.98,n-20);return `21–30層延伸：20層0.5桌 × 98%^${fmt(n-20,0)} = ${fmt(precise,4)}桌/12H / Mở rộng lớp 21–30: lớp 20 = 0,5 bàn × 98%^${fmt(n-20,0)} = ${fmt(precise,4)} bàn/12H`;}
+  return '目前層數標準只建立到30層 / Tiêu chuẩn số lớp hiện chỉ thiết lập đến lớp 30';
+}
 function quoteEscape(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function quoteEstimateStrips(method,width,std=QUOTE_STANDARD){
   const rows=(std.strips[method]||[]).slice().sort((a,b)=>a.width-b.width);
@@ -597,13 +606,13 @@ function calcQuoteCapacity(){
   $('quoteStandardStamp').textContent=`目前標準 / Tiêu chuẩn hiện tại：${QUOTE_STANDARD.version}`;
   if(method==='DIP'){quoteDipCalc();return;}
   if(method==='MACHINE'){
-    const patterns=1,lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,qc=Number($('quoteMachineQc').value);
+    const patterns=quoteMachineUnit==='PC'?Math.max(1,Number($('quoteMachinePatterns')?.value)||1):1,lengthMm=Number($('quoteMachineLength').value),pullSpeed=200,qc=Number($('quoteMachineQc').value);
     const stripsRaw=Number($('quoteMachineStrips').value),strips=Number.isInteger(stripsRaw)&&stripsRaw>=1?stripsRaw:0;
     const pullLength=(patterns>0&&lengthMm>0)?patterns*lengthMm*10:0;
     if($('quoteMachinePullLength'))$('quoteMachinePullLength').textContent=pullLength>0?fmt(pullLength,0):'—';
     const pullSec=estimatedPullSeconds(pullLength,pullSpeed),printSec=MACHINE_STROKE_SECONDS[quoteMachineStroke]||0,cycleSec=pullSec+printSec;
     const framesHour=cycleSec>0?3600/cycleSec:0;
-    const yardsPerCycle=(patterns>0&&lengthMm>0&&strips>0)?patterns*lengthMm/914.4*strips:0;
+    const yardsPerCycle=(lengthMm>0&&strips>0)?lengthMm/914.4*strips:0;
     const pcPerCycle=(patterns>0&&strips>0)?patterns*strips:0;
     const perHourY=yardsPerCycle*framesHour,perHourPc=pcPerCycle*framesHour;
     const perHour=quoteMachineUnit==='PC'?perHourPc:perHourY,cap8=perHour*8,cap12=perHour*12;
@@ -613,7 +622,7 @@ function calcQuoteCapacity(){
     $('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,quoteMachineUnit==='PC'?0:2)} ${quoteMachineUnit}`:'—';
     $('quoteCapacity8Alt').textContent=perHour>0?`${fmt(strips,0)} 條同時印刷 / In cùng lúc ${fmt(strips,0)} sợi`:'請輸入規格、長度與印刷條數 / Vui lòng nhập QC, độ dài và số dây in';
     if(patterns>0&&lengthMm>0&&strips>0&&perHour>0){
-      if(quoteMachineUnit==='PC')$('quoteFormula').textContent=`PC：以每 PC 長度為一循環；每循環 ${fmt(strips,0)}條 = ${fmt(pcPerCycle,0)} PC；建議拉帶長度 ${fmt(lengthMm,2)} × 10 = ${fmt(pullLength,0)}；速度200、${quoteMachineStroke}刀 → ${fmt(perHourPc,0)} PC/H，8H ${fmt(cap8,0)} PC。 / PC: dùng độ dài mỗi PC làm 1 chu kỳ; ${fmt(strips,0)} dây = ${fmt(pcPerCycle,0)} PC/chu kỳ.`;
+      if(quoteMachineUnit==='PC')$('quoteFormula').textContent=`PC：每循環 = ${fmt(patterns,0)} 圖案 × ${fmt(strips,0)}條 = ${fmt(pcPerCycle,0)} PC；建議拉帶長度 = ${fmt(lengthMm,2)}mm × ${fmt(patterns,0)}圖案 × 10 = ${fmt(pullLength,0)}；速度200、${quoteMachineStroke}刀 → ${fmt(perHourPc,0)} PC/H，8H ${fmt(cap8,0)} PC。 / PC: mỗi chu kỳ = ${fmt(patterns,0)} hình × ${fmt(strips,0)} dây = ${fmt(pcPerCycle,0)} PC; chiều dài kéo đề nghị = ${fmt(lengthMm,2)}mm × ${fmt(patterns,0)} hình × 10 = ${fmt(pullLength,0)}; tốc độ 200, ${quoteMachineStroke} gạt → ${fmt(perHourPc,0)} PC/H, 8H ${fmt(cap8,0)} PC.`;
       else $('quoteFormula').textContent=`Y：網版圖案總長度作為一循環；每循環碼數 = ${fmt(lengthMm,2)} ÷ 914.4 × ${fmt(strips,0)}條 = ${fmt(yardsPerCycle,3)} Y；速度200、${quoteMachineStroke}刀 → ${fmt(perHourY,2)} Y/H，8H ${fmt(cap8,2)} Y。 / Y: tổng độ dài hình trên khuôn là 1 chu kỳ; yard/chu kỳ = độ dài ÷ 914.4 × số dây; tốc độ 200, ${quoteMachineStroke} gạt.`;
     } else $('quoteFormula').textContent='請輸入規格、長度與印刷條數。PC請填每PC長度；Y請填網版圖案總長度。 / Nhập QC, độ dài và số dây in. PC nhập độ dài mỗi PC; Y nhập tổng độ dài hình trên khuôn.';
     return;
@@ -638,7 +647,7 @@ function calcQuoteCapacity(){
       $('quoteTotalStrips').textContent=method==='HAND'?'25M單邊 × 2邊 / 25M mỗi bên × 2':'44大格 / 44 ô lớn';
       $('quotePerTable').textContent=qty>0?`${fmt(qty,0)} PC`:'—';$('quoteTables12').textContent=tables12>0?`${fmt(tables12,3)} 桌 / bàn`:'—';$('quoteTables8').textContent=tables8>0?`${fmt(tables8,3)} 桌 / bàn`:'—';$('quoteCapacity12').textContent=cap12>0?`${fmt(cap12,0)} PC`:'—';$('quoteCapacity8').textContent=cap8>0?`${fmt(cap8,0)} PC`:'—';$('quoteCapacity8Alt').textContent=qty>0&&tables8>0?`每桌 ${fmt(qty,0)} PC × 8H ${fmt(tables8,3)}桌 / ${fmt(qty,0)} PC/bàn × ${fmt(tables8,3)} bàn/8H`:'請完成排版參數與層數 / Hoàn tất thông số bố trí và số lớp';
       if(!Number.isFinite(layers)||!rule)$('quoteFormula').textContent='請輸入有效層數；8H桌數依「層數產能標準」換算。 / Vui lòng nhập số lớp hợp lệ; số bàn 8H lấy theo tiêu chuẩn năng suất số lớp.';
-      else $('quoteFormula').textContent=`${detail}；${fmt(layers,0)}層參考標準 = ${fmt(tables12,3)}桌/12H → ${fmt(tables8,3)}桌/8H；8H產能 = ${fmt(qty,0)} × ${fmt(tables8,3)} = ${fmt(cap8,0)} PC。 / ${detail}; chuẩn ${fmt(layers,0)} lớp = ${fmt(tables12,3)} bàn/12H → ${fmt(tables8,3)} bàn/8H; năng suất 8H = ${fmt(cap8,0)} PC.`;
+      else $('quoteFormula').textContent=`${detail}；層數標準來源：${quoteLayerSourceText(layers)}；${fmt(layers,0)}層 = ${fmt(tables12,4)}桌/12H → × 8/12 = ${fmt(tables8,4)}桌/8H；8H產能 = 每桌${fmt(qty,0)} PC × ${fmt(tables8,4)}桌 = ${fmt(cap8,0)} PC。 / ${detail}; nguồn chuẩn số lớp: ${quoteLayerSourceText(layers)}; ${fmt(layers,0)} lớp = ${fmt(tables12,4)} bàn/12H → × 8/12 = ${fmt(tables8,4)} bàn/8H; năng suất 8H = ${fmt(qty,0)} PC/bàn × ${fmt(tables8,4)} = ${fmt(cap8,0)} PC.`;
       return;
     }
     const qty=sp?Number(sp.qtyPerTable):0,layHours=sp?Number(sp.layHours):0,workers=sp?Number(sp.workers):0,printHours=Number.isFinite(layers)&&layers>0?layers:0,totalHours=layHours+printHours,cap8=totalHours>0?qty/totalHours*8:0,cap12=totalHours>0?qty/totalHours*12:0;
@@ -664,13 +673,13 @@ function calcQuoteCapacity(){
   if(!(oneSide>0)||!(tableY>0))$('quoteFormula').textContent='目前無法取得排帶條數，請檢查寬度標準 / Không thể lấy số sợi, vui lòng kiểm tra tiêu chuẩn khổ dây.';
   else if(!rule)$('quoteFormula').textContent=`目前 ${inkLabel} 標準沒有涵蓋 ${Number.isFinite(layers)?fmt(layers,0):'—'} 層。 / Tiêu chuẩn ${inkLabel} hiện chưa bao gồm ${Number.isFinite(layers)?fmt(layers,0):'—'} lớp.`;
   else if(quoteUnit==='PC'&&!(pcLen>0))$('quoteFormula').textContent='報 PC 必須輸入每 PC 長度（mm） / Báo giá PC phải nhập chiều dài mỗi PC (mm).';
-  else $('quoteFormula').textContent=`一般長帶排帶時間很短，目前維持原算法：單邊 ${fmt(oneSide,0)}條 × ${sides}邊 × 桌長 ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/桌；${fmt(layers,0)}層 → ${fmt(rule.tables12,2)}桌/12H → ${fmt(tables8,2)}桌/8H。 / Dây dài giữ nguyên cách tính hiện tại; thời gian xếp sợi ngắn nên tạm bỏ qua.`;
+  else $('quoteFormula').textContent=`一般長帶：單邊 ${fmt(oneSide,0)}條（依QC標準） × ${sides}邊 × 桌長 ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/桌；層數標準來源：${quoteLayerSourceText(layers)}；${fmt(layers,0)}層 = ${fmt(rule.tables12,4)}桌/12H → × 8/12 = ${fmt(tables8,4)}桌/8H。 / Dây dài: ${fmt(oneSide,0)} sợi một bên (theo chuẩn QC) × ${sides} bên × ${fmt(tableY,2)}Y = ${fmt(perTableY,2)}Y/bàn; nguồn chuẩn số lớp: ${quoteLayerSourceText(layers)}; ${fmt(layers,0)} lớp = ${fmt(rule.tables12,4)} bàn/12H → × 8/12 = ${fmt(tables8,4)} bàn/8H.`;
 }
 function quoteLayerTable(std){
   const water=std.layers.WATER||[],sil=std.layers.SILICONE||[],keys=[...new Set([...water.flatMap(r=>{const a=[];for(let x=Number(r.min);x<=Number(r.max);x++)a.push(x);return a;}),...sil.flatMap(r=>{const a=[];for(let x=Number(r.min);x<=Number(r.max);x++)a.push(x);return a;})])].sort((a,b)=>a-b);
   const valueAt=(rows,l)=>{const r=rows.find(x=>l>=Number(x.min)&&l<=Number(x.max));return r?Number(r.tables12):null;};
-  const rows=keys.map(l=>`<tr><td>${l}</td><td>${valueAt(water,l)!=null?fmt(valueAt(water,l),3):'—'}</td><td>${valueAt(sil,l)!=null?fmt(valueAt(sil,l),3):'—'}</td></tr>`).join('');
-  return `<div class="quote-standard-section"><b>層數產能 / Năng suất theo số lớp</b><div class="quote-standard-explain">目前標準改為逐層顯示，避免 12→13 層產能突然大幅跳降。0–4層＝2.5桌/人/12H；5層起每增加1層依現場表逐步下降，到20層＝0.5桌。 / Hiển thị tiêu chuẩn theo từng lớp để tránh bước nhảy lớn giữa 12 và 13 lớp.</div><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>總層數<br>Tổng số lớp</th><th>水性 1人/12H桌數<br>Mực nước: Bàn/người/12H</th><th>SILICONE 1人/12H桌數<br>Bàn/người/12H</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  const rows=keys.map(l=>{const w=valueAt(water,l),si=valueAt(sil,l),exampleY=w!=null?900*w:null;const source=l<=4?'現場標準 2.5桌 / Chuẩn hiện trường 2,5 bàn':l<=20?'依現場逐層表 / Theo bảng hiện trường từng lớp':'前一層 × 98% / Lớp trước × 98%';return `<tr><td>${l}</td><td>${w==null?'—':fmt(w,4)}</td><td>${si==null?'—':fmt(si,4)}</td><td>${exampleY==null?'—':fmt(exampleY,0)+' Y'}</td><td>${source}</td></tr>`;}).join('');
+  return `<div class="quote-standard-section"><b>層數產能 / Năng suất theo số lớp</b><div class="quote-standard-explain"><b>數字怎麼來 / Cách hình thành số liệu：</b><br>0–4層＝2.5桌/人/12H。5–20層依現場逐層標準下降；例如15mm、單邊18條、25Y、2邊時，1桌＝18 × 25Y × 2＝900Y。20層＝0.5桌＝450Y/12H。<br><b>21–30層延伸規則：</b>從20層開始，每增加1層，產能＝前一層精確值 × 98%（下降2%）；計算保留精確值，畫面Y再四捨五入。例如21層＝450 × 98%＝441Y；22層＝441 × 98%＝432.18Y ≈ 432Y。<br>0–4 lớp = 2,5 bàn/người/12H. Lớp 5–20 theo bảng tiêu chuẩn hiện trường. Ví dụ 15mm, 18 sợi một bên, 25Y, 2 bên: 1 bàn = 18 × 25Y × 2 = 900Y. Lớp 20 = 0,5 bàn = 450Y/12H. <b>Lớp 21–30:</b> mỗi tăng 1 lớp, năng suất = giá trị chính xác của lớp trước × 98%; Yard hiển thị được làm tròn.</div><div class="table-scroll"><table class="quote-settings-table"><thead><tr><th>總層數<br>Tổng số lớp</th><th>水性 1人/12H桌數<br>Mực nước: Bàn/người/12H</th><th>SILICONE 1人/12H桌數<br>Bàn/người/12H</th><th>900Y/桌示例產能<br>Ví dụ Y/12H (900Y/bàn)</th><th>數據來源<br>Nguồn số liệu</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function quoteStripTable(title,rows,isMachine=false){
   const body=rows.length?rows.map(r=>`<tr><td>${fmt(r.width,2)}</td><td>${fmt(r.strips,0)}</td></tr>`).join(''):`<tr><td colspan="2">尚未建立標準 / Chưa có tiêu chuẩn</td></tr>`;
@@ -706,7 +715,7 @@ function bindQuoteDipExperimentFilters(){
   ids.forEach(id=>$(id).addEventListener('change',apply));apply();
 }
 function quoteSnapshotHtml(std,showHeader=true){
-  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('機印 / In máy',std.strips.MACHINE||[],true)}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipHeadQcTable(std):''}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印一般長帶桌長 / Chiều dài bàn dây dài In tay：<b>${std.tableLength.HAND}Y</b>｜手印單片 / Miếng rời In tay：<b>25M/單邊，6MM排距，2邊 / 25M mỗi bên, cách 6MM, 2 bên</b>　｜　K3一般長帶 / Dây dài K3：<b>${std.tableLength.K3}Y</b>｜K3單片 / Miếng rời K3：<b>44大格 / 44 ô lớn</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數依QC標準帶入 / Số dây theo QC｜PC/Y可切換 / chọn PC/Y｜圖案數不需輸入 / không cần nhập số hình｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜無前加工用帶身QC；有前加工用束頭QC / không gia công dùng QC thân, có gia công dùng QC đầu｜採下一級較大實驗QC；超過最大實驗QC必須重測 / dùng QC thử nghiệm lớn hơn kế tiếp; vượt QC lớn nhất phải thử lại｜1 PC = 2頭 / 2 đầu｜標準分攤 ${fmt(std.dipAllocHours||4,2)}H（本次可調） / phân bổ ${fmt(std.dipAllocHours||4,2)}H (có thể chỉnh)</b></div></div>`;
+  return `${showHeader?`<div class="quote-version-head"><b>${quoteEscape(std.version)}</b><span>${quoteEscape(std.note)}</span></div>`:''}${quoteLayerTable(std)}<div class="quote-standard-grid">${quoteStripTable('手印 / In tay',std.strips.HAND||[])}${quoteStripTable('機印 / In máy',std.strips.MACHINE||[],true)}${quoteStripTable('K3',std.strips.K3||[])}</div>${quoteSpecialTable(std)}${showHeader?quoteDipHeadQcTable(std):''}${showHeader?quoteDipExperimentTable():''}<div class="quote-standard-section"><b>其他基準 / Tiêu chuẩn khác</b><div class="quote-standard-mini">手印一般長帶桌長 / Chiều dài bàn dây dài In tay：<b>${std.tableLength.HAND}Y</b>｜手印單片 / Miếng rời In tay：<b>25M/單邊，6MM排距，2邊 / 25M mỗi bên, cách 6MM, 2 bên</b>　｜　K3一般長帶 / Dây dài K3：<b>${std.tableLength.K3}Y</b>｜K3單片 / Miếng rời K3：<b>44大格 / 44 ô lớn</b>　｜　一桌 / 1 bàn：<b>${std.sides} 邊 / bên</b>　｜　一般長帶 8H：<b>12H × 8/12</b><br>機印 / In máy：<b>印刷條數依QC標準帶入 / Số dây theo QC｜PC/Y可切換 / chọn PC/Y｜PC需輸入每行圖案數、Y不需輸入 / PC nhập số hình mỗi hàng, Y không cần nhập｜速度 200 / Tốc độ 200</b><br>浸染 / Nhúng sơn：<b>0817 單頭實驗 / dữ liệu 1 đầu｜無前加工用帶身QC；有前加工用束頭QC / không gia công dùng QC thân, có gia công dùng QC đầu｜採下一級較大實驗QC；超過最大實驗QC必須重測 / dùng QC thử nghiệm lớn hơn kế tiếp; vượt QC lớn nhất phải thử lại｜1 PC = 2頭 / 2 đầu｜標準分攤 ${fmt(std.dipAllocHours||4,2)}H（本次可調） / phân bổ ${fmt(std.dipAllocHours||4,2)}H (có thể chỉnh)</b></div></div>`;
 }
 function renderQuoteStandards(){
   if(!$('quoteStandardsContent'))return;
@@ -731,7 +740,7 @@ if($('quoteUnitPc')){
     if(quoteStripsManual){$('quoteStripsHint').textContent='特殊款式才手動調整；只影響本次報價 / Chỉ điều chỉnh cho trường hợp đặc biệt; chỉ áp dụng lần báo giá này';$('quoteStrips').focus();$('quoteStrips').select();}
     else{quoteStripsAuto=true;quoteApplyStripSuggestion(true);}
   });
-  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteHandPiecePcPerRow','quoteK3PiecePcPerCell','quoteMachineLength','quoteMachineStrips','quoteDipHeadSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipAllocHours','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
+  ['quoteInk','quotePcLength','quoteLayers','quoteTableLength','quotePieceLength','quoteHandPiecePcPerRow','quoteK3PiecePcPerCell','quoteMachinePatterns','quoteMachineLength','quoteMachineStrips','quoteDipHeadSize','quoteDipTimes','quoteDipDepth1','quoteDipDepth2','quoteDipDepth3','quoteDipDepth4','quoteDipDepth5','quoteDipHourPc','quoteDipAllocHours','quoteDipBaseLayers','quoteDipColorLayers','quoteDipTopLayers'].forEach(id=>{if($(id))$(id).addEventListener('input',calcQuoteCapacity);});
   if($('quoteDipPre'))$('quoteDipPre').addEventListener('change',quoteDipUpdatePreUi);
   if($('quoteDipInk'))$('quoteDipInk').addEventListener('change',calcQuoteCapacity);
   if($('quoteDipType'))$('quoteDipType').addEventListener('change',()=>{if(quoteDipIsPreprocessed())quoteDipApplyHeadQc(true);calcQuoteCapacity();});
