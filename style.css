@@ -139,16 +139,5 @@
 .quote-exp-count{margin:4px 0 6px;text-align:right;font-size:9px;color:#64748b;font-weight:800}
 @media(max-width:640px){.quote-dip-section .quote-dip-ref{font-size:11px;padding:8px}.quote-dip-ref.danger{font-size:12px}.quote-exp-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.quote-exp-filters select{font-size:10px}}
 
-/* V42 報價標準產能：提示加大與單片排版 / Hướng dẫn rõ hơn & bố trí miếng rời */
-#quoteCapacityPage .quote-field small,
-#quoteCapacityPage .quote-special-grid small,
-#quoteCapacityPage .quote-locked-field small{font-size:12px!important;line-height:1.45!important;font-weight:800!important;color:#475569!important;margin-top:6px!important}
-#quoteCapacityPage .quote-formula{font-size:13px!important;line-height:1.55!important;font-weight:800!important;color:#334155!important;background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:10px!important;text-align:left!important}
-#quoteCapacityPage .quote-standard-stamp{font-size:12px!important;line-height:1.4!important}
-#quoteCapacityPage .quote-what{font-size:13px!important;line-height:1.45!important;padding:9px!important}
-#quoteCapacityPage .quote-edit-btn{font-size:12px!important;padding:6px 9px!important;font-weight:900!important}
-#quoteCapacityPage .quote-edit-btn small{font-size:10px!important;margin-top:1px!important}
-#quoteCapacityPage .quote-strip-row + small,#quoteCapacityPage .auto-strip-field>small{font-size:12px!important;font-weight:900!important}
-.quote-piece-method-box{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:5px;padding:8px;border:1px solid #b7cbea;border-radius:10px;background:#f7fbff}
-.quote-piece-fixed{border:1px solid #cbd5e1;border-radius:9px;background:#eef5ff;padding:8px;text-align:center}.quote-piece-fixed span{display:block;font-size:12px;font-weight:900;color:#475569}.quote-piece-fixed b{display:block;font-size:19px;color:#17365d;margin:4px 0}.quote-piece-fixed small{font-size:11px!important;font-weight:800!important;color:#64748b!important}
-@media(max-width:640px){#quoteCapacityPage .quote-field small,#quoteCapacityPage .quote-locked-field small{font-size:11px!important}#quoteCapacityPage .quote-formula{font-size:12px!important}.quote-piece-method-box{grid-template-columns:1fr}.quote-piece-fixed span{font-size:11px}}
+/* V43: make quote-capacity relationships clearer and keep mobile layout stable */
+.quote-result-12h{background:#f3f7ff;border-color:#adc2df}.quote-result-12h b{color:#244f7a}.quote-formula{background:#f8fafc;border:1px solid #dbe4ee;border-radius:9px;padding:8px 10px;text-align:left;font-size:10px;line-height:1.55}.quote-formula b{color:#17365d}.quote-formula span{color:#64748b}@media(max-width:640px){.quote-results{grid-template-columns:1fr 1fr}.quote-result span{font-size:8px;line-height:1.25}.quote-result b{font-size:17px}.quote-formula{font-size:8.5px;padding:7px;line-height:1.45}}
