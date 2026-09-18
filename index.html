@@ -277,18 +277,21 @@
   <div class="summary-grid ph-summary-grid">
     <div class="summary-card"><span>有效完工筆數 / Dòng hợp lệ</span><b id="phValidRows">0</b></div>
     <div class="summary-card"><span>手印 25MM等效 / In tay</span><b id="phHandTotal">0 Y</b></div>
+    <div class="summary-card"><span>手印筆數 / Số dòng In tay</span><b id="phHandCount">0</b></div>
     <div class="summary-card"><span>機印 25MM等效 / In máy</span><b id="phMachineTotal">0 Y</b></div>
+    <div class="summary-card"><span>機印筆數 / Số dòng In máy</span><b id="phMachineCount">0</b></div>
     <div class="summary-card"><span>膠片完工 / Đầu keo</span><b id="phFilmTotal">0 雙</b></div>
+    <div class="summary-card"><span>膠片筆數 / Số dòng đầu keo</span><b id="phFilmCount">0</b></div>
     <div class="summary-card"><span>手印＋機印 25MM合計 / Tổng IN</span><b id="phGrandTotal">0 Y</b></div>
   </div>
 
   <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">年度統計 / Thống kê theo năm</div><button id="phExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載分析 Excel / Tải Excel phân tích</button></div>
-  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年度<br>Năm</th><th>手印原折合碼<br>Yard gốc In tay</th><th>手印25MM等效<br>25MM In tay</th><th>機印原折合碼<br>Yard gốc In máy</th><th>機印25MM等效<br>25MM In máy</th><th>手印＋機印25MM合計<br>Tổng IN (Y)</th><th>Y年增率<br>Tăng/giảm Y</th><th>膠片完工<br>Đầu keo (雙)</th><th>膠片年增率<br>Tăng/giảm</th></tr></thead><tbody id="phYearBody"></tbody></table></div>
+  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年度<br>Năm</th><th>手印原折合碼<br>Yard gốc In tay</th><th>手印25MM等效<br>25MM In tay</th><th>手印筆數<br>Số dòng In tay</th><th>機印原折合碼<br>Yard gốc In máy</th><th>機印25MM等效<br>25MM In máy</th><th>機印筆數<br>Số dòng In máy</th><th>手印＋機印25MM合計<br>Tổng IN (Y)</th><th>手印＋機印筆數<br>Tổng số dòng IN</th><th>Y年增率<br>Tăng/giảm Y</th><th>膠片完工<br>Đầu keo (雙)</th><th>膠片筆數<br>Số dòng đầu keo</th><th>膠片年增率<br>Tăng/giảm</th></tr></thead><tbody id="phYearBody"></tbody></table></div>
 
   <div id="phYtdBox" class="ph-ytd-box hidden"></div>
 
   <div class="wip-section-title">每月統計 / Thống kê theo tháng</div>
-  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年月<br>Tháng</th><th>手印25MM等效<br>In tay (Y)</th><th>機印25MM等效<br>In máy (Y)</th><th>手印＋機印25MM合計<br>Tổng IN (Y)</th><th>膠片完工<br>Đầu keo (雙)</th></tr></thead><tbody id="phMonthBody"></tbody></table></div>
+  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年月<br>Tháng</th><th>手印25MM等效<br>In tay (Y)</th><th>手印筆數<br>Số dòng In tay</th><th>機印25MM等效<br>In máy (Y)</th><th>機印筆數<br>Số dòng In máy</th><th>手印＋機印25MM合計<br>Tổng IN (Y)</th><th>手印＋機印筆數<br>Tổng số dòng IN</th><th>膠片完工<br>Đầu keo (雙)</th><th>膠片筆數<br>Số dòng đầu keo</th></tr></thead><tbody id="phMonthBody"></tbody></table></div>
 
   <div class="wip-section-title">資料檢查 / Kiểm tra dữ liệu</div>
   <div class="summary-grid ph-check-grid">
