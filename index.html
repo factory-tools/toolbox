@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><link rel="manifest" href="manifest.json?v=20260918-print-history-v1"><link rel="stylesheet" href="style.css?v=20260918-print-history-v1"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><link rel="manifest" href="manifest.json?v=20260918-print-history-v2"><link rel="stylesheet" href="style.css?v=20260918-print-history-v2"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
 <section id="homePage" class="page active"><div class="card"><h1>工廠工具箱</h1><p class="subtitle">Hộp công cụ nhà máy</p><div class="tool-grid">
 <button class="tool-card" data-page="quantityPage"><span class="tool-icon">📦</span><span class="zh">數量推算工具</span><span class="vi">Công cụ ước tính số lượng</span></button>
 <button class="tool-card" data-page="printingPage"><span class="tool-icon">🖨️</span><span class="zh">批量印刷桌數試算</span><span class="vi">Tính số bàn in hàng loạt</span></button>
@@ -273,29 +273,29 @@
 <div id="phStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
 <div id="phProgress" class="ph-progress hidden"><div id="phProgressBar" class="ph-progress-bar"></div></div>
 <div id="phAnalysis" class="hidden">
-  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>折合碼 × 寬度 ÷ 25 ＝ 25MM 等效碼。手印包含手印→轉印；機印包含機印→轉印；膠片獨立統計。若同一筆同時辨識到不同大類，列入待確認且不重複計入總量。</div>
+  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>手印／機印：折合碼 × 寬度 ÷ 25 ＝ 25MM 等效碼。手印包含手印→轉印；機印包含機印→轉印。膠片改用「完工量＋單位」統計：9D＝雙；9C＝PC，PC÷2＝雙。手印＋膠片、機印＋膠片可同筆同時計入；只有手印＋機印同筆才列待確認。</div>
   <div class="summary-grid ph-summary-grid">
     <div class="summary-card"><span>有效完工筆數 / Dòng hợp lệ</span><b id="phValidRows">0</b></div>
     <div class="summary-card"><span>手印 25MM等效 / In tay</span><b id="phHandTotal">0 Y</b></div>
     <div class="summary-card"><span>機印 25MM等效 / In máy</span><b id="phMachineTotal">0 Y</b></div>
-    <div class="summary-card"><span>膠片 25MM等效 / Đầu keo</span><b id="phFilmTotal">0 Y</b></div>
-    <div class="summary-card"><span>總 25MM等效 / Tổng</span><b id="phGrandTotal">0 Y</b></div>
+    <div class="summary-card"><span>膠片完工 / Đầu keo</span><b id="phFilmTotal">0 雙</b></div>
+    <div class="summary-card"><span>手印＋機印 25MM合計 / Tổng IN</span><b id="phGrandTotal">0 Y</b></div>
   </div>
 
   <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">年度統計 / Thống kê theo năm</div><button id="phExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載分析 Excel / Tải Excel phân tích</button></div>
-  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年度<br>Năm</th><th>手印原折合碼<br>Yard gốc In tay</th><th>手印25MM等效<br>25MM In tay</th><th>機印原折合碼<br>Yard gốc In máy</th><th>機印25MM等效<br>25MM In máy</th><th>膠片原折合碼<br>Yard gốc Đầu keo</th><th>膠片25MM等效<br>25MM Đầu keo</th><th>總25MM等效<br>Tổng 25MM</th><th>年增率<br>Tăng/giảm</th></tr></thead><tbody id="phYearBody"></tbody></table></div>
+  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年度<br>Năm</th><th>手印原折合碼<br>Yard gốc In tay</th><th>手印25MM等效<br>25MM In tay</th><th>機印原折合碼<br>Yard gốc In máy</th><th>機印25MM等效<br>25MM In máy</th><th>手印＋機印25MM合計<br>Tổng IN (Y)</th><th>Y年增率<br>Tăng/giảm Y</th><th>膠片完工<br>Đầu keo (雙)</th><th>膠片年增率<br>Tăng/giảm</th></tr></thead><tbody id="phYearBody"></tbody></table></div>
 
   <div id="phYtdBox" class="ph-ytd-box hidden"></div>
 
   <div class="wip-section-title">每月統計 / Thống kê theo tháng</div>
-  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年月<br>Tháng</th><th>手印25MM等效<br>In tay</th><th>機印25MM等效<br>In máy</th><th>膠片25MM等效<br>Đầu keo</th><th>總25MM等效<br>Tổng</th></tr></thead><tbody id="phMonthBody"></tbody></table></div>
+  <div class="table-scroll"><table class="wip-summary-table ph-table"><thead><tr><th>年月<br>Tháng</th><th>手印25MM等效<br>In tay (Y)</th><th>機印25MM等效<br>In máy (Y)</th><th>手印＋機印25MM合計<br>Tổng IN (Y)</th><th>膠片完工<br>Đầu keo (雙)</th></tr></thead><tbody id="phMonthBody"></tbody></table></div>
 
   <div class="wip-section-title">資料檢查 / Kiểm tra dữ liệu</div>
   <div class="summary-grid ph-check-grid">
     <div class="summary-card"><span>未抓到 MSK / Không nhận MSK</span><b id="phNoMsk">0</b></div>
     <div class="summary-card"><span>其他製程 / Công đoạn khác</span><b id="phOther">0</b></div>
-    <div class="summary-card"><span>分類衝突 / Xung đột</span><b id="phConflict">0</b></div>
-    <div class="summary-card"><span>日期/寬度/折合碼異常 / Dữ liệu lỗi</span><b id="phInvalid">0</b></div>
+    <div class="summary-card"><span>手印＋機印衝突 / Xung đột In tay + In máy</span><b id="phConflict">0</b></div>
+    <div class="summary-card"><span>資料／膠片單位異常 / Dữ liệu lỗi</span><b id="phInvalid">0</b></div>
   </div>
   <div class="ph-detail-note">下載 Excel 會包含：年度統計、每月統計、MSK 明細、待確認資料。 / File Excel gồm: thống kê năm, tháng, chi tiết MSK và dữ liệu cần kiểm tra.</div>
 </div>
@@ -321,4 +321,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20260918-print-history-v1"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20260918-print-history-v2"></script></body></html>
