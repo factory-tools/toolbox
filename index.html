@@ -273,7 +273,7 @@
 <div id="phStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
 <div id="phProgress" class="ph-progress hidden"><div id="phProgressBar" class="ph-progress-bar"></div></div>
 <div id="phAnalysis" class="hidden">
-  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>手印／機印：折合碼 × 寬度 ÷ 25 ＝ 25MM 等效碼。手印包含手印→轉印；機印包含機印→轉印。膠片改用「完工量＋單位」統計：9D＝雙；9C＝PC，PC÷2＝雙。手印＋膠片、機印＋膠片可同筆同時計入；只有手印＋機印同筆才列待確認。</div>
+  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>手印／機印：折合碼 × 寬度 ÷ 25 ＝ 25MM 等效碼。手印包含手印→轉印；機印包含機印→轉印。膠片改用「完工量＋單位」統計：9D＝雙；9C＝PC，PC÷2＝雙。手印＋膠片、機印＋膠片可同筆同時計入；若同筆同時有手印＋機印，一律歸類為手印；若同時還有膠片，膠片仍另外統計。</div>
   <div class="summary-grid ph-summary-grid">
     <div class="summary-card"><span>有效完工筆數 / Dòng hợp lệ</span><b id="phValidRows">0</b></div>
     <div class="summary-card"><span>手印 25MM等效 / In tay</span><b id="phHandTotal">0 Y</b></div>
@@ -294,7 +294,7 @@
   <div class="summary-grid ph-check-grid">
     <div class="summary-card"><span>未抓到 MSK / Không nhận MSK</span><b id="phNoMsk">0</b></div>
     <div class="summary-card"><span>其他製程 / Công đoạn khác</span><b id="phOther">0</b></div>
-    <div class="summary-card"><span>手印＋機印衝突 / Xung đột In tay + In máy</span><b id="phConflict">0</b></div>
+    <div class="summary-card"><span>手印＋機印→歸手印 / In tay + In máy → In tay</span><b id="phConflict">0</b></div>
     <div class="summary-card"><span>資料／膠片單位異常 / Dữ liệu lỗi</span><b id="phInvalid">0</b></div>
   </div>
   <div class="ph-detail-note">下載 Excel 會包含：年度統計、每月統計、MSK 明細、待確認資料。 / File Excel gồm: thống kê năm, tháng, chi tiết MSK và dữ liệu cần kiểm tra.</div>
