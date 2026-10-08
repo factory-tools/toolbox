@@ -205,17 +205,17 @@
 
 <section id="wipCapacityPage" class="page"><div class="card wide-card wip-card">
 <button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button>
-<div class="wip-head"><div><h1>印刷-未完工產能分析</h1><p class="subtitle">IN - Phân tích lượng chưa hoàn thành & năng lực</p></div><div id="wipFileName" class="wip-file-name">尚未匯入 Excel / Chưa nhập Excel</div></div>
+<div class="wip-head"><div><h1>印刷-未完工產能分析</h1><p class="subtitle">IN - Phân tích lượng chưa hoàn thành & năng lực</p></div><div id="wipFileName" class="wip-file-name">尚未匯入每日訂單檔 / Chưa nhập file đơn hàng ngày</div></div>
 
 <div class="wip-upload-box">
-  <label class="wip-file-btn">① 📂 每日訂單 Excel / Excel đơn hàng ngày<input id="wipExcelFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
+  <label class="wip-file-btn">① 📂 每日訂單 Excel / File Excel đơn hàng ngày<input id="wipExcelFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
   <div class="wip-upload-note">先從 co_name、co_mname、co_memo、co_note 依嚴格網版規則辨識印刷製程；原始訂單完全無法辨識時，才用 CO_Mate + CO_Width + CO_Unit 比對 MC 對照檔，並從 MC_TypeID 補判。沒有有效網版的資料不列入本工具統計。<br>Ưu tiên nhận diện MSK từ dữ liệu đơn gốc; chỉ khi không nhận diện được mới đối chiếu CO_Mate + CO_Width + CO_Unit với file MC và bổ sung từ MC_TypeID.</div>
 </div>
 <div class="wip-upload-box">
   <label class="wip-file-btn">② 🧩 每日 MC 對照檔 / File MC hằng ngày<input id="wipMcFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
-  <div class="wip-upload-note"><b id="wipMcFileName">尚未匯入 MC 對照檔 / Chưa tải file MC</b><br>原始訂單抓不到有效網版時才用這份檔案補判；比對鍵：MC_Mate + MC_Width + MC_Unit，製程來源：MC_TypeID。<br>Chỉ dùng file này để bổ sung khi đơn gốc không nhận diện được MSK; khóa đối chiếu: MC_Mate + MC_Width + MC_Unit.<br><span id="wipMcStatus">等待匯入 MC 對照檔 / Chờ tải file MC</span></div>
+  <div class="wip-upload-note"><b id="wipMcFileName">尚未匯入 MC 對照檔 / Chưa nhập file đối chiếu MC</b><br>原始訂單抓不到有效網版時才用這份檔案補判；比對鍵：MC_Mate + MC_Width + MC_Unit，製程來源：MC_TypeID。<br>Chỉ dùng file này để bổ sung khi đơn gốc không nhận diện được MSK; khóa đối chiếu: MC_Mate + MC_Width + MC_Unit.<br><span id="wipMcStatus">等待匯入 MC 對照檔 / Chờ nhập file đối chiếu MC</span></div>
 </div>
-<div class="wip-dual-action"><button id="wipAnalyzeBtn" type="button" class="wip-file-btn wip-analyze-btn" disabled>▶ 開始分析 / Bắt đầu phân tích</button><div id="wipDualStatus" class="wip-upload-note">請每天匯入「訂單檔＋MC對照檔」兩個檔案 / Mỗi ngày vui lòng tải file đơn hàng + file MC</div></div>
+<div class="wip-dual-action"><button id="wipAnalyzeBtn" type="button" class="wip-file-btn wip-analyze-btn" disabled>▶ 開始分析 / Bắt đầu phân tích</button><div id="wipDualStatus" class="wip-upload-note">請每天匯入「訂單檔＋MC對照檔」兩個檔案 / Mỗi ngày vui lòng nhập 2 file: file đơn hàng + file đối chiếu MC</div></div>
 <div id="wipStatus" class="wip-status">等待匯入兩個檔案 / Chờ tải 2 file</div>
 
 <div id="wipAnalysisArea" class="hidden">
@@ -235,16 +235,16 @@
     </div>
     <div class="wip-filter-grid">
       <label><span>MSK 細類 / Loại MSK</span><select id="wipTypeFilter"><option value="ALL">全部 / Tất cả</option></select></label>
-      <label><span>原訂單單位 / Đơn vị</span><select id="wipUnitFilter"><option value="ALL">全部 / Tất cả</option></select></label>
+      <label><span>原訂單單位 / Đơn vị đơn hàng gốc</span><select id="wipUnitFilter"><option value="ALL">全部 / Tất cả</option></select></label>
       <label><span>寬度 / Khổ</span><select id="wipWidthFilter"><option value="ALL">全部 / Tất cả</option></select></label>
-      <label><span>98-G100 狀態 / Trạng thái</span><select id="wipStageFilter"><option value="ALL">全部 / Tất cả</option><option value="ARRIVED">已到 98-G100 / Đã tới</option><option value="NOT_ARRIVED">未到 98-G100 / Chưa tới</option></select></label>
+      <label><span>98-G100 狀態 / Trạng thái 98-G100</span><select id="wipStageFilter"><option value="ALL">全部 / Tất cả</option><option value="ARRIVED">已到 98-G100 / Đã tới</option><option value="NOT_ARRIVED">未到 98-G100 / Chưa tới</option></select></label>
       <label><span>30天狀態 / Trạng thái 30 ngày</span><select id="wipOverdueFilter"><option value="ALL">全部 / Tất cả</option><option value="OVER30">超過30天 / Quá 30 ngày</option><option value="WITHIN30">未超過30天 / Chưa quá 30 ngày</option></select></label>
-      <label class="wip-search"><span>搜尋 MSK／品名／備註 / Tìm kiếm</span><input id="wipSearch" type="search" placeholder="輸入關鍵字 / Nhập từ khóa"></label>
+      <label class="wip-search"><span>搜尋 MSK／品名／備註 / Tìm MSK／tên SP／ghi chú</span><input id="wipSearch" type="search" placeholder="輸入關鍵字 / Nhập từ khóa"></label>
     </div>
     <div class="wip-active-filter"><span>目前套用 / Đang áp dụng：</span><b id="wipActiveFilterText">全部資料 / Tất cả dữ liệu</b></div>
   </div>
 
-  <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày năng lực theo công đoạn</div><button id="wipProcessCapacityExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載製程＋產能 / Tải công đoạn & năng lực</button></div>
+  <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">印刷製程未完工＋產能天數 / Lượng in chưa hoàn thành & số ngày cần theo năng lực từng công đoạn</div><button id="wipProcessCapacityExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載製程＋產能 / Tải thống kê công đoạn & năng lực</button></div>
   <div class="wip-stage-note">
     本表只統計「有辨識到 MSK 網版」的印刷資料；沒有 MSK 的訂單不列入本工具。已到／未到／總未完工依目前篩選條件顯示；「預估需要天數」固定只用已到 98-G100 的未完工量計算，因為這些是已收到料、目前需要消化的量。手印、機印、轉印、移印、噴塗以 25MM 等效 Y 統計，膠片以「雙」統計。原始 CO_Unit 請在下方點開查看。Y 僅使用 co_unum − co_ufinish 換算。<br>
     Bảng này chỉ thống kê dữ liệu <b>in</b> có nhận diện được MSK; đơn không có MSK không được tính. Lượng đã tới / chưa tới / tổng chưa hoàn thành thay đổi theo bộ lọc hiện tại; riêng “số ngày cần” luôn tính theo lượng chưa hoàn thành <b>đã tới 98-G100</b>, tức lượng nguyên liệu đã nhận và cần xử lý. In tay, in máy, in chuyển, in chạm và phun silicon dùng Yard quy đổi 25MM; đầu keo dùng đơn vị đôi. Có thể mở phần đơn vị gốc CO_Unit bên dưới để đối chiếu. Yard chỉ lấy từ co_unum − co_ufinish.
@@ -254,7 +254,7 @@
 
   <div class="wip-section-title">超過30天未完工 / Chưa hoàn thành quá 30 ngày</div>
   <div class="wip-overdue-note">期限＝CO_KEYDATE 往後加 30 個工作天，星期日不計，從隔天開始計算；手印與手印→轉印合併為「手印總量」。 / Hạn = CO_KEYDATE + 30 ngày làm việc, không tính Chủ nhật và bắt đầu tính từ ngày kế tiếp; In tay và In tay→In chuyển được gộp thành tổng In tay.</div>
-  <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>製程 / Công đoạn</th><th>超30天筆數<br>Dòng</th><th>超30天未完工<br>Chưa HT quá 30 ngày</th><th>單位</th></tr></thead><tbody id="wipOver30SummaryBody"></tbody></table></div>
+  <div class="table-scroll"><table class="wip-summary-table"><thead><tr><th>製程 / Công đoạn</th><th>超30天筆數<br>Số nét quá 30 ngày</th><th>超30天未完工<br>Chưa HT quá 30 ngày</th><th>單位 / Đơn vị</th></tr></thead><tbody id="wipOver30SummaryBody"></tbody></table></div>
 
   <div class="wip-section-title">原訂單單位統計 / Thống kê đơn vị gốc</div>
   <div class="wip-unit-note">主表已合併各原始單位；需要核對時再點開各製程查看 CO_Unit。 / Bảng chính đã gộp các đơn vị gốc; chỉ mở từng công đoạn khi cần đối chiếu CO_Unit.</div>
@@ -264,7 +264,7 @@
   <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
     <th>#</th><th>MSK</th><th>MSK類型<br>Loại MSK</th><th>MSK來源<br>Nguồn MSK</th><th>涉及製程<br>Công đoạn</th><th>98-G100狀態<br>Trạng thái</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工<br>Chưa HT đơn vị gốc</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼<br>Yard chưa HT</th><th>25MM等效未完工<br>Quy đổi 25MM</th><th>膠片/UV未完工雙<br>Đôi đầu keo/UV chưa HT</th><th>折合碼狀態<br>Trạng thái quy đổi</th><th>CO_KEYDATE</th><th>30天期限<br>Hạn 30 ngày</th><th>逾期天數<br>Số ngày trễ</th><th>是否超30天<br>Quá 30 ngày?</th><th>判斷<br>Kết quả</th><th>來源內容<br>Nội dung nguồn</th>
   </tr></thead><tbody id="wipDetailBody"></tbody></table></div>
-  <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁</button><button id="wipNextPage" type="button">下一頁 →</button></div>
+  <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁 / Trang trước</button><button id="wipNextPage" type="button">下一頁 / Trang sau →</button></div>
 </div>
 </div></section>
 
