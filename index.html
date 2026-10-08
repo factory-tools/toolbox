@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><link rel="manifest" href="manifest.json?v=20260918-print-history-v2"><link rel="stylesheet" href="style.css?v=20260918-print-history-v2"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17365d"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><link rel="manifest" href="manifest.json?v=20260918-print-history-v2"><link rel="stylesheet" href="style.css?v=20261008-test-fail-v1"><title>工廠工具箱 / Hộp công cụ nhà máy</title></head><body><main class="wrap">
 <section id="homePage" class="page active"><div class="card"><h1>工廠工具箱</h1><p class="subtitle">Hộp công cụ nhà máy</p><div class="tool-grid">
 <button class="tool-card" data-page="quantityPage"><span class="tool-icon">📦</span><span class="zh">數量推算工具</span><span class="vi">Công cụ ước tính số lượng</span></button>
 <button class="tool-card" data-page="printingPage"><span class="tool-icon">🖨️</span><span class="zh">批量印刷桌數試算</span><span class="vi">Tính số bàn in hàng loạt</span></button>
@@ -7,6 +7,7 @@
 <button class="tool-card" data-page="quoteCapacityPage"><span class="tool-icon">💰</span><span class="zh">報價標準產能</span><span class="vi">Năng suất chuẩn báo giá</span></button>
 <button class="tool-card" data-page="wipCapacityPage"><span class="tool-icon">📊</span><span class="zh">印刷-未完工產能分析</span><span class="vi">IN - Phân tích lượng chưa hoàn thành & năng lực</span></button>
 <button class="tool-card" data-page="printHistoryPage"><span class="tool-icon">📈</span><span class="zh">印刷-歷年完工量分析</span><span class="vi">IN - Phân tích sản lượng hoàn thành theo năm</span></button>
+<button class="tool-card" data-page="testFailPage"><span class="tool-icon">🧪</span><span class="zh">測試 FAIL 即時處理</span><span class="vi">Xử lý nhanh khi Test FAIL</span></button>
 <button class="tool-card disabled"><span class="tool-icon">📏</span><span class="zh">碼克重換算</span><span class="vi">Quy đổi trọng lượng theo yard</span><small>即將推出 / Sắp ra mắt</small></button>
 <button class="tool-card disabled"><span class="tool-icon">📉</span><span class="zh">生產損耗計算</span><span class="vi">Tính hao hụt sản xuất</span><small>即將推出 / Sắp ra mắt</small></button>
 </div></div></section>
@@ -310,6 +311,24 @@
 </div>
 </div></section>
 
+
+<section id="testFailPage" class="page"><div class="card wide-card tf-card">
+<button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button>
+<div class="tf-head"><div><h1>測試 FAIL 即時處理</h1><p class="subtitle">Xử lý nhanh khi kết quả Test FAIL</p></div></div>
+<div class="tf-help"><div><b>用途：</b>已確認測試 FAIL 時，輸入報告上的測試項目關鍵字，選到正確項目後直接查看中越文說明與半成品／成品處理方式。</div><div><b>Mục đích:</b> Khi đã xác định kết quả test FAIL, nhập từ khóa của hạng mục trên báo cáo, chọn đúng hạng mục để xem giải thích Trung–Việt và phương án xử lý BTP/TP.</div></div>
+<div class="tf-search-grid">
+<label class="field tf-search-main"><span class="zh">測試項目關鍵字</span><span class="vi">Từ khóa hạng mục kiểm tra</span><input id="tfSearch" type="search" placeholder="例如：water、yellow、crocking、剝離 / Ví dụ: water, yellow, crocking..."></label>
+<label class="field"><span class="zh">品牌（可不選）</span><span class="vi">Thương hiệu (không bắt buộc)</span><input id="tfBrand" type="text" placeholder="可留空 / Có thể để trống"></label>
+<label class="field"><span class="zh">產品類別（可不選）</span><span class="vi">Loại sản phẩm (không bắt buộc)</span><input id="tfProduct" type="text" placeholder="可留空 / Có thể để trống"></label>
+</div>
+<div class="tf-filter-note">品牌與產品類別只是輔助篩選，可不選；目前以「測試項目字典」為主要資料來源，不使用「測試項目標準總表」的判定資料。<br>Thương hiệu và loại sản phẩm chỉ dùng để lọc phụ, có thể để trống; dữ liệu chính lấy từ sheet “測試項目字典”, không dùng dữ liệu phán định trong bảng tiêu chuẩn tổng.</div>
+<div class="tf-results-title"><b>搜尋結果 / Kết quả tìm kiếm</b><span id="tfCount">0</span></div><div id="tfResults" class="tf-results"></div>
+<div id="tfDetail" class="tf-detail hidden"><div class="tf-name-block"><div class="tf-en" id="tfEn"></div><div><b>中文：</b><span id="tfZh"></span></div><div><b>Tiếng Việt：</b><span id="tfVi"></span></div></div>
+<div class="tf-section"><h3>這項在測什麼？ / Hạng mục này kiểm tra gì?</h3><div class="tf-bilingual"><div><b>中文說明</b><p id="tfZhDesc"></p></div><div><b>Giải thích tiếng Việt</b><p id="tfViDesc"></p></div></div></div>
+<div class="tf-section"><h3>異常階段 / Giai đoạn phát sinh</h3><div class="tf-stage-buttons"><button type="button" id="tfBtpBtn" class="active">半成品 BTP / Bán thành phẩm</button><button type="button" id="tfTpBtn">成品 TP / Thành phẩm</button></div><div id="tfSolution" class="tf-solution"></div></div>
+<div class="tf-section tf-meta"><div><b>原報告寫法（若字典有填） / Cách ghi trên báo cáo:</b><span id="tfOriginal">—</span></div><div><b>備註 / Ghi chú:</b><span id="tfNote">—</span></div></div></div>
+</div></section>
+
 <section id="printingPage" class="page"><div class="card wide-card"><button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button><h1>批量印刷桌數試算</h1><p class="subtitle">Tính số bàn và thời gian in hàng loạt</p>
 <div class="help compact-help"><div><strong>可從 Excel 直接複製貼上多筆訂單</strong><span>Có thể sao chép trực tiếp nhiều đơn hàng từ Excel</span></div><div><strong>欄位順序：訂單量、單位、寬度mm、長度mm、印刷方式、單／雙面；未填時預設單面</strong><span>Thứ tự: SL đơn hàng, đơn vị, khổ mm, dài mm, phương pháp in, một/hai mặt; để trống sẽ mặc định một mặt</span></div></div>
 <div class="settings-title">產能與工時設定 / Cài đặt năng suất và thời gian</div>
@@ -330,4 +349,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261008-wip-mc-fallback"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261008-test-fail-v1"></script></body></html>
