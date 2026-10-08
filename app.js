@@ -762,8 +762,7 @@ if($('quoteUnitPc')){
 /* V27 延伸：未完工產能分析（不含 V28 全製程功能） */
 const WIP_PAGE_SIZE=100;
 let wipRows=[],wipFiltered=[],wipPage=1,wipQuick='ALL',wipSourceHeaders=[],wipSourceRowMap=new Map(),wipSourceSheetName='',wipImportedRawCount=0;
-const WIP_MC_META=window.WIP_MC_DEFAULT_META||{};
-let wipMcMap=new Map(Object.entries(window.WIP_MC_DEFAULT||{})),wipMcLoadedName=WIP_MC_META.file||'',wipMcLoadedRows=WIP_MC_META.rows||0,wipLastImportContext=null;
+let wipMcMap=new Map(),wipMcLoadedName='',wipMcLoadedRows=0,wipLastImportContext=null;
 const WIP_TYPE_META={
   TD:{name:'手印 / IN TAY',group:'HAND'}, SPW:{name:'手印 / IN TAY',group:'HAND'},
   MD:{name:'機印 / IN MÁY',group:'MACHINE'}, MPW:{name:'機印 / IN MÁY',group:'MACHINE'},
@@ -836,15 +835,17 @@ async function wipLoadMcFile(file,quiet=false){
     }
     wipMcMap=next;wipMcLoadedName=file.name||'1008-1.csv';wipMcLoadedRows=rows;
     if($('wipMcFileName'))$('wipMcFileName').textContent=wipMcLoadedName;
-    if(el)el.textContent=`MC 對照已載入：${wipMcLoadedName}｜${wipFmt(rows)} 筆，${wipFmt(withType)} 筆有 MC_TypeID / Đã tải đối chiếu MC`;
-    if(wipLastImportContext)wipProcessDailyContext(wipLastImportContext,true);
+    if(el)el.textContent=`MC 對照已載入：${wipMcLoadedName}｜${wipFmt(rows)} 筆，${wipFmt(withType)} 筆有 MC_TypeID / Đã tải file MC`;
+    wipUpdateAnalyzeReady();
     return true;
-  }catch(err){if(el)el.textContent='MC 對照載入失敗 / Lỗi tải đối chiếu MC：'+err.message;if(!quiet)throw err;return false;}
+  }catch(err){wipMcMap=new Map();wipMcLoadedName='';wipMcLoadedRows=0;if(el)el.textContent='MC 對照載入失敗 / Lỗi tải file MC：'+err.message;wipUpdateAnalyzeReady();if(!quiet)throw err;return false;}
 }
-async function wipTryLoadBundledMc(){
-  if(!wipMcMap.size)return;
-  if($('wipMcFileName'))$('wipMcFileName').textContent=wipMcLoadedName||'1008-1.csv';
-  if($('wipMcStatus'))$('wipMcStatus').textContent=`MC 對照已載入：${wipMcLoadedName||'1008-1.csv'}｜${wipFmt(wipMcLoadedRows)} 筆 / Đã tải đối chiếu MC`;
+function wipUpdateAnalyzeReady(){
+  const btn=$('wipAnalyzeBtn');if(!btn)return;
+  const ready=!!(wipLastImportContext&&wipMcMap.size);
+  btn.disabled=!ready;
+  btn.classList.toggle('is-ready',ready);
+  if($('wipDualStatus'))$('wipDualStatus').textContent=ready?'兩個檔案都已載入，可以開始分析 / Đã tải đủ 2 file, có thể bắt đầu phân tích':'請每天匯入「訂單檔＋MC對照檔」兩個檔案 / Mỗi ngày vui lòng tải file đơn hàng + file MC';
 }
 function wipParseDate(v){
   if(v==null||v==='')return null;
@@ -931,8 +932,17 @@ async function wipImportFile(file){
     for(const name of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true});const h=wipFindHeader(matrix);if(h&&h.score>=8){chosen={name,matrix,h};break;}if(!chosen||h.score>chosen.h.score)chosen={name,matrix,h};}
     if(!chosen||chosen.h.score<8)throw new Error('找不到必要欄位。');
     const missing=['coname','comname','comemo','conote','comate','conum','counit','cofinish','counum','coufinish','cowidth','coproc','cosproc'].filter(k=>chosen.h.map[k]==null);if(missing.length)throw new Error('缺少欄位 / Thiếu cột: '+missing.join(', '));
-    wipLastImportContext={chosen,fileName:file.name};wipProcessDailyContext(wipLastImportContext,false);
-  }catch(err){console.error(err);status.textContent='⚠ '+(err?.message||String(err));$('wipAnalysisArea').classList.add('hidden');}
+    wipLastImportContext={chosen,fileName:file.name};
+    status.textContent=`每日訂單檔已載入：${file.name} / Đã tải file đơn hàng ngày`;
+    $('wipAnalysisArea').classList.add('hidden');
+    wipUpdateAnalyzeReady();
+  }catch(err){console.error(err);wipLastImportContext=null;status.textContent='⚠ '+(err?.message||String(err));$('wipAnalysisArea').classList.add('hidden');wipUpdateAnalyzeReady();}
+}
+function wipRunDualAnalysis(){
+  const status=$('wipStatus');
+  if(!wipLastImportContext||!wipMcMap.size){if(status)status.textContent='⚠ 請先匯入每日訂單檔與 MC 對照檔 / Vui lòng tải đủ file đơn hàng và file MC';return;}
+  if(status)status.textContent='正在分析兩個檔案… / Đang phân tích 2 file…';
+  wipProcessDailyContext(wipLastImportContext,false);
 }
 function wipHasGroup(r,g){return r.groups?.includes(g);}
 function wipQuickMatch(r,key){
@@ -1093,7 +1103,7 @@ async function wipExportCurrent(){
 function wipStyleSummarySheet(ws,widths){ws.getRow(1).height=42;ws.getRow(1).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}};c.alignment={vertical:'middle',horizontal:'center',wrapText:true};});widths.forEach((w,i)=>ws.getColumn(i+1).width=w);for(let r=2;r<=ws.rowCount;r++)ws.getRow(r).eachCell((c,i)=>{c.alignment={vertical:'middle',horizontal:i===1?'left':'right'};if(i>1&&typeof c.value==='number')c.numFmt='#,##0.00';});}
 function wipClearAllFilters(){wipQuick='ALL';[...$('wipQuickFilters').querySelectorAll('button')].forEach(b=>b.classList.toggle('active',b.dataset.filter==='ALL'));['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter','wipOverdueFilter'].forEach(id=>$(id).value='ALL');$('wipSearch').value='';wipPage=1;wipRender();}
 function wipInit(){
-  if(!$('wipExcelFile'))return;$('wipExcelFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)wipImportFile(f);});if($('wipMcFile'))$('wipMcFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)wipLoadMcFile(f).catch(err=>console.error(err));});wipTryLoadBundledMc();$('wipQuickFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;wipQuick=b.dataset.filter;[...$('wipQuickFilters').querySelectorAll('button')].forEach(x=>x.classList.toggle('active',x===b));wipPage=1;wipRender();});['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter','wipOverdueFilter'].forEach(id=>$(id).addEventListener('change',()=>{wipPage=1;wipRender();}));$('wipSearch').addEventListener('input',()=>{wipPage=1;wipRender();});$('wipClearFilters').addEventListener('click',wipClearAllFilters);
+  if(!$('wipExcelFile'))return;$('wipExcelFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)wipImportFile(f);});if($('wipMcFile'))$('wipMcFile').addEventListener('change',e=>{const f=e.target.files?.[0];if(f)wipLoadMcFile(f).catch(err=>console.error(err));});if($('wipAnalyzeBtn'))$('wipAnalyzeBtn').addEventListener('click',wipRunDualAnalysis);wipUpdateAnalyzeReady();$('wipQuickFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-filter]');if(!b)return;wipQuick=b.dataset.filter;[...$('wipQuickFilters').querySelectorAll('button')].forEach(x=>x.classList.toggle('active',x===b));wipPage=1;wipRender();});['wipTypeFilter','wipUnitFilter','wipWidthFilter','wipStageFilter','wipOverdueFilter'].forEach(id=>$(id).addEventListener('change',()=>{wipPage=1;wipRender();}));$('wipSearch').addEventListener('input',()=>{wipPage=1;wipRender();});$('wipClearFilters').addEventListener('click',wipClearAllFilters);
   if($('wipStageSummaryBody')) $('wipStageSummaryBody').addEventListener('change',e=>{const el=e.target.closest('[data-cap-group]');if(!el)return;const g=el.dataset.capGroup,f=el.dataset.field,v=Number(el.value);if(!wipCapacityCfg[g])return;if(f==='run')wipCapacityCfg[g].run=v||24;else wipCapacityCfg[g][f]=Math.max(0,v||0);wipSaveCapacity();wipRenderStageSummary();});
   $('wipPrevPage').addEventListener('click',()=>{if(wipPage>1){wipPage--;wipRenderDetails();}});$('wipNextPage').addEventListener('click',()=>{if(wipPage*WIP_PAGE_SIZE<wipFiltered.length){wipPage++;wipRenderDetails();}});$('wipExportBtn').addEventListener('click',wipExportCurrent);if($('wipProcessCapacityExportBtn'))$('wipProcessCapacityExportBtn').addEventListener('click',wipExportProcessCapacity);
 }
