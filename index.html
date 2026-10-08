@@ -208,8 +208,12 @@
 <div class="wip-head"><div><h1>印刷-未完工產能分析</h1><p class="subtitle">IN - Phân tích lượng chưa hoàn thành & năng lực</p></div><div id="wipFileName" class="wip-file-name">尚未匯入 Excel / Chưa nhập Excel</div></div>
 
 <div class="wip-upload-box">
-  <label class="wip-file-btn">📂 選擇 Excel / Chọn Excel<input id="wipExcelFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
-  <div class="wip-upload-note">匯入每日 Excel；系統只分析從 co_name、co_mname、co_memo、co_note 成功擷取到 MSK 網版的印刷資料。沒有 MSK 的資料不列入任何未完工量、98-G100、30天、產能、明細與下載統計。<br>Nhập Excel hằng ngày; chỉ dữ liệu in có nhận diện được MSK mới được đưa vào phân tích. Dòng không có MSK sẽ không được tính trong các thống kê của công cụ này.</div>
+  <label class="wip-file-btn">📂 選擇每日 Excel / Chọn Excel ngày<input id="wipExcelFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
+  <div class="wip-upload-note">先從 co_name、co_mname、co_memo、co_note 依嚴格網版規則辨識印刷製程；原始訂單完全無法辨識時，才用 CO_Mate + CO_Width + CO_Unit 比對 MC 對照檔，並從 MC_TypeID 補判。沒有有效網版的資料不列入本工具統計。<br>Ưu tiên nhận diện MSK từ dữ liệu đơn gốc; chỉ khi không nhận diện được mới đối chiếu CO_Mate + CO_Width + CO_Unit với file MC và bổ sung từ MC_TypeID.</div>
+</div>
+<div class="wip-upload-box">
+  <label class="wip-file-btn">🧩 更新 MC 對照檔 / Cập nhật file MC<input id="wipMcFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
+  <div class="wip-upload-note"><b id="wipMcFileName">1008-1.csv（內建版本 / bản kèm theo）</b><br>用於原始訂單抓不到有效網版時補判；比對鍵：MC_Mate + MC_Width + MC_Unit，製程來源：MC_TypeID。<br><span id="wipMcStatus">等待載入 MC 對照 / Chờ tải đối chiếu MC</span></div>
 </div>
 <div id="wipStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
 
@@ -224,6 +228,7 @@
       <button data-filter="PAD">移印<br><small>In chạm</small></button>
       <button data-filter="SPRAY">噴塗<br><small>Phun silicon</small></button>
       <button data-filter="FILM">膠片<br><small>Đầu keo</small></button>
+      <button data-filter="UV">UV膠印<br><small>In keo UV</small></button>
       <button data-filter="OVER30">超30天<br><small>Quá 30 ngày</small></button>
       <button data-filter="REVIEW">待確認<br><small>Cần kiểm tra</small></button>
     </div>
@@ -256,7 +261,7 @@
 
   <div class="wip-detail-head"><div class="wip-section-title">明細 / Chi tiết</div><div class="wip-detail-actions"><button id="wipExportBtn" type="button" class="excel-btn">下載目前明細 / Tải chi tiết</button><span id="wipPageInfo"></span></div></div>
   <div class="table-scroll wip-detail-scroll"><table class="wip-detail-table"><thead><tr>
-    <th>#</th><th>MSK</th><th>MSK類型<br>Loại MSK</th><th>涉及製程<br>Công đoạn</th><th>98-G100狀態<br>Trạng thái</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工<br>Chưa HT đơn vị gốc</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼<br>Yard chưa HT</th><th>25MM等效未完工<br>Quy đổi 25MM</th><th>膠片未完工雙<br>Đôi đầu keo chưa HT</th><th>折合碼狀態<br>Trạng thái quy đổi</th><th>CO_KEYDATE</th><th>30天期限<br>Hạn 30 ngày</th><th>逾期天數<br>Số ngày trễ</th><th>是否超30天<br>Quá 30 ngày?</th><th>判斷<br>Kết quả</th><th>來源內容<br>Nội dung nguồn</th>
+    <th>#</th><th>MSK</th><th>MSK類型<br>Loại MSK</th><th>MSK來源<br>Nguồn MSK</th><th>涉及製程<br>Công đoạn</th><th>98-G100狀態<br>Trạng thái</th><th>CO_PROC</th><th>CO_SPROC</th><th>CO_Unit</th><th>CO_Width</th><th>CO_Num</th><th>CO_FINISH</th><th>原單位未完工<br>Chưa HT đơn vị gốc</th><th>co_unum</th><th>co_ufinish</th><th>未完工折合碼<br>Yard chưa HT</th><th>25MM等效未完工<br>Quy đổi 25MM</th><th>膠片/UV未完工雙<br>Đôi đầu keo/UV chưa HT</th><th>折合碼狀態<br>Trạng thái quy đổi</th><th>CO_KEYDATE</th><th>30天期限<br>Hạn 30 ngày</th><th>逾期天數<br>Số ngày trễ</th><th>是否超30天<br>Quá 30 ngày?</th><th>判斷<br>Kết quả</th><th>來源內容<br>Nội dung nguồn</th>
   </tr></thead><tbody id="wipDetailBody"></tbody></table></div>
   <div class="wip-pagination"><button id="wipPrevPage" type="button">← 上一頁</button><button id="wipNextPage" type="button">下一頁 →</button></div>
 </div>
@@ -324,4 +329,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20260918-print-history-v2"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261008-wip-mc-fallback"></script></body></html>
