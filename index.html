@@ -209,11 +209,11 @@
 
 <div class="wip-upload-box">
   <label class="wip-file-btn">① 📂 每日訂單 Excel / File Excel đơn hàng ngày<input id="wipExcelFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
-  <div class="wip-upload-note">先從 co_name、co_mname、co_memo、co_note 依嚴格網版規則辨識印刷製程；原始訂單完全無法辨識時，才用 CO_Mate + CO_Width + CO_Unit 比對 MC 對照檔，並從 MC_TypeID 補判。沒有有效網版的資料不列入本工具統計。<br>Ưu tiên nhận diện MSK từ dữ liệu đơn gốc; chỉ khi không nhận diện được mới đối chiếu CO_Mate + CO_Width + CO_Unit với file MC và bổ sung từ MC_TypeID.</div>
+  <div class="wip-upload-note"><div class="wip-note-zh">先從 co_name、co_mname、co_memo、co_note 依嚴格網版規則辨識印刷製程；原始訂單完全無法辨識時，才用 CO_Mate + CO_Width + CO_Unit 比對 MC 對照檔，並從 MC_TypeID 補判。沒有有效網版的資料不列入本工具統計。</div><div class="wip-note-vi">Ưu tiên nhận diện MSK từ dữ liệu đơn gốc; chỉ khi không nhận diện được mới đối chiếu CO_Mate + CO_Width + CO_Unit với file MC và bổ sung từ MC_TypeID.</div></div>
 </div>
 <div class="wip-upload-box">
   <label class="wip-file-btn">② 🧩 每日 MC 對照檔 / File MC hằng ngày<input id="wipMcFile" type="file" accept=".xls,.xlsx,.xlsb,.csv" hidden></label>
-  <div class="wip-upload-note"><b id="wipMcFileName">尚未匯入 MC 對照檔 / Chưa nhập file đối chiếu MC</b><br>原始訂單抓不到有效網版時才用這份檔案補判；比對鍵：MC_Mate + MC_Width + MC_Unit，製程來源：MC_TypeID。<br>Chỉ dùng file này để bổ sung khi đơn gốc không nhận diện được MSK; khóa đối chiếu: MC_Mate + MC_Width + MC_Unit.<br><span id="wipMcStatus">等待匯入 MC 對照檔 / Chờ nhập file đối chiếu MC</span></div>
+  <div class="wip-upload-note"><b id="wipMcFileName">尚未匯入 MC 對照檔 / Chưa nhập file đối chiếu MC</b><div class="wip-note-zh">原始訂單抓不到有效網版時才用這份檔案補判；比對鍵：MC_Mate + MC_Width + MC_Unit，製程來源：MC_TypeID。</div><div class="wip-note-vi">Chỉ dùng file này để bổ sung khi đơn gốc không nhận diện được MSK; khóa đối chiếu: MC_Mate + MC_Width + MC_Unit.</div><div class="wip-note-meta"><span id="wipMcStatus">等待匯入 MC 對照檔 / Chờ nhập file đối chiếu MC</span></div></div>
 </div>
 <div class="wip-dual-action"><button id="wipAnalyzeBtn" type="button" class="wip-file-btn wip-analyze-btn" disabled>▶ 開始分析 / Bắt đầu phân tích</button><div id="wipDualStatus" class="wip-upload-note">請每天匯入「訂單檔＋MC對照檔」兩個檔案 / Mỗi ngày vui lòng nhập 2 file: file đơn hàng + file đối chiếu MC</div></div>
 <div id="wipStatus" class="wip-status">等待匯入兩個檔案 / Chờ tải 2 file</div>
