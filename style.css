@@ -254,3 +254,28 @@
 
 /* Only simplified G100 layout */
 #g100Page .g100-link{border:0;background:transparent;color:#164b87;text-align:left;cursor:pointer;font:inherit;padding:3px 0}#g100Page .g100-link:hover{text-decoration:underline}#g100Page .g100-total{font-weight:700;background:#f0f6fc}#g100Page .g100-child td:first-child{padding-left:22px}#g100Page details.g100-panel summary{cursor:pointer}
+
+/* G100 comparison report v4: separate styles, do not affect other tools */
+#g100Page .g100-report{background:#ffffff;border-color:#cbd9e9;box-shadow:0 3px 16px rgba(19,54,93,.07)}
+#g100Page .g100-report-caption{color:#536782!important;font-size:13px;line-height:1.6}
+#g100Page .g100-summary-scroll{max-height:none;overflow-x:auto;overflow-y:visible}
+#g100Page .g100-report-table{min-width:780px;table-layout:fixed;white-space:normal;font-size:14px}
+#g100Page .g100-report-table th{position:static;background:#17365d;color:white;padding:16px 13px;text-align:center;line-height:1.5}
+#g100Page .g100-report-table th:first-child{width:36%;text-align:left}
+#g100Page .g100-report-table th small{font-size:11px;color:#d6e4f2}
+#g100Page .g100-report-table td{padding:6px 12px;border-bottom:1px solid #e0e7f0;text-align:right}
+#g100Page .g100-report-table td:first-child{text-align:left}
+#g100Page .g100-report-table tr.g100-total{background:#eaf2fb;font-weight:700}
+#g100Page .g100-report-table tr.g100-total:first-child{background:#d3e7fa}
+#g100Page .g100-report-table tr.g100-child{background:white;font-weight:400}
+#g100Page .g100-report-table tr.g100-child:nth-child(2n){background:#f9fbfe}
+#g100Page .g100-report-table .g100-link{color:#17365d;font-size:13px;font-weight:inherit;white-space:normal}
+#g100Page .g100-report-table .g100-metric{width:100%;border:0;background:transparent;text-align:right;cursor:pointer;padding:6px 7px;border-radius:7px;color:#234260;font:inherit}
+#g100Page .g100-report-table .g100-metric:hover,#g100Page .g100-report-table .g100-metric:focus-visible{background:#dae9fa;outline:2px solid #81a9d2}
+#g100Page .g100-report-table .g100-metric strong{display:block;font-size:16px;font-variant-numeric:tabular-nums}
+#g100Page .g100-report-table .g100-metric span{display:block;font-size:14px;font-variant-numeric:tabular-nums;margin-top:2px}
+#g100Page .g100-report-table .g100-metric small{font-size:11px;font-weight:400;color:#6b7d90}
+#g100Page .g100-report-table .g100-yes strong{color:#167452}
+#g100Page .g100-report-table .g100-no strong{color:#875b2f}
+#g100Page .g100-report-table .g100-child td:first-child{padding-left:28px}
+@media(min-width:1250px){#g100Page .g100-report-table .g100-metric strong{font-size:19px}#g100Page .g100-report-table .g100-metric span{font-size:16px}}
