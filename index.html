@@ -8,6 +8,7 @@
 <button class="tool-card" data-page="wipCapacityPage"><span class="tool-icon">📊</span><span class="zh">印刷-未完工產能分析</span><span class="vi">IN - Phân tích lượng chưa hoàn thành & năng lực</span></button>
 <button class="tool-card" data-page="printHistoryPage"><span class="tool-icon">📈</span><span class="zh">印刷-歷年完工量分析</span><span class="vi">IN - Phân tích sản lượng hoàn thành theo năm</span></button>
 <button class="tool-card" data-page="testFailPage"><span class="tool-icon">🧪</span><span class="zh">測試 FAIL 即時處理</span><span class="vi">Xử lý nhanh khi Test FAIL</span></button>
+<button class="tool-card" data-page="g100Page"><span class="tool-icon">🚦</span><span class="zh">G100 膠片排程預警</span><span class="vi">Cảnh báo sắp lịch IN KEO G100</span></button>
 <button class="tool-card disabled"><span class="tool-icon">📏</span><span class="zh">碼克重換算</span><span class="vi">Quy đổi trọng lượng theo yard</span><small>即將推出 / Sắp ra mắt</small></button>
 <button class="tool-card disabled"><span class="tool-icon">📉</span><span class="zh">生產損耗計算</span><span class="vi">Tính hao hụt sản xuất</span><small>即將推出 / Sắp ra mắt</small></button>
 </div></div></section>
@@ -339,6 +340,42 @@
 <div class="table-scroll order-scroll"><table class="order-table"><thead><tr><th>項次<br>STT</th><th>訂單量<br>SL đơn hàng</th><th>單位<br>Đơn vị</th><th>寬度 mm<br>Khổ mm</th><th>長度 mm<br>Dài mm</th><th>印刷方式<br>Phương pháp</th><th>單／雙面<br>Một／hai mặt</th><th>換算碼數 Y<br>Số yard</th><th class="metric-yard-head">每桌碼數 Y<br>Y mỗi bàn</th><th class="metric-pc-head">每桌約可印 PC<br>PC mỗi bàn</th><th class="metric-pair-head">每桌約可印雙<br>Đôi mỗi bàn</th><th>實際桌數<br>Số bàn thực tế</th><th>排程桌數<br>Số bàn kế hoạch</th><th>所需工時<br>Giờ cần</th><th></th></tr></thead><tbody id="orderBody"></tbody></table></div>
 <div class="summary-grid"><div class="summary-card"><span>訂單筆數 / Số đơn</span><b id="sumOrders">0</b></div><div class="summary-card"><span>總碼數 / Tổng yard</span><b id="sumYards">0 Y</b></div><div class="summary-card actual-summary"><span>總實際桌數 / Tổng số bàn thực tế</span><b id="sumExactTables">0</b></div><div class="summary-card"><span>排程總桌數 / Tổng số bàn kế hoạch</span><b id="sumTables">0</b></div><div class="summary-card"><span>總工時 / Tổng giờ</span><b id="sumHours">0 小時 / giờ</b></div></div>
 <p id="printingStatus" class="status"></p></div></section>
+
+<section id="g100Page" class="page"><div class="card"><button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button>
+<h1>G100 膠片排程預警與配單分析</h1><p class="subtitle">Cảnh báo & phân tích sắp lịch IN KEO G100</p>
+<p class="g100-lead">只分析 G100 生產條件包含 IN KEO 的未完工。96 用來判定是否有帶子，待印數量僅使用 G100；所有結果同時顯示筆數與雙數。<span class="g100-en">Chỉ phân tích G100 có điều kiện sản xuất IN KEO. Công đoạn 96 chỉ xác nhận có dây; số lượng chờ in lấy từ G100. Thống kê cả số đơn và số đôi.</span></p>
+<div class="g100-panel"><h3>① 每日資料從哪裡抓？ / Lấy dữ liệu hằng ngày ở đâu?</h3>
+<ol class="g100-guide"><li><b>G100 製程未完工 / Công đoạn G100 chưa hoàn thành：</b>從系統「製程未完工明細」設定製程 G100，匯出 CSV／Excel。保留生產條件 MO_Command；本工具只抓包含 IN KEO 的列。<span class="g100-en">Vào báo cáo chi tiết chưa hoàn thành, chọn công đoạn G100 rồi xuất CSV／Excel, giữ cột MO_Command.</span></li>
+<li><b>96 束頭未完工 / Công đoạn 96 chưa hoàn thành：</b>同一份報表改選製程 96 匯出。只判斷訂單是否存在，不扣除 96 數量。<span class="g100-en">Xuất báo cáo công đoạn 96; chỉ kiểm tra có đơn tương ứng, không tính số lượng.</span></li>
+<li><b>訂單進度總表 / Bảng tổng tiến độ đơn hàng：</b>從訂單進度總表匯出完整訂單資料，至少有 CO_Cid、CO_Order、co_item、CO_Bill。用於 86 單、T／G2／F（若提供組別欄）。<span class="g100-en">Xuất bảng tổng tiến độ có các cột trên để xác định loại đơn 86 và nhóm T／G2／F (nếu có cột nhóm).</span></li></ol>
+<p class="g100-hint"><b>注意 / Chú ý：</b>三份應在同一天、相近時間匯出；若匯出範圍不同，96 未匹配不代表現場一定沒帶子。CSV 可以是 UTF-8 或 Big5；Excel 使用第一個工作表。<span class="g100-en">Nên xuất ba tệp cùng ngày, gần cùng thời điểm; chưa khớp 96 không đồng nghĩa chắc chắn không có dây.</span></p></div>
+<div class="g100-panel"><h3>② 分別選擇三份檔案 / Chọn ba tệp riêng biệt</h3><div class="g100-grid">
+<label class="g100-input">G100 製程未完工 / G100 chưa hoàn thành<input type="file" id="g100File_g" accept=".csv,.xlsx,.xls"><small id="g100Name_g">尚未匯入 / Chưa nhập</small></label>
+<label class="g100-input">96 製程未完工 / Công đoạn 96 chưa hoàn thành<input type="file" id="g100File_p" accept=".csv,.xlsx,.xls"><small id="g100Name_p">尚未匯入 / Chưa nhập</small></label>
+<label class="g100-input">訂單進度總表 / Bảng tổng tiến độ đơn hàng<input type="file" id="g100File_o" accept=".csv,.xlsx,.xls"><small id="g100Name_o">尚未匯入 / Chưa nhập</small></label></div></div>
+<div class="g100-panel"><h3>③ 設定分析與排程參數 / Thiết lập tham số phân tích</h3><div class="g100-grid">
+<label class="g100-input">G100 未完工量計算 / Cách tính SL chưa hoàn thành<select id="g100Amount"><option value="difference">收料 mo_fnum01 － 完工 mo_fnum02（預設） / Nhận trừ hoàn tất</option><option value="mo_fnum01">收料 mo_fnum01 / SL nhận</option><option value="mo_num">排程量 mo_num / SL kế hoạch</option></select></label>
+<label class="g100-input">總表組別欄位（沒有可留空） / Cột nhóm (có thể để trống)<select id="g100GroupColumn"><option value="">未指定／無組別欄 / Chưa chọn</option></select></label>
+<label class="g100-input">隔日預計配單量（雙） / Số đôi dự kiến sắp ngày mai<input type="number" min="0" step="1" value="0" id="g100Plan"></label></div>
+<p>單位：9D 直接視為雙，9P 每 2 PC 換算為 1 雙；其他單位列異常，絕不直接相加。/ Đơn vị: 9D = đôi, 9P ÷ 2; đơn vị khác được báo lỗi và không cộng.</p>
+<p>分類：86 單或組別 T／G2／F 優先；其餘已匹配 96 的依 G100 排程日；急單 20% 只保留額度，暫不自動匯入。/ Ưu tiên đơn 86 hoặc nhóm T／G2／F; đơn khác đã khớp 96 xếp theo ngày G100; giữ 20% cho đơn gấp, chưa nhập tự động.</p>
+<div class="g100-actions"><button id="g100Analyze" type="button">開始分析 / Bắt đầu phân tích</button><button class="secondary" id="g100Clear" type="button">清除重選 / Xóa & chọn lại</button></div><div id="g100Status" class="g100-status">尚未分析，請先匯入三份檔案 / Chưa phân tích, vui lòng nhập ba tệp.</div></div>
+<div class="g100-panel"><h3>④ 統計與預警 / Thống kê & cảnh báo</h3><div id="g100Stats" class="g100-grid"></div>
+<p>統計「筆數」按客戶＋訂單＋筆數去重，數量仍逐列加總；同一訂單可同時標記 86／T／G2／F，但優先需求總計不重複分類。/ Đếm đơn không trùng theo khóa ba cột, cộng số đôi theo từng dòng; các nhãn ưu tiên có thể giao nhau.</p></div>
+<div class="g100-panel"><h3>⑤ 查看明細、異常與配單 / Xem chi tiết, lỗi và đề xuất</h3>
+<div class="g100-tabs"><button type="button" class="active" data-g100-tab="details">IN KEO 明細 / Chi tiết</button><button type="button" data-g100-tab="summary">筆數＋雙數 / Thống kê</button><button type="button" data-g100-tab="errors">比對異常 / Lỗi đối chiếu</button><button type="button" data-g100-tab="validations">MG 數量驗證 / Kiểm tra MG</button><button type="button" data-g100-tab="assignments">次日建議 / Gợi ý ngày mai</button></div>
+<div class="g100-grid" style="margin:12px 0"><label class="g100-input">全欄關鍵字搜尋 / Tìm toàn bộ cột<input type="search" id="g100Search" placeholder="訂單／客戶／排程編號 / Đơn／KH／Mã lịch"></label></div>
+<p id="g100TableCount">尚無結果 / Chưa có kết quả</p><div class="g100-scroll"><table id="g100Table"></table></div><div class="g100-actions"><button id="g100Export" type="button">下載目前頁 Excel / Tải Excel mục hiện tại</button><button id="g100ExportAll" type="button">下載完整分析 Excel（多工作表）/ Tải toàn bộ Excel</button></div>
+<p class="g100-hint">瀏覽表格最多顯示前 400 列以避免卡頓；Excel 下載包含全部結果。隔日配單只依你輸入的目標雙數提供建議，不是已確認的現場排程。/ Màn hình hiện tối đa 400 dòng; Excel chứa toàn bộ. Phương án chỉ là đề xuất, không phải lịch đã duyệt.</p></div>
+<div class="g100-panel"><h3>⑥ 資料欄位來源、比對流程與可追溯性 / Nguồn cột, quy tắc đối chiếu, truy vết</h3>
+<ol class="g100-guide"><li>先看各自排程單號 mo_oid 是否以 <b>MG</b> 開頭，判斷 G100 與 96 各自是否併單。 / Xét tiền tố MG riêng cho G100 và 96.</li>
+<li>MG 一律取 <b>MOC_Cid + MOC_Oid + MOC_Oitem</b>；非 MG 取 <b>mo_cid + mo_oid + mo_oitem</b>。兩邊轉成統一鍵比對，不用兩個製程的排程編號比較。/ MG lấy ba cột chi tiết, đơn thường lấy ba cột kế hoạch; không so sánh mã lịch giữa công đoạn.</li>
+<li>MG 缺少明細三欄就標異常，禁止回退到 MG 排程鍵。/ Nếu MG thiếu chi tiết thì báo lỗi, không dùng khóa lịch MG thay thế.</li>
+<li>以訂單總表相同的客戶＋訂單＋筆數補單別 86 與組別 T／G2／F；沒有組別來源就顯示待補，不猜。/ Dùng khóa ba cột của bảng tổng để lấy loại đơn và nhóm; thiếu cột nhóm thì không suy đoán.</li>
+<li>驗證 MG 排程量對明細加總：先按排程編號＋排程筆次去重，再加總明細；未完工匯出可能缺少已完工明細，差異標「待確認」。/ Kiểm tra số kế hoạch so với tổng chi tiết; báo cáo chưa hoàn thành có thể thiếu chi tiết đã xong, nên cần xác minh chênh lệch.</li>
+<li>下載的 Excel 包含分析時間、匯入檔名、原始欄位、匹配三欄、換算方式、異常與建議配單，日後可以逐筆追查。/ Excel lưu thời gian, tên tệp, khóa đối chiếu, cách đổi đơn vị, lỗi và gợi ý để truy xuất sau này.</li></ol>
+<div class="g100-scroll" id="g100FieldTable"></div></div>
+</div></section>
 </main><script>
 // V7: remove old offline caches to prevent mixed versions.
 if ('serviceWorker' in navigator) {
@@ -349,4 +386,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261008-test-fail-v1"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261009-g100-integrated-v1"></script></body></html>
