@@ -347,13 +347,13 @@
 <div class="g100-panel"><h3>① 每天資料從哪裡抓？ / Lấy dữ liệu mỗi ngày ở đâu?</h3><ol class="g100-guide">
 <li><b>G100：</b>系統 →「製程未完工明細」→ 選 G100 → 匯出 CSV/Excel；保留生產條件 <code>MO_Command</code>（僅取 IN KEO）。 / Báo cáo chi tiết chưa hoàn thành → chọn G100 → xuất CSV/Excel; giữ cột <code>MO_Command</code>.</li>
 <li><b>96：</b>同一報表改選 96 → 匯出；資料中有對應訂單代表有帶子，不使用 96 數量。 / Chọn công đoạn 96 và xuất; chỉ dùng để xác nhận có dây, không lấy số lượng 96.</li>
-<li><b>訂單進度總表 / Bảng tổng tiến độ đơn hàng：</b>匯出全部訂單，使用 <code>CO_Cid / CO_Order / co_item / CO_Bill</code> 判定單別。組別 T/G2/F 若沒有明確來源，需選擇實際欄位。 / Xuất bảng tổng; dùng bốn cột trên để lấy loại đơn; chọn cột nhóm thực tế nếu có.</li>
+<li><b>訂單進度總表 / Bảng tổng tiến độ đơn hàng：</b>匯出全部訂單，使用 <code>CO_Cid / CO_Order / co_item / CO_Bill</code> 判定單別。組別 T/G2/F 使用 <code>ci_area</code>；若檔案欄位不同可自行選擇。 / Nhóm T/G2/F lấy từ <code>ci_area</code>; có thể chọn cột khác nếu tệp thay đổi.</li>
 </ol><p class="g100-hint">三份最好同日匯出；96 未匹配不代表一定沒帶子。/ Nên xuất 3 tệp cùng ngày; không khớp 96 không đồng nghĩa chắc chắn chưa có dây.</p></div>
 <div class="g100-panel"><h3>② 匯入資料 / Nhập dữ liệu</h3><div class="g100-grid">
 <label class="g100-input">G100 未完工 / G100 chưa HC<input type="file" id="g100File_g" accept=".csv,.xlsx,.xls"><small id="g100Name_g">未匯入 / Chưa nhập</small></label>
 <label class="g100-input">96 未完工 / Công đoạn 96 chưa HC<input type="file" id="g100File_p" accept=".csv,.xlsx,.xls"><small id="g100Name_p">未匯入 / Chưa nhập</small></label>
 <label class="g100-input">訂單進度總表 / Bảng tổng đơn hàng<input type="file" id="g100File_o" accept=".csv,.xlsx,.xls"><small id="g100Name_o">未匯入 / Chưa nhập</small></label></div>
-<div class="g100-grid" style="margin-top:12px"><label class="g100-input">組別來源欄位（如有）/ Cột nhóm (nếu có)<select id="g100GroupColumn"><option value="">未提供，組別待確認 / Chưa có cột nhóm</option></select></label></div>
+<div class="g100-grid" style="margin-top:12px"><label class="g100-input">組別來源欄位（預設 ci_area）/ Cột nhóm (mặc định ci_area)<select id="g100GroupColumn"><option value="">未提供，組別待確認 / Chưa có cột nhóm</option></select></label></div>
 <div class="g100-actions"><button id="g100Analyze" type="button">開始統計 / Bắt đầu thống kê</button><button id="g100Clear" class="secondary" type="button">清除 / Xóa</button></div><div id="g100Status" class="g100-status">請匯入三份資料 / Vui lòng nhập đủ 3 tệp.</div></div>
 <div class="g100-panel"><h3>③ 排程優先順序（固定規則）/ Thứ tự ưu tiên sắp đơn (quy tắc cố định)</h3>
 <div class="g100-scroll"><table><thead><tr><th>優先 / Ưu tiên</th><th>條件 / Điều kiện đơn hàng</th><th>安排 / Cách sắp</th></tr></thead><tbody id="g100PriorityRules">
@@ -364,7 +364,7 @@
 <tr><td>5</td><td>其他取預告（有帶子） / Đơn khác đã có dây</td><td>依排程日 / Theo ngày sắp đơn</td></tr>
 <tr><td>6</td><td>其他一般單 / Đơn thông thường khác</td><td>依排程日、收料日 / Theo ngày sắp và ngày nhận liệu</td></tr></tbody></table></div>
 <p class="g100-hint">同級依 G100 排程日先後。96 未匹配 ≠ 確認無帶子；數量只計 G100 未完工：9D=雙、9P÷2=雙。 / Cùng cấp xếp theo ngày G100; chưa khớp 96 không chắc là chưa có dây; lấy số lượng G100: 9D=đôi, 9P÷2.</p></div>
-<div class="g100-panel"><h3>④ 統計總表 / Bảng thống kê tổng hợp</h3><p class="g100-hint">點分類即可看訂單明細；各分類可能交叉，不能把主分類全部直接相加。/ Bấm vào nhóm để xem chi tiết; các loại có thể trùng nhau.</p>
+<div class="g100-panel"><h3>④ 統計總表 / Bảng thống kê tổng hợp</h3><p class="g100-hint">最上方顯示 G100 全部與 96 匹配總數；點分類看明細。不同主分類可能重疊。 / Hai dòng đầu là tổng G100 và tổng đối chiếu 96; bấm vào loại để xem chi tiết. Các loại chính có thể trùng nhau.</p>
 <div class="g100-scroll"><table id="g100SummaryTable"><thead><tr><th>分類 / Phân loại</th><th>筆數 / Số nét</th><th>未完工（雙）/ Số đôi chưa HC</th></tr></thead><tbody><tr><td colspan="3">尚未分析 / Chưa phân tích</td></tr></tbody></table></div></div>
 <div class="g100-panel"><h3>⑤ 訂單明細與 Excel / Chi tiết đơn hàng & Excel</h3><p id="g100Selected">所有 IN KEO / Tất cả IN KEO</p>
 <label class="g100-input">搜尋訂單、客戶 / Tìm đơn hàng, khách hàng<input id="g100Search" type="search" placeholder="訂單 / Đơn hàng"></label>
@@ -375,7 +375,7 @@
 <li>G100、96 各自以 <code>mo_oid</code> 是否以 MG 開頭判定併單。MG 使用 <code>MOC_Cid+MOC_Oid+MOC_Oitem</code>；非 MG 使用 <code>mo_cid+mo_oid+mo_oitem</code>；MG 缺明細不回退。/ MG lấy 3 cột chi tiết; đơn thường lấy 3 cột kế hoạch.</li>
 <li>96 只判斷有無相符訂單。未匹配標示「96 未匹配」，不能視為確定沒帶子。/ Công đoạn 96 chỉ xác định khớp đơn, không dùng số lượng.</li>
 <li>G100 未完工採 <code>max(0, mo_fnum01 − mo_fnum02)</code>，9P 除以二、9D 不變；不支援單位單獨標示。/ Số đôi chưa HC = max(0, nhận − hoàn thành), 9P chia 2, 9D giữ nguyên.</li>
-<li>由訂單總表 <code>CO_Bill</code> 判定 86/87/88/89；T/G2/F 只依指定的組別欄，未提供時不可當成「其他組」。/ Loại đơn lấy từ CO_Bill; nhóm lấy từ cột nhóm được chọn.</li>
+<li>由訂單總表 <code>CO_Bill</code> 判定 86/87/88/89；T/G2/F 預設使用 <code>ci_area</code>，有不同欄名時可調整。/ Nhóm T/G2/F mặc định lấy từ <code>ci_area</code>; có thể đổi cột nếu cần.</li>
 <li>筆數 / Số nét：以客戶＋訂單＋筆數鍵值去重；同一分類的明細量逐列合計。/ Đếm theo khóa khách hàng + đơn + mục; cộng lượng mỗi dòng.</li>
 </ol></details></div></section>
 </main><script>
@@ -388,4 +388,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261009-g100-simple-v2"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261009-g100-summary-v3"></script></body></html>
