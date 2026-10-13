@@ -1280,13 +1280,20 @@ function tfUpdateStage(){$('tfBtpBtn')?.classList.toggle('active',tfStage==='BTP
 /* G100 simple standalone extension. All original toolbox code above is untouched. */
 (()=>{'use strict';
 const $=id=>document.getElementById(id), E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const COL={g:['mo_id','mo_item','mo_cid','mo_oid','mo_oitem','mo_sproc','MO_Command','MOC_Cid','MOC_Oid','MOC_Oitem','mo_num','mo_unit','mo_fnum01','mo_fnum02','MOC_ManuNum','mo_date','co_transdate','co_bill'],p:['mo_id','mo_item','mo_cid','mo_oid','mo_oitem','MOC_Cid','MOC_Oid','MOC_Oitem'],o:['CO_Cid','CO_Order','co_item','CO_Bill']};
+const COL={g:['mo_id','mo_item','mo_cid','mo_oid','mo_oitem','mo_sproc','MO_Command','MOC_Cid','MOC_Oid','MOC_Oitem','mo_num','mo_unit','mo_fnum01','mo_fnum02','MOC_ManuNum','mo_date','co_transdate','co_bill'],p:['MS_CID','MS_OID','MS_OItem','MS_Crew'],o:['CO_Cid','CO_Order','co_item','CO_Bill']};
 const S={g:null,p:null,o:null,files:{},out:null,selected:'all',selectedState:'all'};
 const trim=v=>String(v??'').trim(), norm=v=>trim(v).toUpperCase(), numeric=v=>{const n=Number(trim(v).replace(/,/g,''));return Number.isFinite(n)?n:0}, f=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0});
 function key(a,b,c){return [norm(a),norm(b),norm(c)].join('¦')};
 function isMG(r){return norm(r.mo_oid).startsWith('MG')};
 function triple(r){const mg=isMG(r);return mg?[r.MOC_Cid,r.MOC_Oid,r.MOC_Oitem]:[r.mo_cid,r.mo_oid,r.mo_oitem]};
 function recordKey(r){const t=triple(r);return t.every(v=>trim(v)!=='')?key(...t):''};
+// 新版 96：只有 MS_Crew = XNK 可判定有帶子；不使用 96 數量。
+function key96(r){
+  // 96 新版 MS 檔不含 MG 明細欄位；如果以後出現 MG，不得以 MG 排程號回退比對。
+  if(norm(r.MS_OID).startsWith('MG'))return '';
+  const t=[r.MS_CID,r.MS_OID,r.MS_OItem];
+  return t.every(v=>trim(v)!=='')?key(...t):'';
+}
 function inKeo(r){return /in\s*keo/i.test(trim(r.MO_Command))};
 function units(q,u){const s=norm(u);if(s==='9D')return {v:q,ok:true,formula:'9D → 雙'};if(s==='9P')return {v:q/2,ok:true,formula:'9P → PC ÷ 2'};return {v:null,ok:false,formula:'無換算 / Chưa có quy đổi: '+s}}
 function parseCsv(s){const res=[];let row=[],cell='',quote=false;for(let i=0;i<s.length;i++){const c=s[i];if(c==='"'){if(quote&&s[i+1]==='"'){cell+='"';i++}else quote=!quote}else if(c===','&&!quote){row.push(cell);cell=''}else if((c==='\n'||c==='\r')&&!quote){if(c==='\r'&&s[i+1]==='\n')i++;row.push(cell);if(row.some(x=>x!==''))res.push(row);row=[];cell=''}else cell+=c}row.push(cell);if(row.some(x=>x!==''))res.push(row);const head=(res.shift()||[]).map(x=>trim(x).replace(/^\uFEFF/,''));return {head,rows:res.map(a=>Object.fromEntries(head.map((h,i)=>[h,a[i]??''])))};}
@@ -1294,11 +1301,14 @@ async function loadFile(file,type){let parsed;if(/\.csv$/i.test(file.name)){cons
 
 const PRIORITY=[['86 單＋有帶子','Đơn 86 + đã có dây'],['86 單＋96 未匹配','Đơn 86 + chưa khớp 96'],['88 單 T/G2/F＋有帶子','Đơn 88 nhóm T/G2/F + đã có dây'],['88 單 T/G2/F＋96 未匹配','Đơn 88 nhóm T/G2/F + chưa khớp 96'],['其他取預告（有帶子）','Đơn khác đã có dây'],['其他一般單','Đơn thông thường khác']];
 const CATS=[['preview','取預告單（有帶子） / Đơn đã có dây',0],['preview:T','　T 組 / Nhóm T',1],['preview:G2','　G2 組 / Nhóm G2',1],['preview:F','　F 組 / Nhóm F',1],['preview:OTHER','　其他組別 / Nhóm khác',1],['86','86 單 / Đơn 86',0],['86:T','　T 組 / Nhóm T',1],['86:G2','　G2 組 / Nhóm G2',1],['86:F','　F 組 / Nhóm F',1],['86:OTHER','　其他組別 / Nhóm khác',1],['87','87 單 / Đơn 87',0],['88','88 單 / Đơn 88',0],['88:T','　T 組 / Nhóm T',1],['88:G2','　G2 組 / Nhóm G2',1],['88:F','　F 組 / Nhóm F',1],['88:OTHER','　其他組別 / Nhóm khác',1],['89','89 單 / Đơn 89',0]];
-const HEADS=[['priority','優先級 / Mức ưu tiên'],['mo_id','G100 排程編號 / Mã lịch G100'],['mo_oid','G100 排程單號 / Đơn lịch G100'],['cid','比對客戶 / KH đối chiếu'],['oid','比對訂單 / Đơn đối chiếu'],['item','比對筆數 / Mục đối chiếu'],['bill','單別 / Loại đơn'],['group','組別 / Nhóm'],['with96','96 有帶子 / Có dây 96'],['pairs','未完工（雙）/ Số đôi chưa HC'],['date','G100 排程日 / Ngày sắp G100'],['receive','收料日 / Ngày nhận liệu'],['unit','原單位 / Đơn vị gốc'],['source','原未完工量 / SL chưa HC gốc'],['method','比對方式 / Cách đối chiếu'],['status','資料狀態 / Tình trạng dữ liệu']];
+const HEADS=[['priority','優先級 / Mức ưu tiên'],['mo_id','G100 排程編號 / Mã lịch G100'],['mo_oid','G100 排程單號 / Đơn lịch G100'],['cid','比對客戶 / KH đối chiếu'],['oid','比對訂單 / Đơn đối chiếu'],['item','比對筆數 / Mục đối chiếu'],['bill','單別 / Loại đơn'],['group','組別 / Nhóm'],['with96','96 XNK 有帶子 / Có dây 96 XNK'],['pairs','未完工（雙）/ Số đôi chưa HC'],['date','G100 排程日 / Ngày sắp G100'],['receive','收料日 / Ngày nhận liệu'],['unit','原單位 / Đơn vị gốc'],['source','原未完工量 / SL chưa HC gốc'],['method','比對方式 / Cách đối chiếu'],['status','資料狀態 / Tình trạng dữ liệu']];
 function groupName(value){const parts=norm(value).split(/[^A-Z0-9]+/).filter(Boolean);return ['T','G2','F'].find(x=>parts.includes(x))||'OTHER'}
 function sortTime(s){const m=trim(s).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);return m?m[1]+m[2].padStart(2,'0')+m[3].padStart(2,'0'):'99999999'}
 function analyze(){if(!S.g||!S.p||!S.o)throw Error('請先匯入三份資料 / Vui lòng nhập đủ 3 tệp');const groupCol='ci_area';const hasGroup=S.o.head.includes(groupCol);if(!hasGroup)throw Error('訂單總表缺少 ci_area 組別欄 / Bảng tổng thiếu cột nhóm ci_area');const pkeys=new Set();let missing96=0;
-for(const r of S.p.rows){const k=recordKey(r);if(k)pkeys.add(k);else missing96++}
+for(const r of S.p.rows){
+  if(norm(r.MS_Crew)!=='XNK')continue;
+  const k=key96(r);if(k)pkeys.add(k);else missing96++;
+}
 const orders=new Map();for(const r of S.o.rows){const k=key(r.CO_Cid,r.CO_Order,r.co_item);if(!orders.has(k))orders.set(k,r)}
 const rows=[];let unknownUnit=0,missingKey=0,missingOrder=0;for(let i=0;i<S.g.rows.length;i++){const r=S.g.rows[i];if(!inKeo(r))continue;const tuple=triple(r),k=recordKey(r),o=orders.get(k),bill=norm(o?.CO_Bill||r.co_bill).replace(/^0+/,'');const with96=!!k&&pkeys.has(k);const group=hasGroup?(o?groupName(o[groupCol]):'UNKNOWN'):'UNKNOWN';const quantity=Math.max(0,numeric(r.mo_fnum01)-numeric(r.mo_fnum02)), converted=units(quantity,r.mo_unit);if(!converted.ok)unknownUnit++;if(!k)missingKey++;if(!o)missingOrder++;
 const is86=bill==='86',is88= bill==='88',special=['T','G2','F'].includes(group);let priority=is86?(with96?1:2):(is88&&special?(with96?3:4):(with96?5:6));
@@ -1306,7 +1316,7 @@ rows.push({priority,mo_id:r.mo_id,mo_oid:r.mo_oid,cid:tuple[0],oid:tuple[1],item
 rows.sort((a,b)=>a.priority-b.priority||sortTime(a.date).localeCompare(sortTime(b.date))||sortTime(a.receive).localeCompare(sortTime(b.receive)));
 const result={rows,hasGroup,groupCol,unknownUnit,missingKey,missingOrder,missing96,files:{...S.files},date:new Date().toLocaleString(),totals:{}}; const countNets=arr=>new Set(arr.map(x=>x.key||'ROW:'+x.origLine)).size; const sumPairs=arr=>arr.reduce((s,x)=>s+(x.pairs||0),0); result.all={n:countNets(rows),q:sumPairs(rows),lines:rows.length}; const matchedRows=rows.filter(x=>x.matched); result.match96={n:countNets(matchedRows),q:sumPairs(matchedRows),lines:matchedRows.length};
 for(const [id,label]of CATS){const subset=rows.filter(r=>includes(r,id));const unique=new Set(subset.map(x=>x.key||'ROW:'+x.origLine));result.totals[id]={n:unique.size,q:subset.reduce((sum,r)=>sum+(r.pairs||0),0),unknown:subset.filter(r=>r.pairs===null).length}}
-S.out=result;S.selected='all';S.selectedState='all';renderSummary();renderDetail();$('g100Status').textContent=`分析完成 / Đã thống kê：IN KEO ${f(rows.length)} 列 / dòng；96 匹配 ${f(rows.filter(x=>x.matched).length)} 列；單位待確認 ${unknownUnit} 列；組別 ${hasGroup?'來源：'+groupCol:'未提供 / Chưa có cột nhóm'}`}
+S.out=result;S.selected='all';S.selectedState='all';renderSummary();renderDetail();$('g100Status').textContent=`分析完成 / Đã thống kê：IN KEO ${f(rows.length)} 列 / dòng；96 XNK 匹配 ${f(rows.filter(x=>x.matched).length)} 列；單位待確認 ${unknownUnit} 列；組別 ${hasGroup?'來源：'+groupCol:'未提供 / Chưa có cột nhóm'}`}
 function includes(r,id){if(id==='all')return true;const [category,g]=id.split(':');const base=category==='preview'?r.matched:r.bill===category;if(!base)return false;if(!g)return true;return r.groupCode===g}
 function subset(id,kind){return S.out.rows.filter(r=>includes(r,id)&&(kind==='all'||(kind==='with'?r.matched:!r.matched)))}
 function metric(arr){return {n:new Set(arr.map(r=>r.key||'ROW:'+r.origLine)).size,q:arr.reduce((s,r)=>s+(r.pairs||0),0)}}
@@ -1345,7 +1355,7 @@ async function download(full){
  const yes=S.out.rows.filter(r=>r.matched);
  styledSheet(wb,'有帶子-Có dây',detailsAoa(yes),{detail:true});
  styledSheet(wb,'全部-Tất cả',detailsAoa(full?S.out.rows:selectedRows()),{detail:true});
- const rules=wb.addWorksheet('規則-Quy tắc');rules.columns=[{width:20},{width:85}];rules.addRow(['優先級 / Mức ưu tiên','條件 / Điều kiện']);PRIORITY.forEach((r,i)=>rules.addRow([i+1,r.join(' / ')]));rules.addRow([]);rules.addRow(['資料來源 / Nguồn','G100：數量、筆數、明細；96：僅比對帶子；訂單總表：CO_Bill、ci_area / G100: SL và chi tiết; 96: đối chiếu dây; bảng đơn: loại, nhóm']);rules.addRow(['96 未匹配 / Chưa khớp','不代表確認無帶子 / Không đồng nghĩa chắc chắn không có dây']);rules.addRow(['MG 併單 / Đơn MG','使用明細三欄 / Dùng ba cột chi tiết']);rules.addRow(['一般單 / Đơn thường','使用排程三欄 / Dùng ba cột sắp đơn']);rules.addRow(['數量 / Số lượng','G100 未完工：9D=雙；9P÷2=雙 / G100 chưa HC: 9D=đôi; 9P÷2=đôi']);rules.addRow(['組別 / Nhóm','訂單總表 ci_area；無法比對仍入其他組，明細標記 / ci_area; chưa khớp xếp nhóm khác có đánh dấu']);
+ const rules=wb.addWorksheet('規則-Quy tắc');rules.columns=[{width:20},{width:85}];rules.addRow(['優先級 / Mức ưu tiên','條件 / Điều kiện']);PRIORITY.forEach((r,i)=>rules.addRow([i+1,r.join(' / ')]));rules.addRow([]);rules.addRow(['資料來源 / Nguồn','G100：數量、筆數、明細；96：僅 MS_Crew=XNK 且訂單匹配算有帶子；訂單總表：CO_Bill、ci_area / G100: số lượng và chi tiết; 96: chỉ MS_Crew=XNK và khớp đơn tính có dây; bảng đơn: loại, nhóm']);rules.addRow(['96 未符合 XNK / Chưa khớp XNK','未配對 XNK 不代表現場確定沒有帶子 / Không khớp XNK không có nghĩa chắc chắn chưa có dây']);rules.addRow(['MG 併單 / Đơn MG','G100 用 MOC_Cid+MOC_Oid+MOC_Oitem；96 新 MS 檔未提供 MG 明細，MG 無法配對，不能回退排程號 / G100 dùng 3 cột chi tiết; tệp MS của 96 không có chi tiết MG, không tự thay bằng số MG']);rules.addRow(['一般單 / Đơn thường','G100：mo_cid+mo_oid+mo_oitem；96：MS_CID+MS_OID+MS_OItem，且 MS_Crew=XNK / G100: 3 cột kế hoạch; 96: 3 cột MS và MS_Crew=XNK']);rules.addRow(['數量 / Số lượng','G100 未完工：9D=雙；9P÷2=雙 / G100 chưa HC: 9D=đôi; 9P÷2=đôi']);rules.addRow(['組別 / Nhóm','訂單總表 ci_area；無法比對仍入其他組，明細標記 / ci_area; chưa khớp xếp nhóm khác có đánh dấu']);
  rules.getRow(1).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}}});
  const buffer=await wb.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob),el=document.createElement('a');el.href=url;el.download='G100_INKEO_'+(full?'完整統計_ThongKe':'目前篩選_LocHienTai')+'.xlsx';document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }

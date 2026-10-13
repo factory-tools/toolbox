@@ -346,7 +346,7 @@
 <p class="subtitle">每日匯入三份報表，查看筆數（Nét）與未完工雙數 / Nhập 3 báo cáo mỗi ngày, xem số nét và số đôi chưa HC</p>
 <div class="g100-panel"><h3>① 每天資料從哪裡抓？ / Lấy dữ liệu mỗi ngày ở đâu?</h3><ol class="g100-guide">
 <li><b>G100：</b>系統 →「製程未完工明細」→ 選 G100 → 匯出 CSV/Excel；保留生產條件 <code>MO_Command</code>（僅取 IN KEO）。 / Báo cáo chi tiết chưa hoàn thành → chọn G100 → xuất CSV/Excel; giữ cột <code>MO_Command</code>.</li>
-<li><b>96：</b>同一報表改選 96 → 匯出；資料中有對應訂單代表有帶子，不使用 96 數量。 / Chọn công đoạn 96 và xuất; chỉ dùng để xác nhận có dây, không lấy số lượng 96.</li>
+<li><b>96：</b>固定匯出新版 96.csv；只有 MS_Crew = XNK 且訂單比對成功，才代表有帶子；不使用 96 數量。 / Xuất tệp 96.csv định dạng mới; chỉ tính có dây khi MS_Crew = XNK và khớp đơn; không lấy số lượng 96.</li>
 <li><b>訂單進度總表 / Bảng tổng tiến độ đơn hàng：</b>匯出全部訂單，使用 <code>CO_Cid / CO_Order / co_item / CO_Bill</code> 判定單別。組別固定使用 <code>ci_area</code>。 / Nhóm dùng cố định cột <code>ci_area</code>.</li>
 </ol><p class="g100-hint">三份最好同日匯出；96 未匹配不代表一定沒帶子。/ Nên xuất 3 tệp cùng ngày; không khớp 96 không đồng nghĩa chắc chắn chưa có dây.</p></div>
 <div class="g100-panel"><h3>② 匯入資料 / Nhập dữ liệu</h3><div class="g100-grid">
@@ -363,7 +363,7 @@
 <tr><td>4</td><td>88 單 T/G2/F 組＋96 未匹配 / Đơn 88 nhóm T/G2/F + chưa khớp 96</td><td>第四優先 / Thứ tư</td></tr>
 <tr><td>5</td><td>其他取預告（有帶子） / Đơn khác đã có dây</td><td>依排程日 / Theo ngày sắp đơn</td></tr>
 <tr><td>6</td><td>其他一般單 / Đơn thông thường khác</td><td>依排程日、收料日 / Theo ngày sắp và ngày nhận liệu</td></tr></tbody></table></div>
-<p class="g100-hint">同級依 G100 排程日先後。96 未匹配 ≠ 確認無帶子；數量只計 G100 未完工：9D=雙、9P÷2=雙。 / Cùng cấp xếp theo ngày G100; chưa khớp 96 không chắc là chưa có dây; lấy số lượng G100: 9D=đôi, 9P÷2.</p></div>
+<p class="g100-hint">同級依 G100 排程日先後。96 未符合 XNK 比對 ≠ 確認無帶子；數量只計 G100 未完工：9D=雙、9P÷2=雙。 / Cùng cấp xếp theo ngày G100; chưa khớp XNK không có nghĩa chắc chắn chưa có dây; lấy số lượng G100: 9D=đôi, 9P÷2.</p></div>
 <div class="g100-panel g100-report"><h3>④ G100 未完工統計 / Thống kê G100 chưa HC</h3>
 <p class="g100-report-caption">一張表同時看總計、有帶子、96 未匹配；每格顯示筆數（nét）與雙數（đôi）。點選數字看明細。 / Một bảng gồm tổng số, đã có dây, chưa khớp 96; mỗi ô gồm số nét và số đôi. Bấm số để xem chi tiết.</p>
 <div class="g100-scroll g100-summary-scroll"><table id="g100SummaryTable" class="g100-report-table"><thead><tr><th>單別／組別<br><small>Loại đơn / Nhóm</small></th><th>總未完工<br><small>Tổng chưa HC</small></th><th>有帶子<br><small>Đã có dây</small></th><th>96 未匹配<br><small>Chưa khớp 96</small></th></tr></thead><tbody><tr><td colspan="4">尚未分析 / Chưa phân tích</td></tr></tbody></table></div>
@@ -374,8 +374,8 @@
 <div class="g100-actions"><button id="g100Export" type="button">下載目前篩選 Excel / Tải Excel đã lọc</button><button id="g100ExportAll" type="button">下載完整 Excel（統計＋有帶子全部明細＋G100全部明細）/ Tải Excel đầy đủ</button></div></div>
 <details class="g100-panel"><summary><b>資料比對及計算依據 / Cách đối chiếu & tính toán</b></summary><ol class="g100-guide">
 <li>G100 只取 <code>MO_Command</code> 包含 IN KEO 的資料。/ Chỉ lấy G100 có IN KEO.</li>
-<li>G100、96 各自以 <code>mo_oid</code> 是否以 MG 開頭判定併單。MG 使用 <code>MOC_Cid+MOC_Oid+MOC_Oitem</code>；非 MG 使用 <code>mo_cid+mo_oid+mo_oitem</code>；MG 缺明細不回退。/ MG lấy 3 cột chi tiết; đơn thường lấy 3 cột kế hoạch.</li>
-<li>96 只判斷有無相符訂單。未匹配標示「96 未匹配」，不能視為確定沒帶子。/ Công đoạn 96 chỉ xác định khớp đơn, không dùng số lượng.</li>
+<li>G100 的 MG 併單用 <code>MOC_Cid+MOC_Oid+MOC_Oitem</code>，一般單用 <code>mo_cid+mo_oid+mo_oitem</code>；新版 96.csv 先篩 <code>MS_Crew=XNK</code>，再用 <code>MS_CID+MS_OID+MS_OItem</code> 比對。新版 96 無 MG 明細，遇 MG 不得回退比對 MG 排程號。 / G100 MG dùng 3 cột chi tiết; đơn thường dùng 3 cột kế hoạch. 96 mới chỉ lấy MS_Crew=XNK, khớp 3 cột MS; không có chi tiết MG thì không đối chiếu bằng số lịch MG.</li>
+<li>96 只使用 MS_Crew=XNK 的資料判斷有帶子；未符合 XNK 比對不等於確定沒有帶子，且不使用 96 數量。 / Chỉ dùng dòng 96 có MS_Crew=XNK để xác nhận có dây; không khớp không đồng nghĩa chắc chắn chưa có dây, không lấy số lượng 96.</li>
 <li>G100 未完工採 <code>max(0, mo_fnum01 − mo_fnum02)</code>，9P 除以二、9D 不變；不支援單位單獨標示。/ Số đôi chưa HC = max(0, nhận − hoàn thành), 9P chia 2, 9D giữ nguyên.</li>
 <li>由訂單總表 <code>CO_Bill</code> 判定 86/87/88/89；T/G2/F 固定使用 <code>ci_area</code>。/ Nhóm T/G2/F lấy cố định cột <code>ci_area</code>.</li>
 <li>筆數 / Số nét：以客戶＋訂單＋筆數鍵值去重；同一分類的明細量逐列合計。/ Đếm theo khóa khách hàng + đơn + mục; cộng lượng mỗi dòng.</li>
