@@ -363,7 +363,7 @@
 <tr><td>4</td><td>88 單 T/G2/F 組＋96 未匹配 / Đơn 88 nhóm T/G2/F + chưa khớp 96</td><td>第四優先 / Thứ tư</td></tr>
 <tr><td>5</td><td>其他取預告（有帶子） / Đơn khác đã có dây</td><td>依排程日 / Theo ngày sắp đơn</td></tr>
 <tr><td>6</td><td>其他一般單 / Đơn thông thường khác</td><td>依排程日、收料日 / Theo ngày sắp và ngày nhận liệu</td></tr></tbody></table></div>
-<p class="g100-hint">同級依 G100 排程日先後。96 未符合 XNK 比對 ≠ 確認無帶子；數量只計 G100 未完工：9D=雙、9P÷2=雙。 / Cùng cấp xếp theo ngày G100; chưa khớp XNK không có nghĩa chắc chắn chưa có dây; lấy số lượng G100: 9D=đôi, 9P÷2.</p></div>
+<p class="g100-hint">同級依 G100 排程日先後。96 未符合 XNK 比對 ≠ 確認無帶子；數量只計 G100 的 mo_num − mo_fnum02 > 0：9D=雙、9P÷2=雙。 / Cùng cấp xếp theo ngày G100; chưa khớp XNK không có nghĩa chắc chắn chưa có dây; chỉ tính chênh lệch mo_num − mo_fnum02 > 0: 9D=đôi, 9P÷2.</p></div>
 <div class="g100-panel g100-report"><h3>④ G100 未完工統計 / Thống kê G100 chưa HC</h3>
 <p class="g100-report-caption">一張表同時看總計、有帶子、96 未匹配；每格顯示筆數（nét）與雙數（đôi）。點選數字看明細。 / Một bảng gồm tổng số, đã có dây, chưa khớp 96; mỗi ô gồm số nét và số đôi. Bấm số để xem chi tiết.</p>
 <div class="g100-scroll g100-summary-scroll"><table id="g100SummaryTable" class="g100-report-table"><thead><tr><th>單別／組別<br><small>Loại đơn / Nhóm</small></th><th>總未完工<br><small>Tổng chưa HC</small></th><th>有帶子<br><small>Đã có dây</small></th><th>96 未匹配<br><small>Chưa khớp 96</small></th></tr></thead><tbody><tr><td colspan="4">尚未分析 / Chưa phân tích</td></tr></tbody></table></div>
@@ -371,12 +371,19 @@
 <div class="g100-panel"><h3>⑤ 訂單明細與 Excel / Chi tiết đơn hàng & Excel</h3><p id="g100Selected">所有 IN KEO / Tất cả IN KEO</p>
 <label class="g100-input">搜尋訂單、客戶 / Tìm đơn hàng, khách hàng<input id="g100Search" type="search" placeholder="訂單 / Đơn hàng"></label>
 <p id="g100TableCount"></p><div class="g100-scroll"><table id="g100Table"></table></div>
-<div class="g100-actions"><button id="g100Export" type="button">下載目前篩選 Excel / Tải Excel đã lọc</button><button id="g100ExportAll" type="button">下載完整 Excel（統計＋有帶子全部明細＋G100全部明細）/ Tải Excel đầy đủ</button></div></div>
+<div class="g100-actions"><button id="g100Export" type="button">下載目前篩選 Excel / Tải Excel đã lọc</button><button id="g100ExportAll" type="button">下載完整 Excel（含逐筆資料檢查）/ Tải Excel đầy đủ (có kiểm tra chi tiết)</button></div></div>
+<div class="g100-panel g100-check-panel"><h3>⑥ G100 逐筆資料檢查 / Kiểm tra chi tiết từng dòng G100</h3>
+<p class="g100-report-caption">完整保留所有 IN KEO 原始列，包含已完工與異常；只有「未完工」會列入上方統計。/ Giữ tất cả dòng IN KEO kể cả đã hoàn thành và bất thường; chỉ dòng chưa HC hợp lệ mới được thống kê.</p>
+<div id="g100CheckStats" class="g100-check-stats"></div>
+<div class="g100-check-controls"><label>處理狀態 / Trạng thái xử lý<select id="g100CheckFilter"><option value="all">全部 / Tất cả</option><option value="unfinished">未完工 / Chưa HC</option><option value="finished">已完工 / Đã HC</option><option value="abnormal">數量異常 / SL bất thường</option><option value="missing">資料缺失 / Thiếu dữ liệu</option><option value="unit">單位待確認 / Chưa rõ đơn vị</option></select></label><label>搜尋排程單號、客戶 / Tìm đơn hàng, khách hàng<input id="g100CheckSearch" type="search" placeholder="訂單、編號 / Đơn, mã"></label></div>
+<div class="g100-check-nav"><span id="g100CheckCount">尚未分析 / Chưa phân tích</span><div><button id="g100CheckPrev" type="button">← 上頁 / Trước</button><button id="g100CheckNext" type="button">下頁 / Sau →</button></div></div>
+<div class="g100-scroll g100-check-scroll"><table id="g100CheckTable"></table></div>
+<p class="g100-report-caption">每頁顯示 100 列，可搜尋或翻頁；下載「完整 Excel」的「檢查-Kiểm tra」工作表含全部逐筆記錄與原因。/ Mỗi trang 100 dòng; trang Kiểm tra trong Excel đầy đủ có toàn bộ chi tiết và lý do.</p></div>
 <details class="g100-panel"><summary><b>資料比對及計算依據 / Cách đối chiếu & tính toán</b></summary><ol class="g100-guide">
 <li>G100 只取 <code>MO_Command</code> 包含 IN KEO 的資料。/ Chỉ lấy G100 có IN KEO.</li>
 <li>G100 的 MG 併單用 <code>MOC_Cid+MOC_Oid+MOC_Oitem</code>，一般單用 <code>mo_cid+mo_oid+mo_oitem</code>；新版 96.csv 先篩 <code>MS_Crew=XNK</code>，再用 <code>MS_CID+MS_OID+MS_OItem</code> 比對。新版 96 無 MG 明細，遇 MG 不得回退比對 MG 排程號。 / G100 MG dùng 3 cột chi tiết; đơn thường dùng 3 cột kế hoạch. 96 mới chỉ lấy MS_Crew=XNK, khớp 3 cột MS; không có chi tiết MG thì không đối chiếu bằng số lịch MG.</li>
 <li>96 只使用 MS_Crew=XNK 的資料判斷有帶子；未符合 XNK 比對不等於確定沒有帶子，且不使用 96 數量。 / Chỉ dùng dòng 96 có MS_Crew=XNK để xác nhận có dây; không khớp không đồng nghĩa chắc chắn chưa có dây, không lấy số lượng 96.</li>
-<li>G100 未完工採 <code>max(0, mo_fnum01 − mo_fnum02)</code>，9P 除以二、9D 不變；不支援單位單獨標示。/ Số đôi chưa HC = max(0, nhận − hoàn thành), 9P chia 2, 9D giữ nguyên.</li>
+<li>G100 未完工 = <code>mo_num − mo_fnum02</code>；只計結果大於 0 的訂單。等於 0 已完工；小於 0 數量異常；空白或無效數值另列資料缺失。9P 除以二、9D 不變。/ Chưa HC = mo_num − mo_fnum02; chỉ tính kết quả dương, 0 là đã HC, âm bất thường, thiếu số sẽ liệt kê riêng. 9P chia 2, 9D giữ nguyên.</li>
 <li>由訂單總表 <code>CO_Bill</code> 判定 86/87/88/89；T/G2/F 固定使用 <code>ci_area</code>。/ Nhóm T/G2/F lấy cố định cột <code>ci_area</code>.</li>
 <li>筆數 / Số nét：以客戶＋訂單＋筆數鍵值去重；同一分類的明細量逐列合計。/ Đếm theo khóa khách hàng + đơn + mục; cộng lượng mỗi dòng.</li>
 </ol></details></div></section>
