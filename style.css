@@ -345,3 +345,13 @@ body:has(#g100Page.active) .wrap{max-width:1580px;width:100%;padding:12px 20px 8
 #g100Page .dash-top > *,#g100Page .dash-groups > *,#g100Page .g100-dash-row > *{min-width:0;}
 #g100Page .g100-brief-panel{overflow:hidden;}
 @media(max-width:1600px){body:has(#g100Page.active) .wrap{padding-left:12px;padding-right:12px;}}
+
+/* G100 isolated centered viewport layout; does not affect other pages */
+body.g100-layout-active{overflow-x:hidden;}
+body.g100-layout-active main.wrap{width:100%;max-width:1640px;min-width:0;margin-left:auto;margin-right:auto;padding-left:16px;padding-right:16px;}
+body.g100-layout-active #g100Page{width:100%;min-width:0;max-width:100%;margin:0;}
+body.g100-layout-active #g100Page > .card{width:100%;max-width:100%;min-width:0;margin:0;padding:16px;}
+body.g100-layout-active #g100Page .g100-panel{min-width:0;max-width:100%;}
+body.g100-layout-active #g100Page .g100-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+body.g100-layout-active #g100Page .g100-dashboard,body.g100-layout-active #g100Page .g100-brief{min-width:0;max-width:100%;}
+@media(max-width:900px){body.g100-layout-active main.wrap{padding-left:8px;padding-right:8px;}body.g100-layout-active #g100Page .g100-grid{grid-template-columns:1fr;}}
