@@ -285,7 +285,7 @@
 
 
 /* G100 圖表看板 */
-#g100Page .card{max-width:1680px;width:min(97vw,1680px);margin:0 auto;}
+#g100Page .card{width:100%;max-width:100%;margin:0 auto;min-width:0;}
 #g100Page .section-title,#g100Page h1{text-align:center;}
 .g100-brief-panel{padding:8px 10px;}
 .g100-brief{display:block;}
@@ -335,6 +335,13 @@
 .group-row{display:grid;grid-template-columns:56px 1fr 128px;gap:8px;align-items:center;margin:8px 0;min-width:0;}
 .glabel{font-size:14px;font-weight:900;color:#0f2454;text-align:center;}.gtrack{height:16px;background:#eceff5;border-radius:999px;overflow:hidden;min-width:0;}.gfill{height:100%;border-radius:999px;}.gfill.b86{background:#fb7185;}.gfill.b86.g2{background:#fb923c;}.gfill.b86.f{background:#facc15;}.gfill.b86.other{background:#f59e0b;}.gfill.b88{background:#60a5fa;}.gfill.b88.g2{background:#c084fc;}.gfill.b88.f{background:#4ade80;}
 .gvalue{text-align:right;font-size:14px;font-weight:900;color:#173b75;white-space:nowrap;}.gvalue span{font-size:11px;font-weight:700;color:#475569;}
-@media (max-width:1500px){#g100Page .card{width:min(98vw,1500px)}.sum-main{font-size:50px}.sum-head,.dash-priority h4,.group-card h4{font-size:16px}.g100-dash-row{grid-template-columns:40px 180px 1fr 100px}.row-title .zh{font-size:15px}}
+@media (max-width:1500px){#g100Page .card{width:100%}.sum-main{font-size:50px}.sum-head,.dash-priority h4,.group-card h4{font-size:16px}.g100-dash-row{grid-template-columns:40px 180px 1fr 100px}.row-title .zh{font-size:15px}}
 @media (max-width:1200px){.dash-top{grid-template-columns:1fr}.dash-groups{grid-template-columns:1fr}.g100-dash-row{grid-template-columns:40px 1fr;}.row-chart,.row-net{grid-column:2/3;}.row-net{text-align:left;border-left:0;padding-left:0}.sum-main{font-size:42px}.group-row{grid-template-columns:56px 1fr 110px}}
-@media (max-width:760px){#g100Page .card{width:99vw;padding:8px}.row-title .zh{font-size:14px}.row-chart .val,.gvalue{font-size:13px}.sum-main{font-size:34px}.sum-head{font-size:16px}.sum-sub{font-size:15px}}
+@media (max-width:760px){#g100Page .card{width:100%;padding:8px}.row-title .zh{font-size:14px}.row-chart .val,.gvalue{font-size:13px}.sum-main{font-size:34px}.sum-head{font-size:16px}.sum-sub{font-size:15px}}
+
+/* G100-only layout containment: prevent right overflow */
+body:has(#g100Page.active) .wrap{max-width:1580px;width:100%;padding:12px 20px 80px;margin:0 auto;}
+#g100Page, #g100Page > .card, #g100Page .g100-panel, #g100Page .g100-dashboard{min-width:0;max-width:100%;}
+#g100Page .dash-top > *,#g100Page .dash-groups > *,#g100Page .g100-dash-row > *{min-width:0;}
+#g100Page .g100-brief-panel{overflow:hidden;}
+@media(max-width:1600px){body:has(#g100Page.active) .wrap{padding-left:12px;padding-right:12px;}}
