@@ -1327,14 +1327,14 @@ for(let i=0;i<S.g.rows.length;i++){
  else if(!converted.ok){flag='unit';process='單位待確認 / Chưa rõ đơn vị';reason='未完工量 > 0，但單位無法換算成雙，暫不統計 / Chưa quy đổi được sang đôi, chưa thống kê';unknownUnit++;}
  else {flag='unfinished';process='未完工／納入 / Chưa HC / Được tính';reason='mo_num − mo_fnum02 > 0，納入統計 / Số lượng còn lại > 0, được tính';}
  const is86=bill==='86',is88=bill==='88',special=['T','G2','F'].includes(group);
- const priority=is86?(with96?1:2):(is88&&special?(with96?3:4):5);
+ const priority=is86?(with96?1:2):(is88&&special?(with96?3:5):(with96?4:6));
  const entry={priority,mo_id:r.mo_id,mo_oid:r.mo_oid,cid:tuple[0],oid:tuple[1],item:tuple[2],key:k,bill:bill||'—',group:group==='UNKNOWN'?'其他（組別未匹配）/ Khác (chưa khớp nhóm)':group==='OTHER'?'其他 / Khác':group,groupCode:group==='UNKNOWN'?'OTHER':group,with96:with96?'有 / Có':'未匹配 / Chưa khớp',matched:with96,pairs:flag==='unfinished'?converted.v:null,date:r.mo_date,receive:r.co_transdate,unit:r.mo_unit,source:remainder,mo_num:hasNums?numeric(raw1):raw1,mo_fnum02:hasNums?numeric(raw2):raw2,rawRemain:remainder,process,reason,flag,method:isMG(r)?'MG 明細 / Chi tiết MG':'一般排程 / Đơn thường',status:!k?'缺比對鍵 / Thiếu khóa':!o?'組別未匹配 / Chưa khớp nhóm':'正常 / Hợp lệ',origLine:i+2};
  checks.push(entry);
  if(flag!=='unfinished')continue;
  if(!k)missingKey++;if(!o)missingOrder++;
  rows.push(entry);
 }
-rows.sort((a,b)=>a.priority-b.priority||(a.priority===5?Number(b.matched)-Number(a.matched):0)||sortTime(a.date).localeCompare(sortTime(b.date))||sortTime(a.receive).localeCompare(sortTime(b.receive)));
+rows.sort((a,b)=>a.priority-b.priority||sortTime(a.date).localeCompare(sortTime(b.date))||sortTime(a.receive).localeCompare(sortTime(b.receive)));
 const result={rows,checks,hasGroup,groupCol,unknownUnit,missingKey,missingOrder,missing96,files:{...S.files},date:new Date().toLocaleString(),totals:{}}; const countNets=arr=>new Set(arr.map(x=>x.key||'ROW:'+x.origLine)).size; const sumPairs=arr=>arr.reduce((s,x)=>s+(x.pairs||0),0); result.all={n:countNets(rows),q:sumPairs(rows),lines:rows.length}; const matchedRows=rows.filter(x=>x.matched); result.match96={n:countNets(matchedRows),q:sumPairs(matchedRows),lines:matchedRows.length};
 for(const [id,label]of CATS){const subset=rows.filter(r=>includes(r,id));const unique=new Set(subset.map(x=>x.key||'ROW:'+x.origLine));result.totals[id]={n:unique.size,q:subset.reduce((sum,r)=>sum+(r.pairs||0),0),unknown:subset.filter(r=>r.pairs===null).length}}
 S.out=result;S.selected='all';S.selectedState='all';S.checkPage=0;renderBrief();renderSummary();renderDetail();renderCheck();
@@ -1349,77 +1349,73 @@ function renderBrief(){
   const box=$('g100Brief'); if(!box) return;
   const panel=box.closest('.g100-brief-panel');
   if(panel)panel.classList.toggle('hidden',!S.out);
-  if(!S.out){box.innerHTML='<p class="g100-report-caption">統計完成後會在此顯示：總未完工、有帶子、警示與優先順序圖表。/ Sau khi thống kê sẽ hiển thị tổng chưa HC, đã có dây, cảnh báo và biểu đồ ưu tiên.</p>';return;}
-  const rows=S.out.rows||[];
-  const total=metric(rows), with96=metric(rows.filter(r=>r.matched));
-  const days=(with96.q||0)/120000;
-  const warningState=days>4?'alert':days>=3.5?'warn':'ok';
-  const warningTitle=days>4?'超過 4 天 / Vượt 4 ngày':days>=3.5?'接近 4 天 / Gần 4 ngày':'正常 / Bình thường';
-  const warningText=days>4?'請調整人力 / Cần điều động nhân lực':days>=3.5?'請注意安排 / Cần chú ý sắp xếp':'有帶子量未超過 4 天 / Lượng có dây chưa vượt 4 ngày';
+  if(!S.out){box.innerHTML='<p class="g100-report-caption">統計完成後會在此顯示：總未完工、有帶子、4 天警示與 6 類優先順序圖表。/ Sau khi thống kê sẽ hiển thị tổng chưa HC, đã có dây, cảnh báo 4 ngày và biểu đồ ưu tiên 6 loại.</p>';return;}
 
-  const p1=rows.filter(r=>r.priority===1), p2=rows.filter(r=>r.priority===2), p3=rows.filter(r=>r.priority===3), p4=rows.filter(r=>r.priority===4);
-  const p5y=rows.filter(r=>r.priority===5 && r.matched), p5n=rows.filter(r=>r.priority===5 && !r.matched);
+  const rows=S.out.rows||[];
   const mm=arr=>metric(arr);
-  const pri=[
-    {no:1,color:'red',zh:'86 單＋有帶子',vi:'Đơn 86 + đã có dây',arr:p1,nets:mm(p1).n,pairs:mm(p1).q},
-    {no:2,color:'orange',zh:'86 單',vi:'Đơn 86',arr:p2,nets:mm(p2).n,pairs:mm(p2).q},
-    {no:3,color:'green',zh:'88 單 T / G2 / F＋有帶子',vi:'Đơn 88 nhóm T / G2 / F + đã có dây',arr:p3,nets:mm(p3).n,pairs:mm(p3).q},
-    {no:4,color:'blue',zh:'88 單 T / G2 / F',vi:'Đơn 88 nhóm T / G2 / F',arr:p4,nets:mm(p4).n,pairs:mm(p4).q},
-    {no:5,color:'purple',zh:'其他單',vi:'Đơn khác',arr:p5y.concat(p5n),nets:'-',pairs:null}
-  ];
-  const maxPairs=Math.max(...pri.slice(0,4).map(x=>x.pairs||0),1);
-  const barW=v=>Math.max(8,Math.round((v/maxPairs)*100));
-  const priorityRows=pri.map(item=>{
-    if(item.no===5){
-      return `<div class="g100-dash-row row-${item.color}">
-        <div class="rank-badge ${item.color}">${item.no}</div>
-        <div class="row-title"><div class="zh">${E(item.zh)}</div><div class="vi">${E(item.vi)}</div></div>
-        <div class="row-chart otherchart">
-          <div class="other-rule">其他有帶子先做，沒帶子按開單順序<br><span>Đơn khác: có dây làm trước, không có dây làm theo thứ tự mở đơn</span></div>
-        </div>
-        <div class="row-net">-</div>
-      </div>`;
-    }
-    return `<div class="g100-dash-row row-${item.color}">
+  const total=mm(rows), withTag=mm(rows.filter(r=>r.matched));
+  const p1=rows.filter(r=>r.priority===1);
+  const p2=rows.filter(r=>r.priority===2);
+  const p3=rows.filter(r=>r.priority===3);
+  const p4=rows.filter(r=>r.priority===4);
+  const p5=rows.filter(r=>r.priority===5);
+  const p6=rows.filter(r=>r.priority===6);
+
+  const priorities=[
+    {no:1,color:'red',zh:'86 單＋有帶子',vi:'Đơn 86 + đã có dây',arr:p1},
+    {no:2,color:'orange',zh:'86 單',vi:'Đơn 86',arr:p2},
+    {no:3,color:'green',zh:'88 單 T / G2 / F＋有帶子',vi:'Đơn 88 nhóm T / G2 / F + đã có dây',arr:p3},
+    {no:4,color:'teal',zh:'其他單＋有帶子',vi:'Đơn khác + đã có dây',arr:p4},
+    {no:5,color:'blue',zh:'88 單 T / G2 / F',vi:'Đơn 88 nhóm T / G2 / F',arr:p5},
+    {no:6,color:'purple',zh:'其他單',vi:'Đơn khác',arr:p6}
+  ].map(x=>({...x,m:mm(x.arr)}));
+
+  const days=(withTag.q||0)/120000;
+  const capacity=120000, alertPairs=480000;
+  const warningState=days>4?'alert':days>=3.5?'warn':'ok';
+  const warningTitle=days>4?'警示 / Cảnh báo':days>=3.5?'注意 / Chú ý':'正常 / Bình thường';
+  const warningText=days>4?'有帶子量超過 4 天，請調整人力 / Lượng có dây vượt 4 ngày, cần điều động nhân lực':days>=3.5?'有帶子量接近 4 天 / Lượng có dây gần 4 ngày':'有帶子量未超過 4 天 / Lượng có dây chưa vượt 4 ngày';
+  const gaugePct=Math.min(100,Math.max(0,(days/4)*100));
+
+  const maxPairs=Math.max(...priorities.map(x=>x.m.q||0),1);
+  const barW=v=>Math.max(v>0?6:0, Math.round((v/maxPairs)*100));
+  const priorityRows=priorities.map(item=>`<div class="g100-dash-row row-${item.color}">
       <div class="rank-badge ${item.color}">${item.no}</div>
       <div class="row-title"><div class="zh">${E(item.zh)}</div><div class="vi">${E(item.vi)}</div></div>
       <div class="row-chart">
-        <div class="track"><div class="fill ${item.color}" style="width:${barW(item.pairs)}%"></div></div>
-        <div class="val ${item.color}">${f(item.pairs)} <span>雙 / đôi</span></div>
+        <div class="track"><div class="fill ${item.color}" style="width:${barW(item.m.q)}%"></div></div>
+        <div class="val ${item.color}">${f(item.m.q)} <span>雙 / đôi</span></div>
       </div>
-      <div class="row-net">${f(item.nets)} <span>筆 / nét</span></div>
-    </div>`;
-  }).join('');
+      <div class="row-net">${f(item.m.n)} <span>筆 / nét</span></div>
+    </div>`).join('');
 
   const buildGroup=(bill,codes)=>{
     const base=rows.filter(r=>r.bill===bill && (bill!=='88' || ['T','G2','F'].includes(r.groupCode)));
-    const lines=codes.map(c=>{
-      const arr=base.filter(r=>r.groupCode===c);
-      const m=mm(arr);
-      return {code:c,label:c==='OTHER'?'其他 / Khác':c,val:m.q};
-    });
-    const mx=Math.max(...lines.map(x=>x.val),1);
-    return lines.map(x=>`<div class="group-row"><div class="glabel">${x.label}</div><div class="gtrack"><div class="gfill ${bill==='86'?'b86':'b88'} ${x.code==='G2'?'g2':''} ${x.code==='F'?'f':''} ${x.code==='OTHER'?'other':''}" style="width:${Math.max(2,Math.round(x.val/mx*100))}%"></div></div><div class="gvalue">${f(x.val)} <span>雙 / đôi</span></div></div>`).join('');
+    const items=codes.map(code=>{const arr=base.filter(r=>r.groupCode===code);return {code,label:code==='OTHER'?'其他 / Khác':code,val:mm(arr).q};});
+    const mx=Math.max(...items.map(x=>x.val),1);
+    return items.map(x=>`<div class="group-row"><div class="glabel">${E(x.label)}</div><div class="gtrack"><div class="gfill ${bill==='86'?'b86':'b88'} ${x.code==='G2'?'g2':''} ${x.code==='F'?'f':''} ${x.code==='OTHER'?'other':''}" style="width:${Math.max(x.val>0?3:0,Math.round((x.val/mx)*100))}%"></div></div><div class="gvalue">${f(x.val)} <span>雙 / đôi</span></div></div>`).join('');
   };
-
-  const gaugePct=Math.min(100,Math.max(0,days/4*100));
 
   box.innerHTML=`<div class="g100-dashboard">
     <div class="dash-top">
       <section class="sum-card blue">
         <div class="sum-head">總未完工 / Tổng chưa HC</div>
         <div class="sum-main">${f(total.q)} <span>雙 / đôi</span></div>
-        <div class="sum-sub">${f(total.n)} 筆 / nét</div>
+        <div class="sum-sub one">${f(total.n)} 筆 / nét</div>
       </section>
       <section class="sum-card green">
         <div class="sum-head">有帶子 / Đã có dây</div>
-        <div class="sum-main">${f(with96.q)} <span>雙 / đôi</span></div>
-        <div class="sum-sub two"><span>${f(with96.n)} 筆 / nét</span><span>${days.toFixed(2)} 天 / ngày</span></div>
+        <div class="sum-main">${f(withTag.q)} <span>雙 / đôi</span></div>
+        <div class="sum-sub two"><span>${f(withTag.n)} 筆 / nét</span><span>${days.toFixed(2)} 天 / ngày</span></div>
       </section>
-      <section class="sum-card alert ${warningState}">
+      <section class="sum-card red ${warningState}">
         <div class="sum-head">4 天警示 / Cảnh báo 4 ngày</div>
-        <div class="gauge-line"><div class="gauge-bar"><div class="gauge-fill ${warningState}" style="width:${gaugePct}%"></div></div><div class="gauge-markers"><span>0天</span><span>2天</span><span>4天</span></div></div>
+        <div class="gauge-box">
+          <div class="gauge-bar"><div class="gauge-fill ${warningState}" style="width:${gaugePct}%"></div></div>
+          <div class="gauge-markers"><span>0天</span><span>2天</span><span>4天</span></div>
+        </div>
         <div class="warn-box ${warningState}"><strong>${warningTitle}</strong><span>${warningText}</span></div>
+        <div class="cap-note">產能：${f(capacity)} 雙/天；警示線：4 天 = ${f(alertPairs)} 雙<br><span>Năng lực: ${f(capacity)} đôi/ngày; Mức cảnh báo: 4 ngày = ${f(alertPairs)} đôi</span></div>
       </section>
     </div>
     <section class="dash-priority">
@@ -1437,7 +1433,6 @@ function renderBrief(){
       </section>
     </div>
   </div>`;
-  setTimeout(()=>{try{panel?.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}},50);
 }
 
 function renderSummary(){

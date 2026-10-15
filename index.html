@@ -360,12 +360,13 @@
 <div class="g100-panel"><h3>④ 排程優先順序（固定規則）/ Thứ tự ưu tiên sắp đơn</h3>
 <div class="g100-scroll"><table><thead><tr><th>順序 / Thứ tự</th><th>先做哪一類 / Loại đơn làm trước</th><th>組別 / Nhóm</th></tr></thead><tbody id="g100PriorityRules">
 <tr><td><strong>1</strong></td><td>86 單＋有帶子 / Đơn 86 + đã có dây</td><td>T / G2 / F / 其他（Khác）</td></tr>
-<tr><td><strong>2</strong></td><td>86 單－未確認有帶子 / Đơn 86 - chưa xác nhận có dây</td><td>T / G2 / F / 其他（Khác）</td></tr>
+<tr><td><strong>2</strong></td><td>86 單 / Đơn 86</td><td>T / G2 / F / 其他（Khác）</td></tr>
 <tr><td><strong>3</strong></td><td>88 單 T/G2/F＋有帶子 / Đơn 88 nhóm T/G2/F + đã có dây</td><td>T / G2 / F</td></tr>
-<tr><td><strong>4</strong></td><td>88 單 T/G2/F－未確認有帶子 / Đơn 88 nhóm T/G2/F - chưa xác nhận có dây</td><td>T / G2 / F</td></tr>
-<tr><td><strong>5</strong></td><td>其他單：有帶子先做，其餘依開單順序 / Đơn khác: có dây làm trước, còn lại theo thứ tự mở đơn</td><td>其他單 / Đơn khác</td></tr>
+<tr><td><strong>4</strong></td><td>其他單＋有帶子 / Đơn khác + đã có dây</td><td>其他單 / Đơn khác</td></tr>
+<tr><td><strong>5</strong></td><td>88 單 T/G2/F / Đơn 88 nhóm T/G2/F</td><td>T / G2 / F</td></tr>
+<tr><td><strong>6</strong></td><td>其他單 / Đơn khác</td><td>其他單 / Đơn khác</td></tr>
 </tbody></table></div>
-<p class="g100-hint">同一類別內依 G100 開單日由早到晚。沒有匹配到 96 XNK 不代表確定沒有帶子。G100 未完工＝mo_num − mo_fnum02，只納入大於 0 的明細；9D 為雙，9P ÷ 2 換成雙。 / Trong cùng nhóm, ưu tiên ngày mở đơn G100 sớm hơn. Không khớp 96 XNK không có nghĩa chắc chắn không có dây. Số chưa HC = mo_num − mo_fnum02 (chỉ tính &gt; 0); 9D là đôi, 9P chia 2.</p></div>
+<p class="g100-hint">同一類別內依 G100 開單日由早到晚。主圖 6 類總和＝總未完工；有帶子＝第 1＋3＋4 類；86 組別＝第 1＋2 類；88 組別＝第 3＋5 類。G100 未完工＝mo_num − mo_fnum02，只納入大於 0 的明細；9D 為雙，9P ÷ 2 換成雙。 / Trong cùng nhóm, ưu tiên ngày mở đơn G100 sớm hơn. Tổng 6 loại ở biểu đồ chính = tổng chưa HC; đã có dây = loại 1+3+4; nhóm đơn 86 = loại 1+2; nhóm đơn 88 = loại 3+5. Số chưa HC = mo_num − mo_fnum02 (chỉ tính &gt; 0); 9D là đôi, 9P chia 2.</p></div>
 <div class="g100-panel g100-report"><h3>⑤ G100 未完工統計 / Thống kê G100 chưa HC</h3>
 <p class="g100-report-caption">完整核對表：總未完工、有帶子、未確認有帶子；每格顯示 NET 與雙數。/ Bảng kiểm tra: tổng chưa HC, đã có dây và chưa xác nhận có dây; mỗi ô hiển thị số nét và số đôi.</p>
 <div class="g100-scroll g100-summary-scroll"><table id="g100SummaryTable" class="g100-report-table"><thead><tr><th>單別／組別<br><small>Loại đơn / Nhóm</small></th><th>總未完工<br><small>Tổng chưa HC</small></th><th>有帶子<br><small>Đã có dây</small></th><th>未確認有帶子<br><small>Chưa xác nhận có dây</small></th></tr></thead><tbody><tr><td colspan="4">尚未分析 / Chưa phân tích</td></tr></tbody></table></div>
