@@ -1349,42 +1349,97 @@ function renderBrief(){
   const box=$('g100Brief'); if(!box) return;
   const panel=box.closest('.g100-brief-panel');
   if(panel)panel.classList.toggle('hidden',!S.out);
-  if(!S.out){box.innerHTML='<p class="g100-report-caption">統計完成後會在此顯示：總未完工、有帶子、可做天數與 1～5 順序。/ Sau khi thống kê sẽ hiển thị tổng chưa HC, đã có dây, số ngày có thể làm và thứ tự 1–5.</p>';return;}
+  if(!S.out){box.innerHTML='<p class="g100-report-caption">統計完成後會在此顯示：總未完工、有帶子、警示與優先順序圖表。/ Sau khi thống kê sẽ hiển thị tổng chưa HC, đã có dây, cảnh báo và biểu đồ ưu tiên.</p>';return;}
   const rows=S.out.rows||[];
   const total=metric(rows), with96=metric(rows.filter(r=>r.matched));
   const days=(with96.q||0)/120000;
-  const warnClass=days>4?'alert':days>=3.5?'warn':'ok';
-  const warnText=days>4?'警示：有帶子量超過 4 天，請調整人力 / Cảnh báo: lượng có dây vượt 4 ngày, cần điều động nhân lực':days>=3.5?'注意：有帶子量接近 4 天 / Chú ý: lượng có dây gần 4 ngày':'正常：有帶子量未超過 4 天 / Bình thường: lượng có dây chưa vượt 4 ngày';
+  const warningState=days>4?'alert':days>=3.5?'warn':'ok';
+  const warningTitle=days>4?'超過 4 天 / Vượt 4 ngày':days>=3.5?'接近 4 天 / Gần 4 ngày':'正常 / Bình thường';
+  const warningText=days>4?'請調整人力 / Cần điều động nhân lực':days>=3.5?'請注意安排 / Cần chú ý sắp xếp':'有帶子量未超過 4 天 / Lượng có dây chưa vượt 4 ngày';
+
   const p1=rows.filter(r=>r.priority===1), p2=rows.filter(r=>r.priority===2), p3=rows.filter(r=>r.priority===3), p4=rows.filter(r=>r.priority===4);
-  const p5y=rows.filter(r=>r.priority===5&&r.matched), p5n=rows.filter(r=>r.priority===5&&!r.matched);
+  const p5y=rows.filter(r=>r.priority===5 && r.matched), p5n=rows.filter(r=>r.priority===5 && !r.matched);
   const mm=arr=>metric(arr);
-  const makeCard=(no,title,vi,arr,subsHtml='',extraHtml='')=>{const m=mm(arr);return `<section class="g100-pri-card"><div class="g100-pri-head"><div class="g100-pri-no">${no}</div><div><h4 class="g100-pri-title">${E(title)}<small>${E(vi)}</small></h4></div></div><div class="g100-pri-nums"><div class="g100-num-block"><strong>${f(m.q)}</strong><span>雙 / đôi</span></div><div class="g100-num-block"><strong>${f(m.n)}</strong><span>筆 / nét</span></div></div>${subsHtml||extraHtml}</section>`};
-  const subHtml=(arr,codes=['T','G2','F','OTHER'])=>`<div class="g100-subgroups">${breakdown(arr,codes).map(g=>`<div class="row"><div class="name">${E(g.label)}</div><div class="pair">${f(g.q)} đôi</div><div class="net">${f(g.n)} nét</div></div>`).join('')}</div>`;
-  const otherHtml=`<div class="g100-other-split">
-      <div class="g100-other-item"><div class="label">其他單－有帶子 / Đơn khác - có dây</div><div class="pair">${f(mm(p5y).q)} đôi</div><div class="net">${f(mm(p5y).n)} nét</div></div>
-      <div class="g100-other-item"><div class="label">其他單－未確認有帶子 / Đơn khác - chưa xác nhận có dây</div><div class="pair">${f(mm(p5n).q)} đôi</div><div class="net">${f(mm(p5n).n)} nét</div></div>
+  const pri=[
+    {no:1,color:'red',zh:'86 單＋有帶子',vi:'Đơn 86 + đã có dây',arr:p1,nets:mm(p1).n,pairs:mm(p1).q},
+    {no:2,color:'orange',zh:'86 單',vi:'Đơn 86',arr:p2,nets:mm(p2).n,pairs:mm(p2).q},
+    {no:3,color:'green',zh:'88 單 T / G2 / F＋有帶子',vi:'Đơn 88 nhóm T / G2 / F + đã có dây',arr:p3,nets:mm(p3).n,pairs:mm(p3).q},
+    {no:4,color:'blue',zh:'88 單 T / G2 / F',vi:'Đơn 88 nhóm T / G2 / F',arr:p4,nets:mm(p4).n,pairs:mm(p4).q},
+    {no:5,color:'purple',zh:'其他單',vi:'Đơn khác',arr:p5y.concat(p5n),nets:'-',pairs:null}
+  ];
+  const maxPairs=Math.max(...pri.slice(0,4).map(x=>x.pairs||0),1);
+  const barW=v=>Math.max(8,Math.round((v/maxPairs)*100));
+  const priorityRows=pri.map(item=>{
+    if(item.no===5){
+      return `<div class="g100-dash-row row-${item.color}">
+        <div class="rank-badge ${item.color}">${item.no}</div>
+        <div class="row-title"><div class="zh">${E(item.zh)}</div><div class="vi">${E(item.vi)}</div></div>
+        <div class="row-chart otherchart">
+          <div class="other-rule">其他有帶子先做，沒帶子按開單順序<br><span>Đơn khác: có dây làm trước, không có dây làm theo thứ tự mở đơn</span></div>
+        </div>
+        <div class="row-net">-</div>
+      </div>`;
+    }
+    return `<div class="g100-dash-row row-${item.color}">
+      <div class="rank-badge ${item.color}">${item.no}</div>
+      <div class="row-title"><div class="zh">${E(item.zh)}</div><div class="vi">${E(item.vi)}</div></div>
+      <div class="row-chart">
+        <div class="track"><div class="fill ${item.color}" style="width:${barW(item.pairs)}%"></div></div>
+        <div class="val ${item.color}">${f(item.pairs)} <span>雙 / đôi</span></div>
+      </div>
+      <div class="row-net">${f(item.nets)} <span>筆 / nét</span></div>
     </div>`;
-  box.innerHTML=`<div class="g100-brief-top">
-      <section class="g100-big-card">
-        <h4>總未完工 / Tổng chưa HC</h4>
-        <div class="g100-big-main">${f(total.q)} <small>đôi</small></div>
-        <div class="g100-big-sub">${f(total.n)} nét</div>
+  }).join('');
+
+  const buildGroup=(bill,codes)=>{
+    const base=rows.filter(r=>r.bill===bill && (bill!=='88' || ['T','G2','F'].includes(r.groupCode)));
+    const lines=codes.map(c=>{
+      const arr=base.filter(r=>r.groupCode===c);
+      const m=mm(arr);
+      return {code:c,label:c==='OTHER'?'其他 / Khác':c,val:m.q};
+    });
+    const mx=Math.max(...lines.map(x=>x.val),1);
+    return lines.map(x=>`<div class="group-row"><div class="glabel">${x.label}</div><div class="gtrack"><div class="gfill ${bill==='86'?'b86':'b88'} ${x.code==='G2'?'g2':''} ${x.code==='F'?'f':''} ${x.code==='OTHER'?'other':''}" style="width:${Math.max(2,Math.round(x.val/mx*100))}%"></div></div><div class="gvalue">${f(x.val)} <span>雙 / đôi</span></div></div>`).join('');
+  };
+
+  const gaugePct=Math.min(100,Math.max(0,days/4*100));
+
+  box.innerHTML=`<div class="g100-dashboard">
+    <div class="dash-top">
+      <section class="sum-card blue">
+        <div class="sum-head">總未完工 / Tổng chưa HC</div>
+        <div class="sum-main">${f(total.q)} <span>雙 / đôi</span></div>
+        <div class="sum-sub">${f(total.n)} 筆 / nét</div>
       </section>
-      <section class="g100-big-card">
-        <h4>有帶子 / Đã có dây</h4>
-        <div class="g100-big-main">${f(with96.q)} <small>đôi</small></div>
-        <div class="g100-big-sub">${f(with96.n)} nét ｜ ${days.toFixed(2)} 天</div>
-        <div class="g100-warning ${warnClass}">${warnText}</div>
+      <section class="sum-card green">
+        <div class="sum-head">有帶子 / Đã có dây</div>
+        <div class="sum-main">${f(with96.q)} <span>雙 / đôi</span></div>
+        <div class="sum-sub two"><span>${f(with96.n)} 筆 / nét</span><span>${days.toFixed(2)} 天 / ngày</span></div>
+      </section>
+      <section class="sum-card alert ${warningState}">
+        <div class="sum-head">4 天警示 / Cảnh báo 4 ngày</div>
+        <div class="gauge-line"><div class="gauge-bar"><div class="gauge-fill ${warningState}" style="width:${gaugePct}%"></div></div><div class="gauge-markers"><span>0天</span><span>2天</span><span>4天</span></div></div>
+        <div class="warn-box ${warningState}"><strong>${warningTitle}</strong><span>${warningText}</span></div>
       </section>
     </div>
-    <div class="g100-priority-board">
-      ${makeCard(1,'86 單＋有帶子','Đơn 86 + đã có dây',p1,subHtml(p1))}
-      ${makeCard(2,'86 單－未確認有帶子','Đơn 86 - chưa xác nhận có dây',p2,subHtml(p2))}
-      ${makeCard(3,'88 單 T / G2 / F＋有帶子','Đơn 88 nhóm T / G2 / F + đã có dây',p3,subHtml(p3,['T','G2','F']))}
-      ${makeCard(4,'88 單 T / G2 / F－未確認有帶子','Đơn 88 nhóm T / G2 / F - chưa xác nhận có dây',p4,subHtml(p4,['T','G2','F']))}
-      ${makeCard(5,'其他單','Đơn khác',p5y.concat(p5n),'',otherHtml)}
-    </div>`;
+    <section class="dash-priority">
+      <h4>今日優先順序 / Thứ tự ưu tiên hôm nay</h4>
+      <div class="dash-priority-rows">${priorityRows}</div>
+    </section>
+    <div class="dash-groups">
+      <section class="group-card b86">
+        <h4>86 單組別 / Nhóm đơn 86</h4>
+        ${buildGroup('86',['T','G2','F','OTHER'])}
+      </section>
+      <section class="group-card b88">
+        <h4>88 單組別 / Nhóm đơn 88</h4>
+        ${buildGroup('88',['T','G2','F'])}
+      </section>
+    </div>
+  </div>`;
+  setTimeout(()=>{try{panel?.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}},50);
 }
+
 function renderSummary(){
   const categories=[['all','G100 總未完工 / Tổng G100 chưa HC',0],['86','86 單 / Đơn 86',0],...['T','G2','F','OTHER'].map(g=>['86:'+g,'　'+(g==='OTHER'?'其他組別 / Nhóm khác':g+' 組 / Nhóm '+g),1]),['87','87 單 / Đơn 87',0],['88','88 單 / Đơn 88',0],...['T','G2','F','OTHER'].map(g=>['88:'+g,'　'+(g==='OTHER'?'其他組別 / Nhóm khác':g+' 組 / Nhóm '+g),1]),['89','89 單 / Đơn 89',0],['otherbill','其他單別 / Loại đơn khác',0]];
   let body='';
