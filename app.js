@@ -1402,11 +1402,13 @@ function renderBrief(){
         <div class="sum-head">總未完工 / Tổng chưa HC</div>
         <div class="sum-main">${f(total.q)} <span>雙 / đôi</span></div>
         <div class="sum-sub one">${f(total.n)} 筆 / nét</div>
+        <div class="g100-source-line">加總來源：①+②+③+④+⑤+⑥ / Tổng mục 1+2+3+4+5+6</div>
       </section>
       <section class="sum-card green">
         <div class="sum-head">有帶子 / Đã có dây</div>
         <div class="sum-main">${f(withTag.q)} <span>雙 / đôi</span></div>
         <div class="sum-sub two"><span>${f(withTag.n)} 筆 / nét</span><span>${days.toFixed(2)} 天 / ngày</span></div>
+        <div class="g100-source-line">加總來源：①+③+④ / Tổng mục 1+3+4</div>
       </section>
       <section class="sum-card red ${warningState}">
         <div class="sum-head">4 天警示 / Cảnh báo 4 ngày</div>
@@ -1426,10 +1428,12 @@ function renderBrief(){
       <section class="group-card b86">
         <h4>86 單組別 / Nhóm đơn 86</h4>
         ${buildGroup('86',['T','G2','F','OTHER'])}
+        <div class="g100-source-line">加總來源：①+② / Tổng mục 1+2</div>
       </section>
       <section class="group-card b88">
         <h4>88 單組別 / Nhóm đơn 88</h4>
         ${buildGroup('88',['T','G2','F'])}
+        <div class="g100-source-line">加總來源：③+⑤ / Tổng mục 3+5</div>
       </section>
     </div>
   </div>`;

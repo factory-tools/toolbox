@@ -355,3 +355,7 @@ body.g100-layout-active #g100Page .g100-panel{min-width:0;max-width:100%;}
 body.g100-layout-active #g100Page .g100-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
 body.g100-layout-active #g100Page .g100-dashboard,body.g100-layout-active #g100Page .g100-brief{min-width:0;max-width:100%;}
 @media(max-width:900px){body.g100-layout-active main.wrap{padding-left:8px;padding-right:8px;}body.g100-layout-active #g100Page .g100-grid{grid-template-columns:1fr;}}
+
+/* G100: small bilingual source notes, only in existing dashboard */
+#g100Page .g100-source-line{font-size:12px;line-height:1.2;font-weight:600;color:#64748b;white-space:nowrap;letter-spacing:0;margin-top:4px;}
+#g100Page .group-card .g100-source-line{margin-top:6px;padding-top:3px;border-top:1px solid rgba(100,116,139,.12);}
