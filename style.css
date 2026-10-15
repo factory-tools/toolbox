@@ -282,3 +282,36 @@
 
 /* G100 row-by-row reconciliation only; does not affect other tools */
 #g100Page .g100-check-controls{display:grid;grid-template-columns:230px minmax(260px,1fr);gap:12px;margin:12px 0}#g100Page .g100-check-controls label{display:flex;flex-direction:column;gap:5px;color:#334d67;font-size:13px;font-weight:650}#g100Page .g100-check-controls select,#g100Page .g100-check-controls input{width:100%;background:#fff;border:1px solid #cbd6e4;border-radius:8px;padding:9px;color:#1f354b}#g100Page .g100-check-stats{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}#g100Page .g100-check-stat{background:#eaf1fa;border:1px solid #d3e1ef;padding:8px 12px;border-radius:8px;font-size:12px}#g100Page .g100-check-stat b{color:#143b69;font-size:18px;margin-right:5px}#g100Page .g100-check-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0;font-size:13px}#g100Page .g100-check-nav button{padding:7px 12px;margin-left:6px;border-radius:7px;border:1px solid #b8c9dc;background:#fff;color:#153e70;cursor:pointer}#g100Page .g100-check-nav button:disabled{opacity:.4;cursor:default}#g100Page .g100-check-scroll{max-height:560px}#g100Page .g100-check-scroll table{min-width:1720px}#g100Page .g100-check-finished{background:#f1f5f9}#g100Page .g100-check-abnormal,#g100Page .g100-check-missing{background:#fff1ed}#g100Page .g100-check-unit{background:#fff8e1}#g100Page .g100-check-unfinished{background:#f3faf6}@media(max-width:680px){#g100Page .g100-check-controls{grid-template-columns:1fr}#g100Page .g100-check-nav{flex-wrap:wrap}}
+
+
+/* G100 簡潔看板 */
+.g100-brief{display:flex;flex-direction:column;gap:16px;}
+.g100-brief-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
+.g100-big-card{border:1px solid #d7dfef;border-radius:14px;background:#f7faff;padding:16px 18px;box-shadow:0 2px 10px rgba(24,58,116,.05);}
+.g100-big-card h4{margin:0 0 10px;font-size:20px;color:#15356b;}
+.g100-big-main{font-size:34px;font-weight:800;line-height:1.1;color:#10284f;}
+.g100-big-sub{margin-top:6px;color:#576680;font-size:18px;font-weight:700;}
+.g100-warning{margin-top:10px;padding:8px 10px;border-radius:10px;font-size:15px;font-weight:700;}
+.g100-warning.ok{background:#eaf7ee;color:#1a6a31;}
+.g100-warning.alert{background:#fff0f0;color:#b42318;}
+.g100-warning.warn{background:#fff8e8;color:#a15c00;}
+.g100-priority-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;}
+.g100-pri-card{border:1px solid #d7dfef;border-radius:14px;background:#fff;padding:14px 16px;}
+.g100-pri-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.g100-pri-no{width:36px;height:36px;min-width:36px;border-radius:999px;background:#15356b;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.g100-pri-title{margin:0;font-size:19px;color:#15356b;line-height:1.2;}
+.g100-pri-title small{display:block;margin-top:4px;color:#56647e;font-size:14px;font-weight:600;}
+.g100-pri-nums{display:flex;gap:22px;flex-wrap:wrap;margin:10px 0 8px;}
+.g100-num-block strong{display:block;font-size:26px;line-height:1.1;color:#10284f;}
+.g100-num-block span{display:block;color:#56647e;font-size:13px;font-weight:700;}
+.g100-subgroups{margin-top:8px;border-top:1px dashed #d7dfef;padding-top:8px;display:grid;gap:6px;}
+.g100-subgroups .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;font-size:14px;}
+.g100-subgroups .name{color:#364966;font-weight:700;}
+.g100-subgroups .pair{font-weight:800;color:#173b75;}
+.g100-subgroups .net{color:#60708d;}
+.g100-other-split{display:grid;gap:8px;margin-top:8px;border-top:1px dashed #d7dfef;padding-top:8px;}
+.g100-other-item{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;}
+.g100-other-item .label{font-weight:700;color:#364966;}
+.g100-other-item .pair{font-weight:800;color:#173b75;}
+.g100-other-item .net{color:#60708d;}
+@media (max-width:720px){.g100-big-main{font-size:28px}.g100-pri-title{font-size:17px}.g100-num-block strong{font-size:22px}}
