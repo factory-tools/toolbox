@@ -1296,7 +1296,29 @@ function key96(r){
 }
 function inKeo(r){return /in\s*keo/i.test(trim(r.MO_Command))};
 function units(q,u){const s=norm(u);if(s==='9D')return {v:q,ok:true,formula:'9D → 雙'};if(s==='9P')return {v:q/2,ok:true,formula:'9P → PC ÷ 2'};return {v:null,ok:false,formula:'無換算 / Chưa có quy đổi: '+s}}
-function parseCsv(s){const res=[];let row=[],cell='',quote=false;for(let i=0;i<s.length;i++){const c=s[i];if(c==='"'){if(quote&&s[i+1]==='"'){cell+='"';i++}else quote=!quote}else if(c===','&&!quote){row.push(cell);cell=''}else if((c==='\n'||c==='\r')&&!quote){if(c==='\r'&&s[i+1]==='\n')i++;row.push(cell);if(row.some(x=>x!==''))res.push(row);row=[];cell=''}else cell+=c}row.push(cell);if(row.some(x=>x!==''))res.push(row);const head=(res.shift()||[]).map(x=>trim(x).replace(/^\uFEFF/,''));return {head,rows:res.map(a=>Object.fromEntries(head.map((h,i)=>[h,a[i]??''])))};}
+function parseCsv(s){
+  // CSV 中的文字可能有單獨的引號，只有欄位開頭的雙引號才是引用欄位；避免整列資料被錯誤合併。
+  const res=[];let row=[],cell='',quoted=false,atStart=true;
+  const finish=()=>{row.push(cell);if(row.some(x=>x!==''))res.push(row);row=[];cell='';atStart=true};
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(quoted){
+      if(c==='"'){
+        if(s[i+1]==='"'){cell+='"';i++}
+        else if(i===s.length-1||s[i+1]===','||s[i+1]==='\r'||s[i+1]==='\n')quoted=false;
+        else cell+='"';
+      }else cell+=c;
+    }else if(c==='"'&&atStart){quoted=true;atStart=false}
+    else if(c===','){row.push(cell);cell='';atStart=true}
+    else if(c==='\r'||c==='\n'){if(c==='\r'&&s[i+1]==='\n')i++;finish()}
+    else{cell+=c;atStart=false}
+  }
+  if(row.length||cell)finish();
+  const head=(res.shift()||[]).map(x=>trim(x).replace(/^\uFEFF/,''));
+  const wrong=res.findIndex(r=>r.length!==head.length);
+  if(wrong!==-1)throw Error('CSV 欄位數不一致，第 '+(wrong+2)+' 列；請確認匯出格式 / Số cột CSV không khớp ở dòng '+(wrong+2));
+  return {head,rows:res.map(a=>Object.fromEntries(head.map((h,i)=>[h,a[i]??''])))};
+}
 async function loadFile(file,type){let parsed;if(/\.csv$/i.test(file.name)){const bytes=await file.arrayBuffer();let str=new TextDecoder('utf-8',{fatal:false}).decode(bytes);if(str.includes('\ufffd')){try{str=new TextDecoder('big5').decode(bytes)}catch(e){}}parsed=parseCsv(str)}else if(/\.xlsx?$/i.test(file.name)){if(!window.XLSX)throw Error('Excel 讀取套件未載入，請使用 CSV / Không tải được thư viện Excel; hãy sử dụng CSV');const book=window.XLSX.read(await file.arrayBuffer(),{type:'array'});const sheet=book.Sheets[book.SheetNames[0]];const rows=window.XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});parsed={head:Object.keys(rows[0]||{}),rows}}else throw Error('僅支援 CSV／Excel / Chỉ hỗ trợ CSV／Excel');const missing=COL[type].filter(h=>!parsed.head.includes(h));if(missing.length)throw Error('缺少必要來源欄位 / Thiếu cột nguồn: '+missing.join(', '));S[type]=parsed;S.files[type]=file.name;return parsed.rows.length}
 
 const PRIORITY=[['86 單＋有帶子','Đơn 86 + đã có dây'],['86 單－未確認有帶子','Đơn 86 - chưa xác nhận có dây'],['88 單 T/G2/F＋有帶子','Đơn 88 nhóm T/G2/F + đã có dây'],['88 單 T/G2/F－未確認有帶子','Đơn 88 nhóm T/G2/F - chưa xác nhận có dây'],['其他單（有帶子先做，其他按開單順序）','Đơn khác (có dây làm trước, còn lại theo thứ tự mở đơn)']];
