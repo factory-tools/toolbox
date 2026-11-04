@@ -1,4 +1,138 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>印刷－LAB 相似配方搜尋</title><link rel="stylesheet" href="lab.css"></head><body><main class="wrap"><a class="back" href="../index.html">← 返回工廠工具箱 / Về hộp công cụ</a><header><h1>🎨 印刷－LAB 相似配方搜尋</h1><p>IN - Tìm công thức màu tương tự theo LAB</p></header>
-<section class="card"><h2>① 輸入新色 / Nhập màu mới</h2><div class="fields"><label>L* 明度 / Độ sáng<input id="labL" type="number" step="any" value="26.96"></label><label>a* 紅綠 / Đỏ-xanh lục<input id="labA" type="number" step="any" value="0.74"></label><label>b* 黃藍 / Vàng-xanh lam<input id="labB" type="number" step="any" value="1.52"></label><label>油墨種類 / Loại mực<select id="labInk"><option value="">全部 / Tất cả</option></select></label><label>使用部門（可不選） / Bộ phận (không bắt buộc)<select id="labDept"><option value="">全部 / Tất cả</option></select></label><label>色差公式 / Công thức sai lệch<select id="labMetric"><option value="76">ΔE76（初步搜尋 / Tìm sơ bộ）</option><option value="00">ΔE00 / CIEDE2000</option></select></label></div><div class="actions"><button id="search">搜尋最接近 10 筆 / Tìm 10 công thức gần nhất</button><button id="sync" class="outline">讀取 Ragic 最新資料 / Cập nhật từ Ragic</button></div><p id="status" class="notice" role="status">尚未載入配方資料 / Chưa tải dữ liệu công thức</p></section>
-<section class="card"><details><summary><b>資料來源與測試 / Nguồn dữ liệu và thử nghiệm</b></summary><p>正式版使用受保護的 Ragic API 連線服務。尚未設定連線時可匯入 Ragic API 匯出的 JSON 測試；不會修改 Ragic。/ Dùng kết nối API bảo mật. Có thể nhập JSON để thử, không chỉnh sửa Ragic.</p><input id="file" type="file" accept=".json,application/json"><p class="hint">請勿在公開電腦匯入機密資料。/ Không nhập dữ liệu mật trên máy công cộng.</p><button class="outline" id="sample">使用已提供的單筆範例 / Dùng ví dụ đã cung cấp</button><p class="hint">測色條件、底材及工藝需一致。只有實際 LAB 完整的配方才能排名。/ Chỉ xếp hạng công thức có LAB đầy đủ, trong điều kiện đo phù hợp.</p></details></section>
-<section class="card"><h2>② 查詢結果 / Kết quả tìm kiếm</h2><p id="count" class="hint">等待搜尋 / Chờ tìm kiếm</p><div id="results" class="results"></div></section><footer>只讀查詢工具｜不修改 Ragic 配方 / Công cụ chỉ đọc · Không sửa công thức Ragic</footer></main><script src="config.js"></script><script src="lab.js"></script></body></html>
+
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>印刷－LAB 相似配方搜尋</title>
+  <link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="../index.html">
+    ← 返回工廠工具箱 / Về hộp công cụ
+  </a>
+
+  <header>
+    <h1>🎨 印刷－LAB 相似配方搜尋</h1>
+    <p>IN - Tìm công thức màu tương tự theo LAB</p>
+  </header>
+
+  <section class="card">
+    <h2>① 輸入新色 / Nhập màu mới</h2>
+
+    <div class="fields">
+      <label>
+        L* 明度 / Độ sáng
+        <input id="labL" type="number" step="any" value="26.96">
+      </label>
+
+      <label>
+        a* 紅綠 / Đỏ-xanh lục
+        <input id="labA" type="number" step="any" value="0.74">
+      </label>
+
+      <label>
+        b* 黃藍 / Vàng-xanh lam
+        <input id="labB" type="number" step="any" value="1.52">
+      </label>
+
+      <label>
+        油墨種類 / Loại mực
+        <select id="labInk">
+          <option value="">全部 / Tất cả</option>
+        </select>
+      </label>
+
+      <label>
+        使用部門（可不選） / Bộ phận (không bắt buộc)
+        <select id="labDept">
+          <option value="">全部 / Tất cả</option>
+        </select>
+      </label>
+
+      <label>
+        色差公式 / Công thức sai lệch
+        <select id="labMetric">
+          <option value="76">
+            ΔE76（初步搜尋 / Tìm sơ bộ）
+          </option>
+          <option value="00">
+            ΔE00 / CIEDE2000
+          </option>
+        </select>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="search">
+        搜尋最接近 10 筆 / Tìm 10 công thức gần nhất
+      </button>
+
+      <button id="sync" class="outline">
+        讀取 Ragic 最新資料 / Cập nhật từ Ragic
+      </button>
+    </div>
+
+    <p id="status" class="notice" role="status">
+      尚未載入配方資料 / Chưa tải dữ liệu công thức
+    </p>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>
+        <b>資料來源與測試 / Nguồn dữ liệu và thử nghiệm</b>
+      </summary>
+
+      <p>
+        正式版使用受保護的 Ragic API 連線服務。
+        尚未設定連線時可匯入 Ragic API 匯出的 JSON 測試；
+        不會修改 Ragic。
+        / Dùng kết nối API bảo mật. Có thể nhập JSON để thử,
+        không chỉnh sửa Ragic.
+      </p>
+
+      <input id="file" type="file" accept=".json,application/json">
+
+      <p class="hint">
+        請勿在公開電腦匯入機密資料。
+        / Không nhập dữ liệu mật trên máy công cộng.
+      </p>
+
+      <button class="outline" id="sample">
+        使用已提供的單筆範例 / Dùng ví dụ đã cung cấp
+      </button>
+
+      <p class="hint">
+        測色條件、底材及工藝需一致。
+        只有實際 LAB 完整的配方才能排名。
+        / Chỉ xếp hạng công thức có LAB đầy đủ,
+        trong điều kiện đo phù hợp.
+      </p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>② 查詢結果 / Kết quả tìm kiếm</h2>
+
+    <p id="count" class="hint">
+      等待搜尋 / Chờ tìm kiếm
+    </p>
+
+    <div id="results" class="results"></div>
+  </section>
+
+  <footer>
+    只讀查詢工具｜不修改 Ragic 配方
+    / Công cụ chỉ đọc · Không sửa công thức Ragic
+  </footer>
+</main>
+
+<!-- 先載入 API 設定，再載入 LAB 主程式 -->
+<!-- 使用版本參數避免讀取舊快取 -->
+<script src="config.js?v=20261104-2"></script>
+<script src="lab.js?v=20261104-2"></script>
+
+</body>
+</html>
