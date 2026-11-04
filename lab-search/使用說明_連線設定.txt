@@ -1,0 +1,33 @@
+印刷－LAB 相似配方搜尋 / HƯỚNG DẪN
+======================================
+一、已完成
+1. 工廠工具箱首頁新增「印刷－LAB 相似配方搜尋」按鈕。
+2. 新工具採獨立目錄 lab-search/，原本 app.js、style.css、既有工具皆未修改。
+3. 可輸入 L* a* b*、油墨種類、使用部門；依 ΔE76 / ΔE00 排序前 10 筆。
+4. 支援 Ragic API JSON 匯入測試及原始配方超連結。
+5. 內建使用者提供的 IM-45780 單筆示範，點「使用已提供的單筆範例」測試；不代表完成所有歷史配方排名。
+6. 忽略空白/不合法 LAB；不會寫回 Ragic。
+
+二、正式即時連線尚未開通（需要部署安全後端）
+必須由具備 Cloudflare 權限者部署範例 Worker。已附 backend-example/worker.js。
+(1) Cloudflare 建立 Worker，貼入 worker.js；只允許 GET；啟用 Cloudflare Access「All traffic」；限制指定員工的公司信箱登入。
+(2) Worker Settings 加 Secret：RAGIC_API_KEY = Ragic LAB 專用唯讀服務帳戶金鑰。不要將金鑰貼到任何 GitHub 檔案或對話。
+(3) Worker Variables 加：ALLOWED_ORIGIN = https://factory-tools.github.io （需與實際開啟工具的 origin 完全相同）。
+(4) 在 lab-search/config.js 設 LAB_API_ENDPOINT = "https://你的受保護-worker-網址/" （僅 URL，不含金鑰）。
+(5) 首次開啟 Worker 網址，通過 Cloudflare Access 登入，返回工具箱點「讀取 Ragic 最新資料」。
+(6) 由於跨站 Cookie / Cloudflare Access CORS 在個別瀏覽器可能受限，需在正式上線前用員工實際瀏覽器測試；若跨站存取失敗，改為同站域名或受保護的後端頁面，不可放寬 Access 至公開存取。
+(7) 請確認服務帳戶不從其他群組繼承寫入權限，且 LAB 資料為實際色樣測量值、條件相同。
+
+重要：GitHub Pages 是公開的靜態網站，不提供保管 API 金鑰或員工驗證功能。
+即使隱藏 API Key，若後端未作身分驗證，配方仍會洩露。必須先開啟 Cloudflare Access 才能部署。
+
+三、搜尋限制
+ΔE76 或 ΔE00 只是排序，不可直接當合格判定。CMC 2:1 的色差與 ΔE00 不相同。
+沒有 LAB 的紀錄不參與搜尋；顏色的底材、印刷條件、測量光源等須一致。
+Ragic 17,697 筆每次讀取可能有耗時，第一版逐頁 250 筆串行，請勿連續重複點更新。
+資料更改後，點「讀取 Ragic 最新資料」重新抓取，不是背景自動更新。
+
+四、安全設計
+Worker 只傳回配方查詢必要欄位，不傳員工工號、姓名、排程資料。
+僅設 Origin 無法代表安全登入；Cloudflare Access 必須啟用並限制公司員工。
+若部署時不能符合以上條件，請先使用本機 JSON 匯入測試，不要讓 Worker 公開讀取配方。
