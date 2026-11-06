@@ -276,7 +276,7 @@
 <button class="back-btn" data-page="homePage">← 返回工具箱 / Trở về hộp công cụ</button>
 <div class="wip-head"><div><h1>印刷／浸染-歷年完工量分析</h1><p class="subtitle">IN / NHÚNG SƠN - Phân tích sản lượng theo năm</p></div><div id="phFileName" class="wip-file-name">尚未匯入資料 / Chưa nhập dữ liệu</div></div>
 <div class="ph-source-grid">
-  <div class="ph-source-card"><b>① 歷年完工資料 / Dữ liệu hoàn thành</b><label class="wip-file-btn">📂 選擇多個 Excel / CSV<input id="phHistFiles" type="file" accept=".xls,.xlsx,.xlsb,.csv" multiple hidden></label><small>用於廠內手印、機印、膠片，以及依料號比對浸染。</small></div>
+  <div class="ph-source-card"><b>① 歷年完工資料 / Dữ liệu hoàn thành</b><label class="wip-file-btn">📂 選擇多個 Excel / CSV<input id="phHistFiles" type="file" accept=".xls,.xlsx,.xlsb,.csv" multiple hidden></label><small>用於廠內手印、機印、MP噴塗、膠片，以及依料號比對浸染。</small></div>
   <div class="ph-source-card"><b>② 外發歷年資料 / Dữ liệu gia công ngoài</b><label class="wip-file-btn">📂 選擇外發檔<input id="phOutFiles" type="file" accept=".xls,.xlsx,.xlsb,.csv" multiple hidden></label><small>讀取 SO_Date / SO_Num / SO_Unit / SO_Width / SO_Name，換算 25MM Y。</small></div>
   <div class="ph-source-card"><b>③ 浸染料號表 / Danh sách MSP nhúng sơn</b><label class="wip-file-btn">📂 選擇料號表<input id="phDipFile" type="file" accept=".xls,.xlsx,.xlsb" hidden></label><small>MI_ID 與 MI_Mate 都納入浸染料號比對。</small></div>
 </div>
@@ -284,10 +284,11 @@
 <div id="phStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
 <div id="phProgress" class="ph-progress hidden"><div id="phProgressBar" class="ph-progress-bar"></div></div>
 <div id="phAnalysis" class="hidden">
-  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>廠內手印／機印＝折合碼 × 寬度 ÷ 25；同筆手印＋機印歸手印。廠外印刷依 SO_Name 解析料號與尺寸，統一換算成 25MM Y。浸染以 MI_ID＋MI_Mate 比對歷年「料號」，9P＝PC、9D＝雙×2＝PC。膠片維持原規則，統計雙數與筆數。</div>
+  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>廠內手印／機印／MP噴塗＝折合碼 × 寬度 ÷ 25；同筆手印＋機印歸手印。2022 的 SPW0921、SPW0481、MPW0481 排除Y量但保留筆數。廠外9P依 SO_Name 尺寸→歷史同料號+同寬度生管品名長度→歷史折合比率換算。浸染以 MI_ID＋MI_Mate 比對料號。膠片無法換算單位時直接把原始完工量視為雙。</div>
   <div class="summary-grid ph-summary-grid">
     <div class="summary-card ph-print-card"><span>廠內手印25MM / In tay nội bộ</span><b id="phHandTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>廠內機印25MM / In máy nội bộ</span><b id="phMachineTotal">0 Y</b></div>
+    <div class="summary-card ph-print-card"><span>廠內噴塗25MM / Phun nội bộ</span><b id="phSprayTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>廠內印刷合計 / Tổng nội bộ</span><b id="phInternalTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>廠外印刷25MM / IN ngoài</span><b id="phOutTotal">0 Y</b></div>
     <div class="summary-card ph-print-card strong"><span>廠內＋廠外總合計 / Tổng IN</span><b id="phGrandTotal">0 Y</b></div>
@@ -299,15 +300,15 @@
 
   <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">年度統計 / Thống kê theo năm</div><button id="phExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載分析 Excel / Tải Excel phân tích</button></div>
   <div class="table-scroll"><table class="wip-summary-table ph-table ph-group-table"><thead>
-    <tr class="ph-band-row"><th rowspan="2">年度<br>Năm</th><th colspan="12" class="ph-band-print">印刷 / IN</th><th colspan="4" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="4" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
-    <tr><th>廠內手印25MM</th><th>廠內機印25MM</th><th>廠內印刷合計</th><th>廠外印刷25MM</th><th>廠內+廠外總合計</th><th>印刷量年增率</th><th>廠內手印筆數</th><th>廠內機印筆數</th><th>廠內印刷筆數</th><th>廠外印刷筆數</th><th>廠內+廠外總筆數</th><th>筆數年增率</th><th>浸染完工PC</th><th>浸染PC年增率</th><th>浸染筆數</th><th>浸染筆數年增率</th><th>膠片完工雙</th><th>膠片雙數年增率</th><th>膠片筆數</th><th>膠片筆數年增率</th></tr>
+    <tr class="ph-band-row"><th rowspan="2">年度<br>Năm</th><th colspan="14" class="ph-band-print">印刷 / IN</th><th colspan="4" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="4" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
+    <tr><th>廠內手印25MM</th><th>廠內機印25MM</th><th>廠內噴塗25MM</th><th>廠內印刷合計</th><th>廠外印刷25MM</th><th>廠內+廠外總合計</th><th>印刷量年增率</th><th>廠內手印筆數</th><th>廠內機印筆數</th><th>廠內噴塗筆數</th><th>廠內印刷筆數</th><th>廠外印刷筆數</th><th>廠內+廠外總筆數</th><th>筆數年增率</th><th>浸染完工PC</th><th>浸染PC年增率</th><th>浸染筆數</th><th>浸染筆數年增率</th><th>膠片完工雙</th><th>膠片雙數年增率</th><th>膠片筆數</th><th>膠片筆數年增率</th></tr>
   </thead><tbody id="phYearBody"></tbody></table></div>
   <div id="phYtdBox" class="ph-ytd-box hidden"></div>
 
   <div class="wip-section-title">每月統計 / Thống kê theo tháng</div>
   <div class="table-scroll"><table class="wip-summary-table ph-table ph-group-table"><thead>
-    <tr class="ph-band-row"><th rowspan="2">年月<br>Tháng</th><th colspan="10" class="ph-band-print">印刷 / IN</th><th colspan="2" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="2" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
-    <tr><th>廠內手印25MM</th><th>廠內機印25MM</th><th>廠內印刷合計</th><th>廠外印刷25MM</th><th>廠內+廠外總合計</th><th>廠內手印筆數</th><th>廠內機印筆數</th><th>廠內印刷筆數</th><th>廠外印刷筆數</th><th>廠內+廠外總筆數</th><th>浸染完工PC</th><th>浸染筆數</th><th>膠片完工雙</th><th>膠片筆數</th></tr>
+    <tr class="ph-band-row"><th rowspan="2">年月<br>Tháng</th><th colspan="12" class="ph-band-print">印刷 / IN</th><th colspan="2" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="2" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
+    <tr><th>廠內手印25MM</th><th>廠內機印25MM</th><th>廠內噴塗25MM</th><th>廠內印刷合計</th><th>廠外印刷25MM</th><th>廠內+廠外總合計</th><th>廠內手印筆數</th><th>廠內機印筆數</th><th>廠內噴塗筆數</th><th>廠內印刷筆數</th><th>廠外印刷筆數</th><th>廠內+廠外總筆數</th><th>浸染完工PC</th><th>浸染筆數</th><th>膠片完工雙</th><th>膠片筆數</th></tr>
   </thead><tbody id="phMonthBody"></tbody></table></div>
 
   <div class="wip-section-title">資料檢查 / Kiểm tra dữ liệu</div>
@@ -317,7 +318,7 @@
     <div class="summary-card"><span>手印＋機印→歸手印</span><b id="phConflict">0</b></div>
     <div class="summary-card"><span>待確認／單位異常 / Cần kiểm tra</span><b id="phInvalid">0</b></div>
   </div>
-  <div class="ph-detail-note">下載 Excel 會包含：年度統計、每月統計、廠內印刷明細、廠外印刷明細、浸染明細、膠片明細、匯入檢查、待確認資料。</div>
+  <div class="ph-detail-note">下載 Excel 會包含：年度統計、每月統計、廠內印刷（含噴塗）明細、廠外印刷明細、浸染明細、膠片明細、匯入檢查、待確認資料。</div>
 </div></div></section>
 
 
