@@ -1184,6 +1184,15 @@ function phClassify(types){
 function phFilmPairs(unit,qty){const u=String(unit==null?'':unit).trim().toUpperCase();if(qty==null||qty<0)return {ok:false,pairs:null,reason:'膠片完工量無效 / SL hoàn thành đầu keo không hợp lệ'};if(u.startsWith('9D'))return {ok:true,pairs:qty,unit:'9D',method:'9D=雙',fallback:false};if(u.startsWith('9C')||u.startsWith('9P'))return {ok:true,pairs:qty/2,unit:u.slice(0,2),method:`${u.slice(0,2)}=PC÷2`,fallback:false};return {ok:true,pairs:qty,unit:u||'(空白)',method:`${u||'(空白)'} 無換算規則→原始完工量視為雙`,fallback:true};}
 function phDipPc(unit,qty){const u=String(unit==null?'':unit).trim().toUpperCase();if(qty==null||qty<0)return {ok:false,pc:null,reason:'浸染完工量無效 / SL nhúng sơn không hợp lệ'};if(u.startsWith('9P')||u.startsWith('9C'))return {ok:true,pc:qty,unit:u.slice(0,2)};if(u.startsWith('9D'))return {ok:true,pc:qty*2,unit:'9D'};return {ok:false,pc:null,reason:`浸染單位 ${u||'(空白)'} 非 PC/雙 / Đơn vị nhúng sơn không phải PC/đôi`};}
 function phGroupText(groups){return groups.map(g=>PH_TARGET_GROUPS[g]).join(' + ');}
+function phYearLabel(year){
+  const y=Number(year);
+  if(phHistMaxDate instanceof Date && !Number.isNaN(phHistMaxDate.getTime()) && phHistMaxDate.getFullYear()===y){
+    const m=phHistMaxDate.getMonth()+1,d=phHistMaxDate.getDate();
+    const isFullYear=m===12&&d===31;
+    return isFullYear?String(y):`${y}截至${m}/${d}`;
+  }
+  return String(y);
+}
 function phAddHistMate(mate,unit,qty,yard,name,width){const m=phNormCode(mate),u=phNormCode(unit);if(!m)return;phHistMateSet.add(m);if(qty>0&&yard!=null&&yard>=0){const key=m+'|'+u;let a=phHistMateStats.get(key);if(!a){a={mate:m,unit:u,qty:0,yard:0,n:0};phHistMateStats.set(key,a);}a.qty+=qty;a.yard+=yard;a.n++;}const len=phParseLengthMm(name,width);if(len>0){const wk=width>0?Number(width).toFixed(3):'*',key=m+'|'+wk;let mm=phHistLengthStats.get(key);if(!mm){mm=new Map();phHistLengthStats.set(key,mm);}const lk=Number(len).toFixed(3),z=mm.get(lk)||{len:Number(len),n:0,qty:0};z.n++;z.qty+=Number(qty)||0;mm.set(lk,z);}}
 function phHistRatio(mate,unit){const a=phHistMateStats.get(phNormCode(mate)+'|'+phNormCode(unit));return a&&a.qty>0?a.yard/a.qty:null;}
 function phHistLength(mate,width){const m=phNormCode(mate);if(!m)return null;let picks=[];const exact=m+'|'+(width>0?Number(width).toFixed(3):'*');if(phHistLengthStats.has(exact))picks=[...phHistLengthStats.get(exact).values()];if(!picks.length){for(const [k,mm] of phHistLengthStats){if(k.startsWith(m+'|'))picks.push(...mm.values());}}if(!picks.length)return null;picks.sort((a,b)=>b.n-a.n||b.qty-a.qty);return picks[0].len;}
