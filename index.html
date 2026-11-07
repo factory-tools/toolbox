@@ -285,13 +285,13 @@
 <div id="phStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
 <div id="phProgress" class="ph-progress hidden"><div id="phProgressBar" class="ph-progress-bar"></div></div>
 <div id="phAnalysis" class="hidden">
-  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>歷年印刷＝手印／機印／MP噴塗／MY移印，25MM等效＝折合碼 × 寬度 ÷ 25；手印＋機印歸手印，手印＋MY歸手印。原始三備註抓不到 MSK 時，才用 MC_Mate＋MC_Width＋MC_Unit 對 MC_TypeID 補辨識。浸染與膠片可和印刷同時統計。真正廠內印刷＝歷年印刷總完工－廠外印刷；總完工不重複加外發。2022 指定異常 MSK 只排除Y量、筆數保留。</div>
+  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>歷年印刷＝手印／機印／MP噴塗／MY移印，25MM等效＝折合碼 × 寬度 ÷ 25；手印＋機印歸手印，手印＋MY歸手印。原始三備註抓不到 MSK 時，才用 MC_Mate＋MC_Width＋MC_Unit 對 MC_TypeID 補辨識。浸染與膠片可和印刷同時統計。手印＋機印總完工＝手印＋機印；手印＋機印廠內印刷＝手印＋機印總完工－廠外印刷；印刷總完工仍包含手印／機印／噴塗／移印，且不重複加外發。歷年完工資料以 C 欄為唯一值，跨檔重複只保留較新的檔案。2022 指定異常 MSK 只排除Y量、筆數保留。</div>
   <div class="summary-grid ph-summary-grid">
     <div class="summary-card ph-print-card"><span>歷年手印總完工25MM / Tổng In tay lịch sử</span><b id="phHandTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>歷年機印總完工25MM / Tổng In máy lịch sử</span><b id="phMachineTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>歷年噴塗總完工25MM / Tổng phun lịch sử</span><b id="phSprayTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>歷年移印總完工25MM / Tổng In chạm lịch sử</span><b id="phPadTotal">0 Y</b></div>
-    <div class="summary-card ph-print-card"><span>真正廠內印刷 / IN nội bộ thực tế</span><b id="phInternalTotal">0 Y</b></div>
+    <div class="summary-card ph-print-card"><span>手印+機印廠內印刷 / IN tay + máy nội bộ</span><b id="phInternalTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>廠外印刷25MM / IN ngoài</span><b id="phOutTotal">0 Y</b></div>
     <div class="summary-card ph-print-card strong"><span>歷年印刷總完工 / Tổng hoàn thành IN</span><b id="phGrandTotal">0 Y</b></div>
     <div class="summary-card ph-dip-card"><span>浸染完工 / Nhúng sơn</span><b id="phDipTotal">0 PC</b></div>
@@ -302,15 +302,15 @@
 
   <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">年度明細 / Chi tiết năm</div><button id="phExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載分析 Excel / Tải Excel phân tích</button></div>
   <div class="table-scroll"><table class="wip-summary-table ph-table ph-group-table ph-overview-table ph-wide-year"><thead>
-    <tr class="ph-band-row"><th rowspan="2">年度<br>Năm</th><th colspan="18" class="ph-band-print">印刷明細 / CHI TIẾT IN</th><th colspan="2" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="2" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
-    <tr><th>歷年手印總完工25MM Y</th><th>歷年機印總完工25MM Y</th><th>歷年噴塗總完工25MM Y</th><th>歷年移印總完工25MM Y</th><th>歷年印刷總完工25MM Y</th><th>廠外印刷25MM Y</th><th>真正廠內印刷25MM Y</th><th>印刷總完工25MM Y</th><th>印刷量年增率</th><th>歷年手印總完工筆數</th><th>歷年機印總完工筆數</th><th>歷年噴塗總完工筆數</th><th>歷年移印總完工筆數</th><th>歷年印刷總完工筆數</th><th>廠外印刷筆數</th><th>推估真正廠內筆數</th><th>印刷總完工筆數</th><th>筆數年增率</th><th>浸染完工PC</th><th>浸染筆數</th><th>膠片完工雙</th><th>膠片筆數</th></tr>
+    <tr class="ph-band-row"><th rowspan="2">年度<br>Năm</th><th colspan="19" class="ph-band-print">印刷明細 / CHI TIẾT IN</th><th colspan="2" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="2" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
+    <tr><th>歷年手印總完工25MM Y</th><th>歷年機印總完工25MM Y</th><th>手印+機印總完工25MM Y</th><th>歷年噴塗總完工25MM Y</th><th>歷年移印總完工25MM Y</th><th>歷年印刷總完工25MM Y</th><th>廠外印刷25MM Y</th><th>手印+機印廠內印刷25MM Y</th><th>印刷總完工25MM Y</th><th>印刷量年增率</th><th>歷年手印總完工筆數</th><th>歷年機印總完工筆數</th><th>歷年噴塗總完工筆數</th><th>歷年移印總完工筆數</th><th>歷年印刷總完工筆數</th><th>廠外印刷筆數</th><th>推估手印+機印廠內筆數</th><th>印刷總完工筆數</th><th>筆數年增率</th><th>浸染完工PC</th><th>浸染筆數</th><th>膠片完工雙</th><th>膠片筆數</th></tr>
   </thead><tbody id="phYearBody"></tbody></table></div>
 
   <div class="wip-section-title">每月總覽 / Tổng quan tháng</div>
   <div class="ph-month-stability-grid">
     <div class="table-scroll"><table class="wip-summary-table ph-table ph-group-table ph-overview-table"><thead>
       <tr class="ph-band-row"><th rowspan="2">年月<br>Tháng</th><th colspan="4" class="ph-band-print">印刷 / IN</th><th colspan="2" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="2" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
-      <tr><th>印刷總完工25MM Y</th><th>真正廠內25MM Y</th><th>廠外25MM Y</th><th>印刷總筆數</th><th>浸染PC</th><th>浸染筆數</th><th>膠片雙</th><th>膠片筆數</th></tr>
+      <tr><th>印刷總完工25MM Y</th><th>手印+機印廠內25MM Y</th><th>廠外25MM Y</th><th>印刷總筆數</th><th>浸染PC</th><th>浸染筆數</th><th>膠片雙</th><th>膠片筆數</th></tr>
     </thead><tbody id="phMonthBody"></tbody></table></div>
     <div class="ph-stability-card"><div class="ph-chart-title">下單穩定度 / Độ ổn định đơn hàng</div><div class="table-scroll"><table class="wip-summary-table ph-table ph-stability-table"><thead><tr><th>年度</th><th>月數</th><th>產量CV</th><th>筆數CV</th><th>最高月</th><th>最低月</th><th>判斷</th></tr></thead><tbody id="phStabilityBody"></tbody></table></div><div id="phYtdBox" class="ph-ytd-box hidden"></div></div>
   </div>
@@ -322,7 +322,7 @@
     <div class="summary-card"><span>手印＋機印→歸手印</span><b id="phConflict">0</b></div>
     <div class="summary-card"><span>待確認／單位異常 / Cần kiểm tra</span><b id="phInvalid">0</b></div>
   </div>
-  <div class="ph-detail-note">下載 Excel 會把「年度明細＋每月總覽＋下單穩定度」放在同一張工作表，並保留歷年印刷明細（含辨識來源）、廠外印刷明細、浸染明細、膠片明細、匯入檢查與待確認資料。</div>
+  <div class="ph-detail-note">下載 Excel 會把「年度明細＋每月總覽＋下單穩定度」放在同一張工作表；歷年完工以 C 欄唯一值自動去重，另有重複排除明細，並保留歷年印刷明細（含辨識來源）、廠外印刷明細、浸染明細、膠片明細、匯入檢查與待確認資料。</div>
 </div></div></section>
 
 
@@ -414,4 +414,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261106-v74-year-month-stability"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261107-v75-dedup-hm-internal"></script></body></html>
