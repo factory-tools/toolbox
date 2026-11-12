@@ -420,4 +420,24 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261112-v771-mc-helper-fix"></script></body></html>
+</script><script>
+// V7.7.2 MC loader fallback: prevents old/mixed app.js from failing with phLoadMcFile undefined.
+window.phLoadMcFile = async function(file){
+  phMcMap=new Map();phMcLoaded={rows:0,withType:0,name:''};if(!file)return phMcLoaded;
+  let wb;if(/\.csv$/i.test(file.name))wb=XLSX.read(await file.text(),{type:'string'});else wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+  let chosen=null;
+  for(const name of wb.SheetNames){
+    const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true});
+    let best=null;
+    for(let r=0;r<Math.min(matrix.length,30);r++){const map={};(matrix[r]||[]).forEach((v,i)=>{const k=String(v==null?'':v).trim().toLowerCase().replace(/[\/\s_-]+/g,'');if(k)map[k]=i;});const need=['mcmate','mcwidth','mcunit','mctypeid'],score=need.filter(k=>map[k]!=null).length;if(!best||score>best.score)best={row:r,map,score};}
+    if(best&&(!chosen||best.score>chosen.h.score))chosen={matrix,h:best,name};if(best&&best.score===4)break;
+  }
+  if(!chosen||chosen.h.score<4)throw new Error('MC 對照檔找不到 MC_Mate / MC_Width / MC_Unit / MC_TypeID');
+  let rows=0,withType=0;
+  const norm=v=>String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,'');
+  const num=v=>{if(v==null||v==='')return null;const n=Number(String(v).replace(/,/g,'').trim());return Number.isFinite(n)?n:null;};
+  const widthKey=v=>{const n=num(v);return n>0?String(Number(n.toFixed(6))):String(v==null?'':v).trim().toUpperCase();};
+  for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const row=chosen.matrix[r]||[],get=k=>chosen.h.map[k]!=null?row[chosen.h.map[k]]:'';const mate=get('mcmate'),width=get('mcwidth'),unit=get('mcunit'),typeid=String(get('mctypeid')||'').trim();if(!norm(mate)||!widthKey(width)||!norm(unit))continue;rows++;if(!typeid)continue;withType++;const key=norm(mate)+'||'+widthKey(width)+'||'+norm(unit);if(!phMcMap.has(key))phMcMap.set(key,[]);phMcMap.get(key).push(typeid);}
+  phMcLoaded={rows,withType,name:file.name||''};return phMcLoaded;
+};
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261112-v772-mc-double-fix"></script></body></html>

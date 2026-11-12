@@ -1447,7 +1447,7 @@ async function phRunAnalysis(){
   try{
     $('phStatus').textContent=`已選 ${totals.totalFiles} 個檔案，開始讀取… / Đã chọn ${totals.totalFiles} file, bắt đầu đọc…`;
     const di=await phLoadDipFile(dip);$('phProgressBar').style.width='4%';
-    if(mc){$('phStatus').textContent=`1/4 讀取 MC 補辨識檔：${mc.name}`;await phLoadMcFile(mc);}
+    if(mc){$('phStatus').textContent=`1/4 讀取 MC 補辨識檔：${mc.name}`;const mcLoader=(typeof phLoadMcFile==='function'?phLoadMcFile:window.phLoadMcFile);if(typeof mcLoader!=='function')throw new Error('MC 載入模組未載入 / Chưa tải mô-đun MC');await mcLoader(mc);}
     $('phProgressBar').style.width='8%';
     for(let i=0;i<hist.length;i++){
       const f=hist[i],isCsv=/\.csv$/i.test(f.name);$('phStatus').textContent=`2/4 歷年完工 ${i+1}/${hist.length}：${f.name}`;
