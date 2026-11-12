@@ -303,7 +303,7 @@
   <div class="wip-section-title-row"><div class="wip-section-title wip-important-title">年度明細 / Chi tiết năm</div><button id="phExportBtn" type="button" class="excel-btn wip-summary-export-btn">下載分析 Excel / Tải Excel phân tích</button></div>
   <div class="table-scroll"><table class="wip-summary-table ph-table ph-group-table ph-overview-table ph-wide-year"><thead>
     <tr class="ph-band-row"><th rowspan="2">年度<br>Năm</th><th colspan="19" class="ph-band-print">印刷明細 / CHI TIẾT IN</th><th colspan="2" class="ph-band-dip">浸染 / NHÚNG SƠN</th><th colspan="2" class="ph-band-film">膠片 / ĐẦU KEO</th></tr>
-    <tr><th>歷年手印總完工25MM Y</th><th>歷年機印總完工25MM Y</th><th>手印+機印總完工25MM Y</th><th>歷年噴塗總完工25MM Y</th><th>歷年移印總完工25MM Y</th><th>歷年印刷總完工25MM Y</th><th>廠外印刷25MM Y</th><th>手印+機印廠內印刷25MM Y</th><th>印刷總完工25MM Y</th><th>印刷量年增率</th><th>歷年手印總完工筆數</th><th>歷年機印總完工筆數</th><th>歷年噴塗總完工筆數</th><th>歷年移印總完工筆數</th><th>歷年印刷總完工筆數</th><th>廠外印刷筆數</th><th>推估手印+機印廠內筆數</th><th>印刷總完工筆數</th><th>筆數年增率</th><th>浸染完工PC</th><th>浸染筆數</th><th>膠片完工雙</th><th>膠片筆數</th></tr>
+    <tr><th>歷年手印總完工25MM Y</th><th>手印轉印25MM Y<br><small>In tay→In chuyển</small></th><th>歷年機印總完工25MM Y</th><th>機印轉印25MM Y<br><small>In máy→In chuyển</small></th><th>手印+機印總完工25MM Y</th><th>歷年噴塗總完工25MM Y</th><th>歷年移印總完工25MM Y</th><th>歷年印刷總完工25MM Y</th><th>廠外印刷25MM Y</th><th>手印+機印廠內印刷25MM Y</th><th>印刷總完工25MM Y</th><th>印刷量年增率</th><th>歷年手印總完工筆數</th><th>歷年機印總完工筆數</th><th>歷年噴塗總完工筆數</th><th>歷年移印總完工筆數</th><th>歷年印刷總完工筆數</th><th>廠外印刷筆數</th><th>推估手印+機印廠內筆數</th><th>印刷總完工筆數</th><th>筆數年增率</th><th>浸染完工PC</th><th>浸染筆數</th><th>膠片完工雙</th><th>膠片筆數</th></tr>
   </thead><tbody id="phYearBody"></tbody></table></div>
 
   <div class="wip-section-title">每月總覽 / Tổng quan tháng</div>
@@ -414,4 +414,4 @@ if ('serviceWorker' in navigator) {
 if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261107-v75-dedup-hm-internal"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261112-v76-transfer"></script></body></html>
