@@ -1177,6 +1177,25 @@ function phHeaderMap(row){
   });return map;
 }
 function phLooksLikeHeader(row){const m=phHeaderMap(row);return ['date','width','unit','qty','yard','name','note1','note2'].filter(k=>m[k]!=null).length>=5;}
+function phFilmPairs(unit,qty){const u=String(unit==null?'':unit).trim().toUpperCase();if(qty==null||qty<0)return {ok:false,pairs:null,reason:'膠片完工量無效 / SL hoàn thành đầu keo không hợp lệ'};if(u.startsWith('9D'))return {ok:true,pairs:qty,unit:'9D',method:'9D=雙',fallback:false};if(u.startsWith('9C')||u.startsWith('9P'))return {ok:true,pairs:qty/2,unit:u.slice(0,2),method:`${u.slice(0,2)}=PC÷2`,fallback:false};return {ok:true,pairs:qty,unit:u||'(空白)',method:`${u||'(空白)'} 無換算規則→原始完工量視為雙`,fallback:true};}
+function phDipPc(unit,qty){const u=String(unit==null?'':unit).trim().toUpperCase();if(qty==null||qty<0)return {ok:false,pc:null,reason:'浸染完工量無效 / SL nhúng sơn không hợp lệ'};if(u.startsWith('9P')||u.startsWith('9C'))return {ok:true,pc:qty,unit:u.slice(0,2)};if(u.startsWith('9D'))return {ok:true,pc:qty*2,unit:'9D'};return {ok:false,pc:null,reason:`浸染單位 ${u||'(空白)'} 非 PC/雙 / Đơn vị nhúng sơn không phải PC/đôi`};}
+function phGroupText(groups){return groups.map(g=>PH_TARGET_GROUPS[g]).join(' + ');}
+function phYearLabel(year){
+  const y=Number(year);
+  if(phHistMaxDate instanceof Date && !Number.isNaN(phHistMaxDate.getTime()) && phHistMaxDate.getFullYear()===y){
+    const m=phHistMaxDate.getMonth()+1,d=phHistMaxDate.getDate();
+    const isFullYear=m===12&&d===31;
+    return isFullYear?String(y):`${y}截至${m}/${d}`;
+  }
+  return String(y);
+}
+function phAddHistMate(mate,unit,qty,yard,name,width){const m=phNormCode(mate),u=phNormCode(unit);if(!m)return;phHistMateSet.add(m);if(qty>0&&yard!=null&&yard>=0){const key=m+'|'+u;let a=phHistMateStats.get(key);if(!a){a={mate:m,unit:u,qty:0,yard:0,n:0};phHistMateStats.set(key,a);}a.qty+=qty;a.yard+=yard;a.n++;}const len=phParseLengthMm(name,width);if(len>0){const wk=width>0?Number(width).toFixed(3):'*',key=m+'|'+wk;let mm=phHistLengthStats.get(key);if(!mm){mm=new Map();phHistLengthStats.set(key,mm);}const lk=Number(len).toFixed(3),z=mm.get(lk)||{len:Number(len),n:0,qty:0};z.n++;z.qty+=Number(qty)||0;mm.set(lk,z);}}
+function phHistRatio(mate,unit){const a=phHistMateStats.get(phNormCode(mate)+'|'+phNormCode(unit));return a&&a.qty>0?a.yard/a.qty:null;}
+function phHistLength(mate,width){const m=phNormCode(mate);if(!m)return null;let picks=[];const exact=m+'|'+(width>0?Number(width).toFixed(3):'*');if(phHistLengthStats.has(exact))picks=[...phHistLengthStats.get(exact).values()];if(!picks.length){for(const [k,mm] of phHistLengthStats){if(k.startsWith(m+'|'))picks.push(...mm.values());}}if(!picks.length)return null;picks.sort((a,b)=>b.n-a.n||b.qty-a.qty);return picks[0].len;}
+function phMcWidthKey(v){const n=phNum(v);return n>0?String(Number(n.toFixed(6))):String(v==null?'':v).trim().toUpperCase();}
+function phMcKey(mate,width,unit){return phNormCode(mate)+'||'+phMcWidthKey(width)+'||'+phNormCode(unit);}
+function phFindMcHeaders(matrix){let best=null;for(let r=0;r<Math.min(matrix.length,30);r++){const map={};(matrix[r]||[]).forEach((v,i)=>{const k=phNormHeader(v);if(k)map[k]=i;});const need=['mcmate','mcwidth','mcunit','mctypeid'],score=need.filter(k=>map[k]!=null).length;if(!best||score>best.score)best={row:r,map,score};}return best;}
+async function phLoadMcFile(file){phMcMap=new Map();phMcLoaded={rows:0,withType:0,name:''};if(!file)return phMcLoaded;let wb;if(/\.csv$/i.test(file.name))wb=XLSX.read(await file.text(),{type:'string'});else wb=XLSX.read(await file.arrayBuffer(),{type:'array'});let chosen=null;for(const name of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true}),h=phFindMcHeaders(matrix);if(h&&(!chosen||h.score>chosen.h.score))chosen={matrix,h,name};if(h&&h.score===4)break;}if(!chosen||chosen.h.score<4)throw new Error('MC 對照檔找不到 MC_Mate / MC_Width / MC_Unit / MC_TypeID');let rows=0,withType=0;for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const row=chosen.matrix[r]||[],get=k=>chosen.h.map[k]!=null?row[chosen.h.map[k]]:'';const mate=get('mcmate'),width=get('mcwidth'),unit=get('mcunit'),typeid=String(get('mctypeid')||'').trim();if(!phNormCode(mate)||!phMcWidthKey(width)||!phNormCode(unit))continue;rows++;if(!typeid)continue;withType++;const key=phMcKey(mate,width,unit);if(!phMcMap.has(key))phMcMap.set(key,[]);phMcMap.get(key).push(typeid);}phMcLoaded={rows,withType,name:file.name||''};return phMcLoaded;}
 function phNormalizeLooseText(s){return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]+/g,' ');}
 function phHasTransferHint(text){
   const s=phNormalizeLooseText(text);
