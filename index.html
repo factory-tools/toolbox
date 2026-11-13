@@ -285,7 +285,8 @@
 <div id="phStatus" class="wip-status">等待匯入 / Chờ nhập dữ liệu</div>
 <div id="phProgress" class="ph-progress hidden"><div id="phProgressBar" class="ph-progress-bar"></div></div>
 <div id="phAnalysis" class="hidden">
-  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>所有印刷數量統一換算為 25MM 等效 Y（折合碼 × 寬度 ÷ 25）。轉印辨識改為兩層：① 合法 TT/MT 編碼優先；② 原本手印/機印 MSK，若備註明確出現 IN CHUYEN / IN CHUYEN NHIET / EP TEM IN CHUYEN 等轉印關鍵字，再補判為轉印。手印+機印總完工（含轉印）＝手印＋手印轉印＋機印＋機印轉印；印刷總完工＝手印+機印總完工（含轉印）＋噴塗＋移印；手印+機印廠內印刷＝手印+機印總完工（含轉印）－廠外印刷。浸染與膠片可和印刷同時統計；歷年完工資料以 C 欄唯一值去重；2022 指定異常 MSK 只排除Y量、筆數保留。</div>
+  <div class="ph-version-badge">V7.8 真實資料驗證版 / Bản xác minh dữ liệu thực tế</div>
+  <div class="ph-rule-note"><b>統計基準 / Cơ sở：</b>所有印刷數量統一換算為 25MM 等效 Y（折合碼 × 寬度 ÷ 25）。轉印辨識改為兩層：① 合法 TT/MT 編碼優先；② 原本手印/機印 MSK，若備註明確出現 IN CHUYEN / IN CHUYEN NHIET / EP TEM IN CHUYEN 等轉印關鍵字，再補判為轉印。手印+機印總完工（含轉印）＝手印＋手印轉印＋機印＋機印轉印；印刷總完工＝手印+機印總完工（含轉印）＋噴塗＋移印；手印+機印廠內印刷＝手印+機印總完工（含轉印）－廠外印刷。浸染與膠片可和印刷同時統計；歷年完工資料以 C欄＋完工日為唯一去重鍵；2022 指定異常 MSK 只排除Y量、筆數保留。</div>
   <div class="summary-grid ph-summary-grid">
     <div class="summary-card ph-print-card"><span>手印總完工 / In tay</span><b id="phHandTotal">0 Y</b></div>
     <div class="summary-card ph-print-card"><span>手印-轉印 / In tay chuyển</span><b id="phHandTransferTotal">0 Y</b></div>
@@ -328,7 +329,7 @@
     <div class="summary-card"><span>手印＋機印→歸手印</span><b id="phConflict">0</b></div>
     <div class="summary-card"><span>待確認／單位異常 / Cần kiểm tra</span><b id="phInvalid">0</b></div>
   </div>
-  <div class="ph-detail-note">下載 Excel 會把「年度明細＋每月總覽＋下單穩定度」放在同一張工作表；歷年完工以 C 欄唯一值自動去重，另有重複排除明細，並保留歷年印刷明細（含辨識來源）、廠外印刷明細、浸染明細、膠片明細、匯入檢查與待確認資料。</div>
+  <div class="ph-detail-note">下載 Excel 會把「年度明細＋每月總覽＋下單穩定度」放在同一張工作表；歷年完工以 C欄＋完工日自動去重，另有重複排除明細，並保留歷年印刷明細（含辨識來源）、廠外印刷明細、浸染明細、膠片明細、匯入檢查與待確認資料。</div>
 </div></div></section>
 
 
@@ -421,7 +422,7 @@ if ('caches' in window) {
   caches.keys().then(function(keys){ return Promise.all(keys.map(function(k){ return caches.delete(k); })); }).catch(function(){});
 }
 </script><script>
-// V7.7.2 MC loader fallback: prevents old/mixed app.js from failing with phLoadMcFile undefined.
+// V7.8 MC loader fallback: prevents old/mixed app.js from failing with phLoadMcFile undefined.
 window.phLoadMcFile = async function(file){
   phMcMap=new Map();phMcLoaded={rows:0,withType:0,name:''};if(!file)return phMcLoaded;
   let wb;if(/\.csv$/i.test(file.name))wb=XLSX.read(await file.text(),{type:'string'});else wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
@@ -440,4 +441,4 @@ window.phLoadMcFile = async function(file){
   for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const row=chosen.matrix[r]||[],get=k=>chosen.h.map[k]!=null?row[chosen.h.map[k]]:'';const mate=get('mcmate'),width=get('mcwidth'),unit=get('mcunit'),typeid=String(get('mctypeid')||'').trim();if(!norm(mate)||!widthKey(width)||!norm(unit))continue;rows++;if(!typeid)continue;withType++;const key=norm(mate)+'||'+widthKey(width)+'||'+norm(unit);if(!phMcMap.has(key))phMcMap.set(key,[]);phMcMap.get(key).push(typeid);}
   phMcLoaded={rows,withType,name:file.name||''};return phMcLoaded;
 };
-</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261112-v772-mc-double-fix"></script></body></html>
+</script><script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script><script src="app.js?v=20261113-v78-realdata-fix"></script></body></html>

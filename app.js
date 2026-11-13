@@ -1196,11 +1196,13 @@ function phMcWidthKey(v){const n=phNum(v);return n>0?String(Number(n.toFixed(6))
 function phMcKey(mate,width,unit){return phNormCode(mate)+'||'+phMcWidthKey(width)+'||'+phNormCode(unit);}
 function phFindMcHeaders(matrix){let best=null;for(let r=0;r<Math.min(matrix.length,30);r++){const map={};(matrix[r]||[]).forEach((v,i)=>{const k=phNormHeader(v);if(k)map[k]=i;});const need=['mcmate','mcwidth','mcunit','mctypeid'],score=need.filter(k=>map[k]!=null).length;if(!best||score>best.score)best={row:r,map,score};}return best;}
 async function phLoadMcFile(file){phMcMap=new Map();phMcLoaded={rows:0,withType:0,name:''};if(!file)return phMcLoaded;let wb;if(/\.csv$/i.test(file.name))wb=XLSX.read(await file.text(),{type:'string'});else wb=XLSX.read(await file.arrayBuffer(),{type:'array'});let chosen=null;for(const name of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true}),h=phFindMcHeaders(matrix);if(h&&(!chosen||h.score>chosen.h.score))chosen={matrix,h,name};if(h&&h.score===4)break;}if(!chosen||chosen.h.score<4)throw new Error('MC 對照檔找不到 MC_Mate / MC_Width / MC_Unit / MC_TypeID');let rows=0,withType=0;for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const row=chosen.matrix[r]||[],get=k=>chosen.h.map[k]!=null?row[chosen.h.map[k]]:'';const mate=get('mcmate'),width=get('mcwidth'),unit=get('mcunit'),typeid=String(get('mctypeid')||'').trim();if(!phNormCode(mate)||!phMcWidthKey(width)||!phNormCode(unit))continue;rows++;if(!typeid)continue;withType++;const key=phMcKey(mate,width,unit);if(!phMcMap.has(key))phMcMap.set(key,[]);phMcMap.get(key).push(typeid);}phMcLoaded={rows,withType,name:file.name||''};return phMcLoaded;}
-function phNormalizeLooseText(s){return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]+/g,' ');}
-function phHasTransferHint(text){
-  const s=phNormalizeLooseText(text);
-  return ['IN CHUYEN','IN CHUYEN NHIET','EP TEM IN CHUYEN','TEM IN CHUYEN','CHUYEN NHIET','轉印'].some(k=>s.includes(phNormalizeLooseText(k)));
+function phNormalizeLooseText(s){return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+function phHasTransferHintField(text){
+  const raw=String(text==null?'':text);if(raw.includes('轉印'))return true;
+  const s=phNormalizeLooseText(raw);if(!s)return false;
+  return /(?:^|\s)(?:EP TEM IN CHUYEN|TEM IN CHUYEN|IN CHUYEN NHIET|IN CHUYEN)(?=\s|$)/.test(s);
 }
+function phHasTransferHint(fields){return (Array.isArray(fields)?fields:[fields]).some(phHasTransferHintField);}
 function phIsValidTransferCode(type,code){
   const c=phNormCode(code),m=c.match(/^(TT|MT)(\d{2})([A-L])([A-Z0-9]*)$/);if(!m||m[1]!==type)return false;
   const yy=Number(m[2]),nowYear2=(new Date().getFullYear()+1)%100;return yy>=20&&yy<=nowYear2;
@@ -1225,34 +1227,37 @@ function phClassify(types){
 }
 function phProcessRow(row,ctx){
   if(!row||!row.length)return;ctx.raw++;
-  const uniqueId=phNormCode(row[2]);
-  if(uniqueId){
+  const m=ctx.map;const get=k=>m[k]!=null?(row[m[k]]??''):'';
+  const d=phDate(get('date')),mate=phNormCode(get('mate')),width=phNum(get('width')),yard=phNum(get('yard')),qty=phNum(get('qty')),unit=String(get('unit')??'').trim(),histName=String(get('name')??'');
+  // 真實歷年資料驗證後，C欄會跨年份重新使用；正式去重鍵改成「C欄 + 完工日」。
+  const uniqueId=phNormCode(row[2]),dateKey=d?phDateText(d):String(get('date')??'').trim();
+  const uniqueKey=uniqueId?(uniqueId+'||'+dateKey):'';
+  if(uniqueKey){
     const fp=row.map(v=>String(v??'').trim()).join('\u001F');
-    const seen=phHistUniqueMap.get(uniqueId);
+    const seen=phHistUniqueMap.get(uniqueKey);
     if(seen){
       ctx.duplicate=(ctx.duplicate||0)+1;
       const changed=seen.fp!==fp;if(changed)ctx.duplicateChanged=(ctx.duplicateChanged||0)+1;
-      if(phHistDuplicateRows.length<200000)phHistDuplicateRows.push({id:uniqueId,keptFile:seen.file,keptRow:seen.rowNo,dupFile:ctx.file,dupRow:ctx.rowNo,changed});
+      if(phHistDuplicateRows.length<200000)phHistDuplicateRows.push({id:uniqueId,date:dateKey,key:uniqueKey,keptFile:seen.file,keptRow:seen.rowNo,dupFile:ctx.file,dupRow:ctx.rowNo,changed});
       return;
     }
-    phHistUniqueMap.set(uniqueId,{fp,file:ctx.file,rowNo:ctx.rowNo});
+    phHistUniqueMap.set(uniqueKey,{fp,file:ctx.file,rowNo:ctx.rowNo});
   }
-  const m=ctx.map;const get=k=>m[k]!=null?(row[m[k]]??''):'';
-  const d=phDate(get('date')),mate=phNormCode(get('mate')),width=phNum(get('width')),yard=phNum(get('yard')),qty=phNum(get('qty')),unit=String(get('unit')??'').trim(),histName=String(get('name')??'');
   phAddHistMate(mate,unit,qty,yard,histName,width);
   if(d&&(!phHistMaxDate||d>phHistMaxDate))phHistMaxDate=d;
   if(d&&mate&&phDipMateSource.has(mate)){
     const dp=phDipPc(unit,qty);if(dp.ok){const year=d.getFullYear(),month=d.getMonth()+1;phDipRows.push({file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),year,month,ym:`${year}-${String(month).padStart(2,'0')}`,mate,match:phDipMateSource.get(mate),unit,qty,pc:dp.pc});ctx.dipValid++;}
     else{ctx.dipInvalid++;if(phReview.length<200000)phReview.push({kind:'浸染',file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),mate,width:width??'',unit,qty:qty??'',yard:yard??'',msk:'',types:'',reason:dp.reason,source:mate});}
   }
-  const source=[get('name'),get('note1'),get('note2')].filter(x=>String(x??'').trim()!=='').join(' | ');
+  const sourceFields=[get('name'),get('note1'),get('note2')];
+  const source=sourceFields.filter(x=>String(x??'').trim()!=='').join(' | ');
   let hits=phExtractMskLegacy(source),mskSource='原始三備註 / 3 ghi chú gốc',mcTypeIds=[];
   if(!hits.length&&phMcMap.size){
     mcTypeIds=(phMcMap.get(phMcKey(mate,width,unit))||[]).filter(Boolean);
     if(mcTypeIds.length){hits=phExtractMskLegacy(mcTypeIds.join(' | '));if(hits.length){mskSource='MC_TypeID補辨識 / Bổ sung MC_TypeID';ctx.mcMatched=(ctx.mcMatched||0)+1;}}
   }
   const baseTypes=[...new Set(hits.map(x=>x.type))],codes=[...new Set(hits.map(x=>x.code))];
-  const transferHint=phHasTransferHint(source);
+  const transferHint=phHasTransferHint(sourceFields);
   const hasExplicitTT=hits.some(x=>x.type==='TT'&&phIsValidTransferCode('TT',x.code));
   const hasExplicitMT=hits.some(x=>x.type==='MT'&&phIsValidTransferCode('MT',x.code));
   const types=[...baseTypes];
@@ -1430,11 +1435,11 @@ async function phExport(){if(!phStats)return;const wb=new ExcelJS.Workbook();wb.
   const outws=wb.addWorksheet('廠外印刷明細 IN ngoài',{views:[{state:'frozen',ySplit:1}]});outws.addRow(['來源檔案','原始列號','SO_Date','解析料號','歷史料號命中','SO_Name','SO_Width','SO_Unit','SO_Num','換算Y','25MM等效Y','換算依據']);phOutRows.forEach(r=>outws.addRow([r.file,r.rowNo,r.date,r.mate,r.mateMatched?'是':'否',r.name,r.width,r.unit,r.qty,r.y,r.eq25,r.method]));
   const dws=wb.addWorksheet('浸染明細 Nhúng sơn',{views:[{state:'frozen',ySplit:1}]});dws.addRow(['來源檔案','原始列號','完工日','料號','命中來源','原始單位','完工量','換算PC']);phDipRows.forEach(r=>dws.addRow([r.file,r.rowNo,r.date,r.mate,r.match,r.unit,r.qty,r.pc]));
   const fws=wb.addWorksheet('膠片明細 Đầu keo',{views:[{state:'frozen',ySplit:1}]});fws.addRow(['來源檔案','原始列號','完工日','料號','MSK','辨識來源','單位','完工量','膠片雙數','換算方式']);for(const r of phRows)if(r.groups.includes('FILM'))fws.addRow([r.file,r.rowNo,r.date,r.mate,r.msk,r.mskSource||'',r.unit,r.qty,r.filmPairs,r.filmMethod||'']);
-  const cws=wb.addWorksheet('匯入檢查 Kiểm tra');cws.addRow(['項目 / Hạng mục','數量 / Số lượng']);const t=phImportTotals||{};[['匯入歷年完工檔案數',t.histFiles||0],['匯入外發檔案數',t.outFiles||0],['匯入浸染料號檔案數',t.dipFiles||0],['匯入MC補辨識檔案數',t.mcFiles||0],['總匯入檔案數',t.totalFiles||0],['歷年完工原始筆數',t.raw||0],['C欄重複排除筆數',t.duplicate||0],['其中同C欄內容有差異',t.duplicateChanged||0],['C欄去重後筆數',(t.raw||0)-(t.duplicate||0)],['有效歷年印刷/膠片筆數',t.valid||0],['原始三備註無法辨識後由MC補辨識',t.mcMatched||0],['仍未抓到MSK',t.noMsk||0],['浸染料號數',phDipMateSource.size],['浸染有效筆數',phDipRows.length],['浸染單位異常',t.dipInvalid||0],['外發原始筆數',t.outRaw||0],['外發有效筆數',phOutRows.length],['外發無法換算',t.outInvalid||0],['外發不納入特殊單位',t.outSkipped||0],['外發晚於完工資料截止日（未納入）',t.outAfterCutoff||0],['手印+機印→歸手印',t.handMachine||0],['MP噴塗納入印刷',phRows.filter(r=>r.groups.includes('SPRAY')).length],['MY移印納入印刷',phRows.filter(r=>r.groups.includes('PAD')).length],['膠片未知單位→原始量視為雙',t.filmFallback||0],['2022異常MSK排除Y（筆數保留）',t.exclude2022||0]].forEach(x=>cws.addRow(x));
-  const dupws=wb.addWorksheet('C欄重複排除 Trùng C',{views:[{state:'frozen',ySplit:1}]});dupws.addRow(['C欄唯一值','保留來源檔','保留列號','排除來源檔','排除列號','內容是否不同']);phHistDuplicateRows.forEach(r=>dupws.addRow([r.id,r.keptFile,r.keptRow,r.dupFile,r.dupRow,r.changed?'是 / Có':'否 / Không']));
+  const cws=wb.addWorksheet('匯入檢查 Kiểm tra');cws.addRow(['項目 / Hạng mục','數量 / Số lượng']);const t=phImportTotals||{};[['匯入歷年完工檔案數',t.histFiles||0],['匯入外發檔案數',t.outFiles||0],['匯入浸染料號檔案數',t.dipFiles||0],['匯入MC補辨識檔案數',t.mcFiles||0],['總匯入檔案數',t.totalFiles||0],['歷年完工原始筆數',t.raw||0],['C欄+完工日重複排除筆數',t.duplicate||0],['其中同鍵內容有差異',t.duplicateChanged||0],['C欄+完工日去重後筆數',(t.raw||0)-(t.duplicate||0)],['有效歷年印刷/膠片筆數',t.valid||0],['原始三備註無法辨識後由MC補辨識',t.mcMatched||0],['仍未抓到MSK',t.noMsk||0],['浸染料號數',phDipMateSource.size],['浸染有效筆數',phDipRows.length],['浸染單位異常',t.dipInvalid||0],['外發原始筆數',t.outRaw||0],['外發有效筆數',phOutRows.length],['外發無法換算',t.outInvalid||0],['外發不納入特殊單位',t.outSkipped||0],['外發晚於完工資料截止日（未納入）',t.outAfterCutoff||0],['手印+機印→歸手印',t.handMachine||0],['MP噴塗納入印刷',phRows.filter(r=>r.groups.includes('SPRAY')).length],['MY移印納入印刷',phRows.filter(r=>r.groups.includes('PAD')).length],['膠片未知單位→原始量視為雙',t.filmFallback||0],['2022異常MSK排除Y（筆數保留）',t.exclude2022||0]].forEach(x=>cws.addRow(x));
+  const dupws=wb.addWorksheet('重複排除 Trùng dữ liệu',{views:[{state:'frozen',ySplit:1}]});dupws.addRow(['C欄唯一值','完工日','去重鍵 C+完工日','保留來源檔','保留列號','排除來源檔','排除列號','內容是否不同']);phHistDuplicateRows.forEach(r=>dupws.addRow([r.id,r.date,r.key,r.keptFile,r.keptRow,r.dupFile,r.dupRow,r.changed?'是 / Có':'否 / Không']));
   const rws=wb.addWorksheet('待確認 Cần kiểm tra');rws.addRow(['類型','來源檔案','原始列號','日期','料號','寬度','單位','數量','折合碼Y','MSK','MSK類型','原因','來源內容']);phReview.forEach(r=>rws.addRow([r.kind,r.file,r.rowNo,r.date,r.mate,r.width,r.unit,r.qty,r.yard,r.msk,r.types,r.reason,r.source]));
   for(const ws of [iws,outws,dws,fws,cws,dupws,rws]){ws.getRow(1).height=30;ws.getRow(1).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});ws.columns.forEach(c=>c.width=18);for(let r=2;r<=ws.rowCount;r++)ws.getRow(r).eachCell(c=>{if(typeof c.value==='number')c.numFmt='#,##0';});}
-  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷浸染-歷年完工量分析_V7.7_轉印補判_管理圖表.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷浸染-歷年完工量分析_V7.8_真實資料驗證.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 async function phRunAnalysis(){
   if(phBusy)return;
@@ -1459,7 +1464,7 @@ async function phRunAnalysis(){
     $('phStatus').textContent='4/4 彙總並產生報表… / Tổng hợp báo cáo…';
     phImportTotals=totals;phRender();$('phNoMsk').textContent=phFmt(totals.noMsk);$('phOther').textContent=phFmt(totals.other);$('phConflict').textContent=phFmt(totals.handMachine);$('phInvalid').textContent=phFmt(totals.invalid+totals.dipInvalid+totals.outInvalid);$('phAnalysis').classList.remove('hidden');$('phProgressBar').style.width='100%';
     $('phFileName').textContent=`✅ 已匯入 ${totals.totalFiles} 檔｜完工 ${hist.length}｜外發 ${outs.length}｜浸染 ${dip?1:0}｜MC ${mc?1:0}`;
-    $('phStatus').textContent=`✅ 匯入及分析完成 / Hoàn tất：共 ${totals.totalFiles} 個檔案。歷年完工 ${hist.length}、外發 ${outs.length}、浸染料號 ${dip?1:0}、MC補辨識 ${mc?1:0}；C欄重複排除 ${phFmt(totals.duplicate)} 筆、去重後 ${phFmt(totals.raw-totals.duplicate)} 筆；有效印刷/膠片 ${phFmt(phRows.length)} 筆、廠外 ${phFmt(phOutRows.length)} 筆、浸染 ${phFmt(phDipRows.length)} 筆、MC補辨識 ${phFmt(totals.mcMatched)} 筆。`;
+    $('phStatus').textContent=`✅ 匯入及分析完成 / Hoàn tất：共 ${totals.totalFiles} 個檔案。歷年完工 ${hist.length}、外發 ${outs.length}、浸染料號 ${dip?1:0}、MC補辨識 ${mc?1:0}；C欄+完工日重複排除 ${phFmt(totals.duplicate)} 筆、去重後 ${phFmt(totals.raw-totals.duplicate)} 筆；有效印刷/膠片 ${phFmt(phRows.length)} 筆、廠外 ${phFmt(phOutRows.length)} 筆、浸染 ${phFmt(phDipRows.length)} 筆、MC補辨識 ${phFmt(totals.mcMatched)} 筆。`;
   }catch(e){console.error(e);$('phStatus').textContent='❌ 分析失敗 / Phân tích thất bại：'+e.message;}
   finally{phBusy=false;if(runBtn)runBtn.disabled=false;}
 }
