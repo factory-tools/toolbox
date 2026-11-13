@@ -1145,6 +1145,65 @@ const PH_2022_EXCLUDE_MSK=new Set(['SPW0921','SPW0481','MPW0481']);
 let phRows=[],phDipRows=[],phOutRows=[],phReview=[],phStats=null,phBusy=false,phImportTotals=null;
 let phHistUniqueMap=new Map(),phHistDuplicateRows=[];
 let phDipMateSource=new Map(),phHistMateStats=new Map(),phHistLengthStats=new Map(),phHistMateSet=new Set(),phOutCoverage=new Set(),phHistMaxDate=null,phMcMap=new Map(),phMcLoaded={rows:0,withType:0,name:''};
+let phTransferMateSet=new Set(),phTransferMateSide=new Map(),phTransferLoaded={rows:0,aliases:0,customs:0,name:''};
+const PH_TRANSFER_CONFIRMED_MATES=new Set(`90-6841VH
+90-68042V
+90-6856AF
+90-81576V
+90-68043V
+90-68045V
+9081526VB
+9081524VB
+9081521VB
+81SPB080V
+90-81525V
+90-81603V
+90-6857VM
+90-6847VB
+81SP958VB
+68SPB084V
+90-68053V
+90-650002
+90-6854VB
+9081512DV
+81SP979VB
+90-6839VH
+90-6852VB
+90-6859VB
+90-6859VH
+9081595VB
+9068JS19V
+9068J105V
+90-81466V
+9081535VB
+9081595DV
+9081595TV
+9081535DV
+90-68033V
+90-68036V
+90-6838VB
+90-6839VB
+90-6832VB
+90-68044V
+67FHM0131
+90-660045
+67UFW2282
+90-81583V
+9068JS21V
+9068JS18V
+81SPB80DV
+81SPB80VB
+81SPB82VB
+81SPB82DV
+81SPB81VB
+81SPB81DV
+81SPB79VB
+81SPB79DV
+68SPB078V
+9081512VB
+90-68039V
+81SPB090V
+90-81512V`.split(/\n+/).map(phNormCode).filter(Boolean));
 function phNum(v){if(v==null||v==='')return null;if(typeof v==='number')return Number.isFinite(v)?v:null;const s=String(v).replace(/,/g,'').trim();const m=s.match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):null;}
 function phFmt(n,d=0){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:d});}
 function phEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1197,12 +1256,38 @@ function phMcKey(mate,width,unit){return phNormCode(mate)+'||'+phMcWidthKey(widt
 function phFindMcHeaders(matrix){let best=null;for(let r=0;r<Math.min(matrix.length,30);r++){const map={};(matrix[r]||[]).forEach((v,i)=>{const k=phNormHeader(v);if(k)map[k]=i;});const need=['mcmate','mcwidth','mcunit','mctypeid'],score=need.filter(k=>map[k]!=null).length;if(!best||score>best.score)best={row:r,map,score};}return best;}
 async function phLoadMcFile(file){phMcMap=new Map();phMcLoaded={rows:0,withType:0,name:''};if(!file)return phMcLoaded;let wb;if(/\.csv$/i.test(file.name))wb=XLSX.read(await file.text(),{type:'string'});else wb=XLSX.read(await file.arrayBuffer(),{type:'array'});let chosen=null;for(const name of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:true}),h=phFindMcHeaders(matrix);if(h&&(!chosen||h.score>chosen.h.score))chosen={matrix,h,name};if(h&&h.score===4)break;}if(!chosen||chosen.h.score<4)throw new Error('MC 對照檔找不到 MC_Mate / MC_Width / MC_Unit / MC_TypeID');let rows=0,withType=0;for(let r=chosen.h.row+1;r<chosen.matrix.length;r++){const row=chosen.matrix[r]||[],get=k=>chosen.h.map[k]!=null?row[chosen.h.map[k]]:'';const mate=get('mcmate'),width=get('mcwidth'),unit=get('mcunit'),typeid=String(get('mctypeid')||'').trim();if(!phNormCode(mate)||!phMcWidthKey(width)||!phNormCode(unit))continue;rows++;if(!typeid)continue;withType++;const key=phMcKey(mate,width,unit);if(!phMcMap.has(key))phMcMap.set(key,[]);phMcMap.get(key).push(typeid);}phMcLoaded={rows,withType,name:file.name||''};return phMcLoaded;}
 function phNormalizeLooseText(s){return String(s==null?'':s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+function phTransferTokens(text){return phNormalizeLooseText(text).split(/\s+/).filter(Boolean);}
 function phHasTransferHintField(text){
   const raw=String(text==null?'':text);if(raw.includes('轉印'))return true;
-  const s=phNormalizeLooseText(raw);if(!s)return false;
-  return /(?:^|\s)(?:EP TEM IN CHUYEN|TEM IN CHUYEN|IN CHUYEN NHIET|IN CHUYEN)(?=\s|$)/.test(s);
+  const t=phTransferTokens(raw);if(!t.length)return false;
+  const hasSeq=(...xs)=>t.some((_,i)=>xs.every((x,j)=>t[i+j]===x));
+  if(t.includes('INCHUYEN'))return true;
+  if(hasSeq('IN','CHUYEN')||hasSeq('IN','CHUYEN','NHIET'))return true;
+  if(hasSeq('TEM','CHUYEN')||hasSeq('TEM','IN','CHUYEN'))return true;
+  if(hasSeq('EP','TEM','CHUYEN')||hasSeq('EP','TEM','IN','CHUYEN'))return true;
+  if(t.includes('EPTEM')&&(t.includes('INCHUYEN')||hasSeq('CHUYEN','IN')||t.includes('CHUYEN')))return true;
+  if(hasSeq('CHUYEN','IN')||hasSeq('CHUYEN','IN','THUONG'))return true;
+  return false;
 }
 function phHasTransferHint(fields){return (Array.isArray(fields)?fields:[fields]).some(phHasTransferHintField);}
+function phTransferAliasSide(alias){const v=phTransferMateSide.get(phNormCode(alias));if(!v)return [];return [...v];}
+function phAddTransferAlias(alias,side){const a=phNormCode(alias);if(!a)return;phTransferMateSet.add(a);if(side){if(!phTransferMateSide.has(a))phTransferMateSide.set(a,new Set());phTransferMateSide.get(a).add(side);}}
+function phInferTransferSideFromCustom(custom){
+  const src=String(custom||''),hits=phExtractMskLegacy(src);let hand=false,machine=false;
+  for(const h of hits){if(h.type==='TT'||h.type==='TD'||h.type==='SPW')hand=true;if(h.type==='MT'||h.type==='MD'||h.type==='MPW')machine=true;}
+  if(hand&&!machine)return 'HAND';if(machine&&!hand)return 'MACHINE';return '';
+}
+async function phLoadTransferFile(file){
+  phTransferMateSet=new Set(PH_TRANSFER_CONFIRMED_MATES);phTransferMateSide=new Map();phTransferLoaded={rows:0,aliases:phTransferMateSet.size,customs:0,name:file?.name||''};
+  if(!file)return phTransferLoaded;
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});let rows=0,customs=new Set();
+  for(const sn of wb.SheetNames){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});if(!matrix.length)continue;let hr=-1,map={};
+    for(let r=0;r<Math.min(20,matrix.length);r++){const hm={};(matrix[r]||[]).forEach((v,i)=>hm[phNormHeader(v)]=i);if(hm.momate!=null||hm.comate!=null){hr=r;map=hm;break;}}
+    if(hr<0)continue;
+    for(let r=hr+1;r<matrix.length;r++){const row=matrix[r]||[],mo=map.momate!=null?row[map.momate]:'',co=map.comate!=null?row[map.comate]:'',custom=map.custom!=null?String(row[map.custom]||''):'';if(!phNormCode(mo)&&!phNormCode(co)&&!custom.trim())continue;rows++;const side=phInferTransferSideFromCustom(custom);phAddTransferAlias(mo,side);phAddTransferAlias(co,side);if(custom.trim())customs.add(custom.trim());}
+  }
+  phTransferLoaded={rows,aliases:phTransferMateSet.size,customs:customs.size,name:file.name||''};return phTransferLoaded;
+}
 function phIsValidTransferCode(type,code){
   const c=phNormCode(code),m=c.match(/^(TT|MT)(\d{2})([A-L])([A-Z0-9]*)$/);if(!m||m[1]!==type)return false;
   const yy=Number(m[2]),nowYear2=(new Date().getFullYear()+1)%100;return yy>=20&&yy<=nowYear2;
@@ -1229,59 +1314,50 @@ function phProcessRow(row,ctx){
   if(!row||!row.length)return;ctx.raw++;
   const m=ctx.map;const get=k=>m[k]!=null?(row[m[k]]??''):'';
   const d=phDate(get('date')),mate=phNormCode(get('mate')),width=phNum(get('width')),yard=phNum(get('yard')),qty=phNum(get('qty')),unit=String(get('unit')??'').trim(),histName=String(get('name')??'');
-  // 真實歷年資料驗證後，C欄會跨年份重新使用；正式去重鍵改成「C欄 + 完工日」。
-  const uniqueId=phNormCode(row[2]),dateKey=d?phDateText(d):String(get('date')??'').trim();
-  const uniqueKey=uniqueId?(uniqueId+'||'+dateKey):'';
-  if(uniqueKey){
-    const fp=row.map(v=>String(v??'').trim()).join('\u001F');
-    const seen=phHistUniqueMap.get(uniqueKey);
-    if(seen){
-      ctx.duplicate=(ctx.duplicate||0)+1;
-      const changed=seen.fp!==fp;if(changed)ctx.duplicateChanged=(ctx.duplicateChanged||0)+1;
-      if(phHistDuplicateRows.length<200000)phHistDuplicateRows.push({id:uniqueId,date:dateKey,key:uniqueKey,keptFile:seen.file,keptRow:seen.rowNo,dupFile:ctx.file,dupRow:ctx.rowNo,changed});
-      return;
-    }
-    phHistUniqueMap.set(uniqueKey,{fp,file:ctx.file,rowNo:ctx.rowNo});
-  }
-  phAddHistMate(mate,unit,qty,yard,histName,width);
-  if(d&&(!phHistMaxDate||d>phHistMaxDate))phHistMaxDate=d;
-  if(d&&mate&&phDipMateSource.has(mate)){
-    const dp=phDipPc(unit,qty);if(dp.ok){const year=d.getFullYear(),month=d.getMonth()+1;phDipRows.push({file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),year,month,ym:`${year}-${String(month).padStart(2,'0')}`,mate,match:phDipMateSource.get(mate),unit,qty,pc:dp.pc});ctx.dipValid++;}
-    else{ctx.dipInvalid++;if(phReview.length<200000)phReview.push({kind:'浸染',file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),mate,width:width??'',unit,qty:qty??'',yard:yard??'',msk:'',types:'',reason:dp.reason,source:mate});}
-  }
-  const sourceFields=[get('name'),get('note1'),get('note2')];
-  const source=sourceFields.filter(x=>String(x??'').trim()!=='').join(' | ');
+  const uniqueId=phNormCode(row[2]),dateKey=d?phDateText(d):String(get('date')??'').trim(),uniqueKey=uniqueId?(uniqueId+'||'+dateKey):'';
+  if(uniqueKey){const fp=row.map(v=>String(v??'').trim()).join('\u001F'),seen=phHistUniqueMap.get(uniqueKey);if(seen){ctx.duplicate=(ctx.duplicate||0)+1;const changed=seen.fp!==fp;if(changed)ctx.duplicateChanged=(ctx.duplicateChanged||0)+1;if(phHistDuplicateRows.length<200000)phHistDuplicateRows.push({id:uniqueId,date:dateKey,key:uniqueKey,keptFile:seen.file,keptRow:seen.rowNo,dupFile:ctx.file,dupRow:ctx.rowNo,changed});return;}phHistUniqueMap.set(uniqueKey,{fp,file:ctx.file,rowNo:ctx.rowNo});}
+  phAddHistMate(mate,unit,qty,yard,histName,width);if(d&&(!phHistMaxDate||d>phHistMaxDate))phHistMaxDate=d;
+  if(d&&mate&&phDipMateSource.has(mate)){const dp=phDipPc(unit,qty);if(dp.ok){const year=d.getFullYear(),month=d.getMonth()+1;phDipRows.push({file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),year,month,ym:`${year}-${String(month).padStart(2,'0')}`,mate,match:phDipMateSource.get(mate),unit,qty,pc:dp.pc});ctx.dipValid++;}else{ctx.dipInvalid++;if(phReview.length<200000)phReview.push({kind:'浸染',file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),mate,width:width??'',unit,qty:qty??'',yard:yard??'',msk:'',types:'',reason:dp.reason,source:mate});}}
+  const sourceFields=[get('name'),get('note1'),get('note2')],source=sourceFields.filter(x=>String(x??'').trim()!=='').join(' | ');
   let hits=phExtractMskLegacy(source),mskSource='原始三備註 / 3 ghi chú gốc',mcTypeIds=[];
-  if(!hits.length&&phMcMap.size){
-    mcTypeIds=(phMcMap.get(phMcKey(mate,width,unit))||[]).filter(Boolean);
-    if(mcTypeIds.length){hits=phExtractMskLegacy(mcTypeIds.join(' | '));if(hits.length){mskSource='MC_TypeID補辨識 / Bổ sung MC_TypeID';ctx.mcMatched=(ctx.mcMatched||0)+1;}}
+  if(!hits.length&&phMcMap.size){mcTypeIds=(phMcMap.get(phMcKey(mate,width,unit))||[]).filter(Boolean);if(mcTypeIds.length){hits=phExtractMskLegacy(mcTypeIds.join(' | '));if(hits.length){mskSource='MC_TypeID補辨識 / Bổ sung MC_TypeID';ctx.mcMatched=(ctx.mcMatched||0)+1;}}}
+  const baseTypes=[...new Set(hits.map(x=>x.type))],codes=[...new Set(hits.map(x=>x.code))],year=d?d.getFullYear():null,allowTransfer=year===2025||year===2026;
+  const hasHandFamily=baseTypes.some(t=>['TD','SPW','TT'].includes(t)),hasMachineFamily=baseTypes.some(t=>['MD','MPW','MT'].includes(t));
+  const validTT=hits.some(x=>x.type==='TT'&&phIsValidTransferCode('TT',x.code)),validMT=hits.some(x=>x.type==='MT'&&phIsValidTransferCode('MT',x.code));
+  const textHint=allowTransfer&&phHasTransferHint(sourceFields),mateHint=allowTransfer&&(PH_TRANSFER_CONFIRMED_MATES.has(mate)||phTransferMateSet.has(mate)),refSides=mateHint?phTransferAliasSide(mate):[];
+  let transferSide='',transferReason='';
+  if(allowTransfer){
+    if(validTT){transferSide='HAND';transferReason='合法TT年月碼';}
+    else if(validMT){transferSide='MACHINE';transferReason='合法MT年月碼';}
+    else if(textHint&&hasHandFamily){transferSide='HAND';transferReason='備註轉印文字';}
+    else if(textHint&&hasMachineFamily){transferSide='MACHINE';transferReason='備註轉印文字';}
+    else if(mateHint&&hasHandFamily){transferSide='HAND';transferReason='轉印料號參考';}
+    else if(mateHint&&hasMachineFamily){transferSide='MACHINE';transferReason='轉印料號參考';}
+    else if(mateHint&&refSides.length===1){transferSide=refSides[0];transferReason='轉印料號參考(由Custom判製程)';}
   }
-  const baseTypes=[...new Set(hits.map(x=>x.type))],codes=[...new Set(hits.map(x=>x.code))];
-  const transferHint=phHasTransferHint(sourceFields);
-  const hasExplicitTT=hits.some(x=>x.type==='TT'&&phIsValidTransferCode('TT',x.code));
-  const hasExplicitMT=hits.some(x=>x.type==='MT'&&phIsValidTransferCode('MT',x.code));
-  const types=[...baseTypes];
-  if(hasExplicitTT){if(!types.includes('TT'))types.push('TT');}
-  else if(transferHint&&(types.includes('TD')||types.includes('SPW'))){types.push('TT');codes.push('TT*備註轉印');if(mskSource==='原始三備註 / 3 ghi chú gốc')mskSource='原始三備註＋轉印關鍵字補判 / 3 ghi chú + từ khóa in chuyển';}
-  if(hasExplicitMT){if(!types.includes('MT'))types.push('MT');}
-  else if(transferHint&&(types.includes('MD')||types.includes('MPW'))){types.push('MT');codes.push('MT*備註轉印');if(mskSource==='原始三備註 / 3 ghi chú gốc')mskSource='原始三備註＋轉印關鍵字補判 / 3 ghi chú + từ khóa in chuyển';else if(!mskSource.includes('轉印關鍵字'))mskSource+=' ＋ 轉印關鍵字補判';}
-  const cls=phClassify(types);let reason='';
+  const types=baseTypes.filter(t=>t!=='TT'&&t!=='MT');
+  if(baseTypes.includes('TT')&&!transferSide&&!types.some(t=>['TD','SPW'].includes(t)))types.push('TD');
+  if(baseTypes.includes('MT')&&!transferSide&&!types.some(t=>['MD','MPW'].includes(t)))types.push('MD');
+  if(transferSide==='HAND'){types.push('TT');ctx.transferHand=(ctx.transferHand||0)+1;if(transferReason.includes('料號'))ctx.transferMate=(ctx.transferMate||0)+1;else if(transferReason.includes('備註'))ctx.transferText=(ctx.transferText||0)+1;else ctx.transferCode=(ctx.transferCode||0)+1;}
+  if(transferSide==='MACHINE'){types.push('MT');ctx.transferMachine=(ctx.transferMachine||0)+1;if(transferReason.includes('料號'))ctx.transferMate=(ctx.transferMate||0)+1;else if(transferReason.includes('備註'))ctx.transferText=(ctx.transferText||0)+1;else ctx.transferCode=(ctx.transferCode||0)+1;}
+  if(transferSide){mskSource+=(mskSource?' ＋ ':'')+transferReason;}
+  const cls=phClassify([...new Set(types)]);let reason='';
   if(!d)reason='完工日無法辨識 / Không nhận ngày hoàn thành';else if(cls.status==='NONE')reason='未抓到 MSK / Không nhận MSK';else if(cls.status==='OTHER')reason='其他製程，不列入印刷 / Công đoạn khác';
-  let eq25=null,filmPairs=null,filmMethod='',filmFallback=false;
-  if(!reason&&cls.groups.some(g=>['HAND','HAND_TRANSFER','MACHINE','MACHINE_TRANSFER','SPRAY','PAD'].includes(g))){if(!(width>0))reason='印刷寬度無效 / Khổ in không hợp lệ';else if(yard==null||yard<0)reason='印刷折合碼無效 / Yard quy đổi in không hợp lệ';else eq25=yard*width/25;}
+  let eq25=null,filmPairs=null,filmMethod='',filmFallback=false;if(!reason&&cls.groups.some(g=>['HAND','HAND_TRANSFER','MACHINE','MACHINE_TRANSFER','SPRAY','PAD'].includes(g))){if(!(width>0))reason='印刷寬度無效 / Khổ in không hợp lệ';else if(yard==null||yard<0)reason='印刷折合碼無效 / Yard quy đổi in không hợp lệ';else eq25=yard*width/25;}
   if(!reason&&cls.groups.includes('FILM')){const fp=phFilmPairs(unit,qty);if(!fp.ok)reason=fp.reason;else{filmPairs=fp.pairs;filmMethod=fp.method||'';filmFallback=!!fp.fallback;if(filmFallback)ctx.filmFallback=(ctx.filmFallback||0)+1;}}
-  if(reason){if(cls.status!=='NONE'&&phReview.length<200000)phReview.push({kind:'廠內/膠片',file:ctx.file,rowNo:ctx.rowNo,date:d?phDateText(d):String(get('date')||''),mate,width:width??'',unit,qty:qty??'',yard:yard??'',msk:codes.join(' / '),types:types.join(' / '),reason,source});if(cls.status==='NONE')ctx.noMsk++;else if(cls.status==='OTHER')ctx.other++;else ctx.invalid++;return;}
-  const year=d.getFullYear(),month=d.getMonth()+1,ym=`${year}-${String(month).padStart(2,'0')}`;const exclude2022Y=year===2022&&codes.some(c=>PH_2022_EXCLUDE_MSK.has(phNormCode(c)));const printEq25=exclude2022Y?0:eq25;phRows.push({file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),year,month,ym,mate,groups:cls.groups,width:width??null,unit,qty:qty??null,yard:yard??null,eq25,printEq25,exclude2022Y,filmPairs,filmMethod,filmFallback,msk:codes.join(' / '),types:types.join(' / '),name:String(get('name')??''),note1:String(get('note1')??''),note2:String(get('note2')??''),mskSource,mcTypeIds:mcTypeIds.join(' / '),transferHint});if(exclude2022Y)ctx.exclude2022=(ctx.exclude2022||0)+1;if(cls.handMachine)ctx.handMachine++;ctx.valid++;
+  if(reason){if(cls.status!=='NONE'&&phReview.length<200000)phReview.push({kind:'廠內/膠片',file:ctx.file,rowNo:ctx.rowNo,date:d?phDateText(d):String(get('date')||''),mate,width:width??'',unit,qty:qty??'',yard:yard??'',msk:codes.join(' / '),types:[...new Set(types)].join(' / '),reason,source});if(cls.status==='NONE')ctx.noMsk++;else if(cls.status==='OTHER')ctx.other++;else ctx.invalid++;return;}
+  const month=d.getMonth()+1,ym=`${year}-${String(month).padStart(2,'0')}`,exclude2022Y=year===2022&&codes.some(c=>PH_2022_EXCLUDE_MSK.has(phNormCode(c))),printEq25=exclude2022Y?0:eq25;
+  phRows.push({file:ctx.file,rowNo:ctx.rowNo,date:phDateText(d),year,month,ym,mate,groups:cls.groups,width:width??null,unit,qty:qty??null,yard:yard??null,eq25,printEq25,exclude2022Y,filmPairs,filmMethod,filmFallback,msk:codes.join(' / '),types:[...new Set(types)].join(' / '),name:String(get('name')??''),note1:String(get('note1')??''),note2:String(get('note2')??''),mskSource,mcTypeIds:mcTypeIds.join(' / '),transferReason,transferByMate:mateHint});if(exclude2022Y)ctx.exclude2022=(ctx.exclude2022||0)+1;if(cls.handMachine)ctx.handMachine++;ctx.valid++;
 }
 async function phParseCsvStream(file,progressCb){
-  const ctx={file:file.name,rowNo:0,raw:0,valid:0,noMsk:0,other:0,handMachine:0,invalid:0,dipValid:0,dipInvalid:0,filmFallback:0,exclude2022:0,mcMatched:0,duplicate:0,duplicateChanged:0,map:{...PH_COL_DEFAULT}};const reader=file.stream().getReader(),decoder=new TextDecoder('utf-8');let field='',row=[],inQuotes=false,first=true,loaded=0,pending='';
+  const ctx={file:file.name,rowNo:0,raw:0,valid:0,noMsk:0,other:0,handMachine:0,invalid:0,dipValid:0,dipInvalid:0,filmFallback:0,exclude2022:0,mcMatched:0,duplicate:0,duplicateChanged:0,transferHand:0,transferMachine:0,transferMate:0,transferText:0,transferCode:0,map:{...PH_COL_DEFAULT}};const reader=file.stream().getReader(),decoder=new TextDecoder('utf-8');let field='',row=[],inQuotes=false,first=true,loaded=0,pending='';
   function emitField(){row.push(field);field='';}function emitRow(){ctx.rowNo++;if(first){first=false;if(phLooksLikeHeader(row)){ctx.map={...PH_COL_DEFAULT,...phHeaderMap(row)};row=[];return;}}phProcessRow(row,ctx);row=[];}
   function processText(text){for(let i=0;i<text.length;i++){const ch=text[i];if(ch==='"'){if(inQuotes&&text[i+1]==='"'){field+='"';i++;}else inQuotes=!inQuotes;}else if(ch===','&&!inQuotes)emitField();else if((ch==='\n'||ch==='\r')&&!inQuotes){if(ch==='\r'&&text[i+1]==='\n')i++;emitField();if(row.some(v=>String(v).trim()!==''))emitRow();}else field+=ch;}}
   while(true){const {done,value}=await reader.read();if(done)break;loaded+=value.byteLength;let text=pending+decoder.decode(value,{stream:true});pending='';if(text.endsWith('"')&&inQuotes){pending='"';text=text.slice(0,-1);}else if(text.endsWith('\r')&&!inQuotes){pending='\r';text=text.slice(0,-1);}processText(text);if(progressCb)progressCb(Math.min(.99,loaded/file.size));}
   const tail=pending+decoder.decode();if(tail)processText(tail);if(field!==''||row.length){emitField();if(row.some(v=>String(v).trim()!==''))emitRow();}if(progressCb)progressCb(1);return ctx;
 }
 async function phParseWorkbook(file,progressCb){
-  const ctx={file:file.name,rowNo:0,raw:0,valid:0,noMsk:0,other:0,handMachine:0,invalid:0,dipValid:0,dipInvalid:0,filmFallback:0,exclude2022:0,mcMatched:0,duplicate:0,duplicateChanged:0,map:{...PH_COL_DEFAULT}};const ab=await file.arrayBuffer();if(progressCb)progressCb(.2);const wb=XLSX.read(ab,{type:'array',cellDates:false});
+  const ctx={file:file.name,rowNo:0,raw:0,valid:0,noMsk:0,other:0,handMachine:0,invalid:0,dipValid:0,dipInvalid:0,filmFallback:0,exclude2022:0,mcMatched:0,duplicate:0,duplicateChanged:0,transferHand:0,transferMachine:0,transferMate:0,transferText:0,transferCode:0,map:{...PH_COL_DEFAULT}};const ab=await file.arrayBuffer();if(progressCb)progressCb(.2);const wb=XLSX.read(ab,{type:'array',cellDates:false});
   for(let si=0;si<wb.SheetNames.length;si++){const matrix=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[si]],{header:1,defval:'',raw:true});if(!matrix.length)continue;let start=0,map={...PH_COL_DEFAULT};for(let r=0;r<Math.min(10,matrix.length);r++){if(phLooksLikeHeader(matrix[r])){map={...PH_COL_DEFAULT,...phHeaderMap(matrix[r])};start=r+1;break;}}ctx.map=map;for(let r=start;r<matrix.length;r++){ctx.rowNo=r+1;if((matrix[r]||[]).every(v=>String(v??'').trim()===''))continue;phProcessRow(matrix[r],ctx);}if(progressCb)progressCb(.2+.8*(si+1)/wb.SheetNames.length);}return ctx;
 }
 async function phLoadDipFile(file){phDipMateSource=new Map();if(!file)return {rows:0,mates:0};const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});let rows=0;for(const s of wb.SheetNames){const a=XLSX.utils.sheet_to_json(wb.Sheets[s],{defval:''});for(const r of a){rows++;for(const [col,label] of [['MI_ID','MI_ID'],['MI_Mate','MI_Mate']]){const code=phNormCode(r[col]);if(!code)continue;const old=phDipMateSource.get(code);phDipMateSource.set(code,old&&old!==label?'MI_ID + MI_Mate':label);}}}return {rows,mates:phDipMateSource.size};}
@@ -1385,7 +1461,7 @@ function phStyleSheet(ws,widths,percentCols=[]){
 }
 function phSectionBands(ws,monthly=false){const printRange=monthly?'B1:P1':'B1:R1',dipRange=monthly?'Q1:S1':'S1:W1',filmRange=monthly?'T1:V1':'X1:AB1',dipCell=monthly?'Q1':'S1',filmCell=monthly?'T1':'X1';ws.mergeCells(printRange);ws.getCell('B1').value='印刷 / IN';ws.getCell('B1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2F75B5'}};ws.mergeCells(dipRange);ws.getCell(dipCell).value='浸染 / NHÚNG SƠN';ws.getCell(dipCell).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF70AD47'}};ws.mergeCells(filmRange);ws.getCell(filmCell).value='膠片 / ĐẦU KEO';ws.getCell(filmCell).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC55A11'}};for(const a of ['B1',dipCell,filmCell]){ws.getCell(a).font={bold:true,color:{argb:'FFFFFFFF'},size:12};ws.getCell(a).alignment={horizontal:'center',vertical:'middle'};}}
 function phHighlightSummary(ws,cols){for(const col of cols){for(let r=2;r<=ws.rowCount;r++){const c=ws.getCell(r,col);c.font={...(c.font||{}),bold:true};if(r>=3)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF2CC'}};}}}
-function phAddFormulaNote(ws,row,colSpan){ws.mergeCells(row,1,row,colSpan);const c=ws.getCell(row,1);c.value='計算說明 / Cách tính：手印+機印總完工（含轉印）＝手印＋手印轉印＋機印＋機印轉印；歷年印刷總完工＝手印+機印總完工（含轉印）＋噴塗＋移印；手印+機印廠內印刷＝手印+機印總完工（含轉印）－廠外印刷（依目前實務，廠外量暫視為手印/機印外發；噴塗/移印廠外極少）。年增率＝（本年總量÷上年總量）－1；筆數年增率同理。真正廠內筆數為推估值。';c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F6F9'}};c.font={italic:true,color:{argb:'FF555555'},size:10};c.alignment={wrapText:true,vertical:'middle'};ws.getRow(row).height=46;}
+function phAddFormulaNote(ws,row,colSpan){ws.mergeCells(row,1,row,colSpan);const c=ws.getCell(row,1);c.value='計算說明 / Cách tính：轉印只拆 2025、2026；2022–2024 的 TT/MT 回歸一般手印/機印。2025/2026 依合法 TT/MT、明確轉印備註、已確認轉印料號與第⑤檔 MO_Mate＋co_mate 參考補判。手印+機印總完工（含轉印）＝手印＋手印轉印＋機印＋機印轉印；歷年印刷總完工＝手印+機印總完工（含轉印）＋噴塗＋移印；手印+機印廠內印刷＝手印+機印總完工（含轉印）－廠外印刷。年增率＝（本年總量÷上年總量）－1；筆數年增率同理。';c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF3F6F9'}};c.font={italic:true,color:{argb:'FF555555'},size:10};c.alignment={wrapText:true,vertical:'middle'};ws.getRow(row).height=46;}
 async function phChartPngDataUrl(items){
   const W=1000,H=380,cv=document.createElement('canvas');cv.width=W;cv.height=H;const c=cv.getContext('2d');
   c.fillStyle='#ffffff';c.fillRect(0,0,W,H);c.fillStyle='#17365D';c.font='bold 24px Arial';c.fillText('印刷量 vs 筆數年增率',36,36);c.font='15px Arial';c.fillStyle='#66717f';c.fillText('Tăng trưởng sản lượng IN vs số dòng',36,60);
@@ -1435,47 +1511,47 @@ async function phExport(){if(!phStats)return;const wb=new ExcelJS.Workbook();wb.
   const outws=wb.addWorksheet('廠外印刷明細 IN ngoài',{views:[{state:'frozen',ySplit:1}]});outws.addRow(['來源檔案','原始列號','SO_Date','解析料號','歷史料號命中','SO_Name','SO_Width','SO_Unit','SO_Num','換算Y','25MM等效Y','換算依據']);phOutRows.forEach(r=>outws.addRow([r.file,r.rowNo,r.date,r.mate,r.mateMatched?'是':'否',r.name,r.width,r.unit,r.qty,r.y,r.eq25,r.method]));
   const dws=wb.addWorksheet('浸染明細 Nhúng sơn',{views:[{state:'frozen',ySplit:1}]});dws.addRow(['來源檔案','原始列號','完工日','料號','命中來源','原始單位','完工量','換算PC']);phDipRows.forEach(r=>dws.addRow([r.file,r.rowNo,r.date,r.mate,r.match,r.unit,r.qty,r.pc]));
   const fws=wb.addWorksheet('膠片明細 Đầu keo',{views:[{state:'frozen',ySplit:1}]});fws.addRow(['來源檔案','原始列號','完工日','料號','MSK','辨識來源','單位','完工量','膠片雙數','換算方式']);for(const r of phRows)if(r.groups.includes('FILM'))fws.addRow([r.file,r.rowNo,r.date,r.mate,r.msk,r.mskSource||'',r.unit,r.qty,r.filmPairs,r.filmMethod||'']);
-  const cws=wb.addWorksheet('匯入檢查 Kiểm tra');cws.addRow(['項目 / Hạng mục','數量 / Số lượng']);const t=phImportTotals||{};[['匯入歷年完工檔案數',t.histFiles||0],['匯入外發檔案數',t.outFiles||0],['匯入浸染料號檔案數',t.dipFiles||0],['匯入MC補辨識檔案數',t.mcFiles||0],['總匯入檔案數',t.totalFiles||0],['歷年完工原始筆數',t.raw||0],['C欄+完工日重複排除筆數',t.duplicate||0],['其中同鍵內容有差異',t.duplicateChanged||0],['C欄+完工日去重後筆數',(t.raw||0)-(t.duplicate||0)],['有效歷年印刷/膠片筆數',t.valid||0],['原始三備註無法辨識後由MC補辨識',t.mcMatched||0],['仍未抓到MSK',t.noMsk||0],['浸染料號數',phDipMateSource.size],['浸染有效筆數',phDipRows.length],['浸染單位異常',t.dipInvalid||0],['外發原始筆數',t.outRaw||0],['外發有效筆數',phOutRows.length],['外發無法換算',t.outInvalid||0],['外發不納入特殊單位',t.outSkipped||0],['外發晚於完工資料截止日（未納入）',t.outAfterCutoff||0],['手印+機印→歸手印',t.handMachine||0],['MP噴塗納入印刷',phRows.filter(r=>r.groups.includes('SPRAY')).length],['MY移印納入印刷',phRows.filter(r=>r.groups.includes('PAD')).length],['膠片未知單位→原始量視為雙',t.filmFallback||0],['2022異常MSK排除Y（筆數保留）',t.exclude2022||0]].forEach(x=>cws.addRow(x));
+  const cws=wb.addWorksheet('匯入檢查 Kiểm tra');cws.addRow(['項目 / Hạng mục','數量 / Số lượng']);const t=phImportTotals||{};[['匯入歷年完工檔案數',t.histFiles||0],['匯入外發檔案數',t.outFiles||0],['匯入浸染料號檔案數',t.dipFiles||0],['匯入MC補辨識檔案數',t.mcFiles||0],['匯入轉印參考檔案數',t.transferFiles||0],['轉印參考原始列數',phTransferLoaded.rows||0],['轉印料號別名數',phTransferLoaded.aliases||0],['總匯入檔案數',t.totalFiles||0],['歷年完工原始筆數',t.raw||0],['C欄+完工日重複排除筆數',t.duplicate||0],['其中同鍵內容有差異',t.duplicateChanged||0],['C欄+完工日去重後筆數',(t.raw||0)-(t.duplicate||0)],['有效歷年印刷/膠片筆數',t.valid||0],['原始三備註無法辨識後由MC補辨識',t.mcMatched||0],['仍未抓到MSK',t.noMsk||0],['浸染料號數',phDipMateSource.size],['浸染有效筆數',phDipRows.length],['浸染單位異常',t.dipInvalid||0],['外發原始筆數',t.outRaw||0],['外發有效筆數',phOutRows.length],['外發無法換算',t.outInvalid||0],['外發不納入特殊單位',t.outSkipped||0],['外發晚於完工資料截止日（未納入）',t.outAfterCutoff||0],['手印+機印→歸手印',t.handMachine||0],['MP噴塗納入印刷',phRows.filter(r=>r.groups.includes('SPRAY')).length],['MY移印納入印刷',phRows.filter(r=>r.groups.includes('PAD')).length],['膠片未知單位→原始量視為雙',t.filmFallback||0],['2022異常MSK排除Y（筆數保留）',t.exclude2022||0],['2025/2026手印轉印筆數',t.transferHand||0],['2025/2026機印轉印筆數',t.transferMachine||0],['轉印由料號參考補判',t.transferMate||0],['轉印由備註補判',t.transferText||0],['轉印由合法TT/MT判定',t.transferCode||0]].forEach(x=>cws.addRow(x));
   const dupws=wb.addWorksheet('重複排除 Trùng dữ liệu',{views:[{state:'frozen',ySplit:1}]});dupws.addRow(['C欄唯一值','完工日','去重鍵 C+完工日','保留來源檔','保留列號','排除來源檔','排除列號','內容是否不同']);phHistDuplicateRows.forEach(r=>dupws.addRow([r.id,r.date,r.key,r.keptFile,r.keptRow,r.dupFile,r.dupRow,r.changed?'是 / Có':'否 / Không']));
   const rws=wb.addWorksheet('待確認 Cần kiểm tra');rws.addRow(['類型','來源檔案','原始列號','日期','料號','寬度','單位','數量','折合碼Y','MSK','MSK類型','原因','來源內容']);phReview.forEach(r=>rws.addRow([r.kind,r.file,r.rowNo,r.date,r.mate,r.width,r.unit,r.qty,r.yard,r.msk,r.types,r.reason,r.source]));
   for(const ws of [iws,outws,dws,fws,cws,dupws,rws]){ws.getRow(1).height=30;ws.getRow(1).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF17365D'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});ws.columns.forEach(c=>c.width=18);for(let r=2;r<=ws.rowCount;r++)ws.getRow(r).eachCell(c=>{if(typeof c.value==='number')c.numFmt='#,##0';});}
-  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷浸染-歷年完工量分析_V7.8_真實資料驗證.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  const buf=await wb.xlsx.writeBuffer(),blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='印刷浸染-歷年完工量分析_V7.9_轉印參考整合.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 async function phRunAnalysis(){
   if(phBusy)return;
-  const hist=[...($('phHistFiles').files||[])].sort((a,b)=>(b.lastModified||0)-(a.lastModified||0)),outs=[...($('phOutFiles').files||[])],dip=$('phDipFile').files?.[0],mc=$('phMcFile')?.files?.[0];
+  const hist=[...($('phHistFiles').files||[])].sort((a,b)=>(b.lastModified||0)-(a.lastModified||0)),outs=[...($('phOutFiles').files||[])],dip=$('phDipFile').files?.[0],mc=$('phMcFile')?.files?.[0],transfer=$('phTransferFile')?.files?.[0];
   if(!hist.length){$('phStatus').textContent='⚠ 請先選擇歷年完工資料 / Vui lòng chọn dữ liệu hoàn thành';return;}
-  phBusy=true;phRows=[];phDipRows=[];phOutRows=[];phReview=[];phStats=null;phHistUniqueMap=new Map();phHistDuplicateRows=[];phHistMateStats=new Map();phHistLengthStats=new Map();phHistMateSet=new Set();phOutCoverage=new Set();phHistMaxDate=null;phMcMap=new Map();
+  phBusy=true;phRows=[];phDipRows=[];phOutRows=[];phReview=[];phStats=null;phHistUniqueMap=new Map();phHistDuplicateRows=[];phHistMateStats=new Map();phHistLengthStats=new Map();phHistMateSet=new Set();phOutCoverage=new Set();phHistMaxDate=null;phMcMap=new Map();phTransferMateSet=new Set(PH_TRANSFER_CONFIRMED_MATES);phTransferMateSide=new Map();
   $('phAnalysis').classList.add('hidden');$('phProgress').classList.remove('hidden');$('phProgressBar').style.width='0%';
   const runBtn=$('phRunBtn');if(runBtn)runBtn.disabled=true;
-  let totals={raw:0,valid:0,noMsk:0,other:0,handMachine:0,invalid:0,dipValid:0,dipInvalid:0,filmFallback:0,exclude2022:0,mcMatched:0,duplicate:0,duplicateChanged:0,outRaw:0,outValid:0,outInvalid:0,outSkipped:0,outAfterCutoff:0,histFiles:hist.length,outFiles:outs.length,dipFiles:dip?1:0,mcFiles:mc?1:0,totalFiles:hist.length+outs.length+(dip?1:0)+(mc?1:0)};
+  let totals={raw:0,valid:0,noMsk:0,other:0,handMachine:0,invalid:0,dipValid:0,dipInvalid:0,filmFallback:0,exclude2022:0,mcMatched:0,duplicate:0,duplicateChanged:0,transferHand:0,transferMachine:0,transferMate:0,transferText:0,transferCode:0,outRaw:0,outValid:0,outInvalid:0,outSkipped:0,outAfterCutoff:0,histFiles:hist.length,outFiles:outs.length,dipFiles:dip?1:0,mcFiles:mc?1:0,transferFiles:transfer?1:0,totalFiles:hist.length+outs.length+(dip?1:0)+(mc?1:0)+(transfer?1:0)};
   try{
     $('phStatus').textContent=`已選 ${totals.totalFiles} 個檔案，開始讀取… / Đã chọn ${totals.totalFiles} file, bắt đầu đọc…`;
-    const di=await phLoadDipFile(dip);$('phProgressBar').style.width='4%';
-    if(mc){$('phStatus').textContent=`1/4 讀取 MC 補辨識檔：${mc.name}`;const mcLoader=(typeof phLoadMcFile==='function'?phLoadMcFile:window.phLoadMcFile);if(typeof mcLoader!=='function')throw new Error('MC 載入模組未載入 / Chưa tải mô-đun MC');await mcLoader(mc);}
-    $('phProgressBar').style.width='8%';
+    const di=await phLoadDipFile(dip);$('phProgressBar').style.width='3%';if(transfer){$('phStatus').textContent=`1/5 讀取轉印參考檔：${transfer.name}`;await phLoadTransferFile(transfer);}else{await phLoadTransferFile(null);}$('phProgressBar').style.width='6%';
+    if(mc){$('phStatus').textContent=`2/5 讀取 MC 補辨識檔：${mc.name}`;const mcLoader=(typeof phLoadMcFile==='function'?phLoadMcFile:window.phLoadMcFile);if(typeof mcLoader!=='function')throw new Error('MC 載入模組未載入 / Chưa tải mô-đun MC');await mcLoader(mc);}
+    $('phProgressBar').style.width='10%';
     for(let i=0;i<hist.length;i++){
-      const f=hist[i],isCsv=/\.csv$/i.test(f.name);$('phStatus').textContent=`2/4 歷年完工 ${i+1}/${hist.length}：${f.name}`;
-      const ctx=isCsv?await phParseCsvStream(f,p=>{$('phProgressBar').style.width=(8+62*(i+p)/hist.length)+'%';}):await phParseWorkbook(f,p=>{$('phProgressBar').style.width=(8+62*(i+p)/hist.length)+'%';});
-      for(const k of ['raw','valid','noMsk','other','handMachine','invalid','dipValid','dipInvalid','filmFallback','exclude2022','mcMatched','duplicate','duplicateChanged'])totals[k]+=ctx[k]||0;
+      const f=hist[i],isCsv=/\.csv$/i.test(f.name);$('phStatus').textContent=`3/5 歷年完工 ${i+1}/${hist.length}：${f.name}`;
+      const ctx=isCsv?await phParseCsvStream(f,p=>{$('phProgressBar').style.width=(10+60*(i+p)/hist.length)+'%';}):await phParseWorkbook(f,p=>{$('phProgressBar').style.width=(10+60*(i+p)/hist.length)+'%';});
+      for(const k of ['raw','valid','noMsk','other','handMachine','invalid','dipValid','dipInvalid','filmFallback','exclude2022','mcMatched','duplicate','duplicateChanged','transferHand','transferMachine','transferMate','transferText','transferCode'])totals[k]+=ctx[k]||0;
       await new Promise(r=>setTimeout(r,0));
     }
-    if(outs.length){$('phStatus').textContent=`3/4 讀取外發歷年資料，共 ${outs.length} 檔… / Đọc ${outs.length} file gia công ngoài…`;const oc=await phLoadOutFiles(outs,p=>{$('phProgressBar').style.width=(70+28*p)+'%';});totals.outRaw=oc.raw;totals.outValid=oc.valid;totals.outInvalid=oc.invalid;totals.outSkipped=oc.skipped;totals.outAfterCutoff=oc.afterCutoff;}
-    $('phStatus').textContent='4/4 彙總並產生報表… / Tổng hợp báo cáo…';
+    if(outs.length){$('phStatus').textContent=`4/5 讀取外發歷年資料，共 ${outs.length} 檔… / Đọc ${outs.length} file gia công ngoài…`;const oc=await phLoadOutFiles(outs,p=>{$('phProgressBar').style.width=(70+28*p)+'%';});totals.outRaw=oc.raw;totals.outValid=oc.valid;totals.outInvalid=oc.invalid;totals.outSkipped=oc.skipped;totals.outAfterCutoff=oc.afterCutoff;}
+    $('phStatus').textContent='5/5 彙總並產生報表… / Tổng hợp báo cáo…';
     phImportTotals=totals;phRender();$('phNoMsk').textContent=phFmt(totals.noMsk);$('phOther').textContent=phFmt(totals.other);$('phConflict').textContent=phFmt(totals.handMachine);$('phInvalid').textContent=phFmt(totals.invalid+totals.dipInvalid+totals.outInvalid);$('phAnalysis').classList.remove('hidden');$('phProgressBar').style.width='100%';
-    $('phFileName').textContent=`✅ 已匯入 ${totals.totalFiles} 檔｜完工 ${hist.length}｜外發 ${outs.length}｜浸染 ${dip?1:0}｜MC ${mc?1:0}`;
-    $('phStatus').textContent=`✅ 匯入及分析完成 / Hoàn tất：共 ${totals.totalFiles} 個檔案。歷年完工 ${hist.length}、外發 ${outs.length}、浸染料號 ${dip?1:0}、MC補辨識 ${mc?1:0}；C欄+完工日重複排除 ${phFmt(totals.duplicate)} 筆、去重後 ${phFmt(totals.raw-totals.duplicate)} 筆；有效印刷/膠片 ${phFmt(phRows.length)} 筆、廠外 ${phFmt(phOutRows.length)} 筆、浸染 ${phFmt(phDipRows.length)} 筆、MC補辨識 ${phFmt(totals.mcMatched)} 筆。`;
+    $('phFileName').textContent=`✅ 已匯入 ${totals.totalFiles} 檔｜完工 ${hist.length}｜外發 ${outs.length}｜浸染 ${dip?1:0}｜MC ${mc?1:0}｜轉印參考 ${transfer?1:0}`;
+    $('phStatus').textContent=`✅ 匯入及分析完成 / Hoàn tất：共 ${totals.totalFiles} 個檔案。完工 ${hist.length}、外發 ${outs.length}、浸染 ${dip?1:0}、MC ${mc?1:0}、轉印參考 ${transfer?1:0}；C欄+完工日重複排除 ${phFmt(totals.duplicate)} 筆、去重後 ${phFmt(totals.raw-totals.duplicate)} 筆；2025/2026 轉印：手印 ${phFmt(totals.transferHand)} 筆、機印 ${phFmt(totals.transferMachine)} 筆（料號參考 ${phFmt(totals.transferMate)}、備註 ${phFmt(totals.transferText)}、TT/MT ${phFmt(totals.transferCode)}）；轉印別名 ${phFmt(phTransferLoaded.aliases)} 個。`;
   }catch(e){console.error(e);$('phStatus').textContent='❌ 分析失敗 / Phân tích thất bại：'+e.message;}
   finally{phBusy=false;if(runBtn)runBtn.disabled=false;}
 }
 function phUpdateSelectedFiles(){
   if(!$('phHistFiles'))return;
-  const hist=[...($('phHistFiles').files||[])].sort((a,b)=>(b.lastModified||0)-(a.lastModified||0)),outs=[...($('phOutFiles').files||[])],dip=$('phDipFile').files?.[0],mc=$('phMcFile')?.files?.[0],total=hist.length+outs.length+(dip?1:0)+(mc?1:0);
-  const names=[...hist.map(f=>f.name),...outs.map(f=>f.name),...(dip?[dip.name]:[]),...(mc?[mc.name]:[])];
-  $('phFileName').textContent=total?`已選 ${total} 檔｜完工 ${hist.length}｜外發 ${outs.length}｜浸染 ${dip?1:0}｜MC ${mc?1:0}`:'尚未匯入資料 / Chưa nhập dữ liệu';
-  $('phStatus').innerHTML=total?`📂 已選擇 <b>${total}</b> 個檔案 / Đã chọn <b>${total}</b> file：完工 ${hist.length}、外發 ${outs.length}、浸染 ${dip?1:0}、MC ${mc?1:0}<br><span class="ph-selected-names">${names.map(phEsc).join(' ｜ ')}</span>`:'等待匯入 / Chờ nhập dữ liệu';
+  const hist=[...($('phHistFiles').files||[])].sort((a,b)=>(b.lastModified||0)-(a.lastModified||0)),outs=[...($('phOutFiles').files||[])],dip=$('phDipFile').files?.[0],mc=$('phMcFile')?.files?.[0],transfer=$('phTransferFile')?.files?.[0],total=hist.length+outs.length+(dip?1:0)+(mc?1:0)+(transfer?1:0);
+  const names=[...hist.map(f=>f.name),...outs.map(f=>f.name),...(dip?[dip.name]:[]),...(mc?[mc.name]:[]),...(transfer?[transfer.name]:[])];
+  $('phFileName').textContent=total?`已選 ${total} 檔｜完工 ${hist.length}｜外發 ${outs.length}｜浸染 ${dip?1:0}｜MC ${mc?1:0}｜轉印參考 ${transfer?1:0}`:'尚未匯入資料 / Chưa nhập dữ liệu';
+  $('phStatus').innerHTML=total?`📂 已選擇 <b>${total}</b> 個檔案 / Đã chọn <b>${total}</b> file：完工 ${hist.length}、外發 ${outs.length}、浸染 ${dip?1:0}、MC ${mc?1:0}、轉印參考 ${transfer?1:0}<br><span class="ph-selected-names">${names.map(phEsc).join(' ｜ ')}</span>`:'等待匯入 / Chờ nhập dữ liệu';
 }
-function phInit(){if(!$('phHistFiles'))return;$('phRunBtn').addEventListener('click',phRunAnalysis);$('phExportBtn').addEventListener('click',phExport);['phHistFiles','phOutFiles','phDipFile','phMcFile'].forEach(id=>$(id)?.addEventListener('change',phUpdateSelectedFiles));phUpdateSelectedFiles();}
+function phInit(){if(!$('phHistFiles'))return;$('phRunBtn').addEventListener('click',phRunAnalysis);$('phExportBtn').addEventListener('click',phExport);['phHistFiles','phOutFiles','phDipFile','phMcFile','phTransferFile'].forEach(id=>$(id)?.addEventListener('change',phUpdateSelectedFiles));phUpdateSelectedFiles();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',phInit);else phInit();
 
 
